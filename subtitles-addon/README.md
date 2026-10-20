@@ -235,6 +235,41 @@ Hugging Face Spaces, BeamUp de Stremio…) e instala la URL pública terminada
 en `/manifest.json`. En esas plataformas define `SUBDL_API_KEY` /
 `SUBSOURCE_API_KEY` como variables de entorno — nunca las subas a Git.
 
+## Despliegue gratuito en Render
+
+El addon ya está preparado para Render:
+
+- `index.js` escucha en `Number(process.env.PORT) || 7000` y en `0.0.0.0`.
+  Render asigna `PORT` dinámicamente: **no lo definas tú** ni en el código
+  ni en el panel.
+- `package.json` ya trae el script que Render ejecutará:
+  `"start": "node index.js"`.
+- El `render.yaml` de la raíz del repo declara este Web Service
+  (`addon5-subtitles`, `rootDir: subtitles-addon`, health check `/health`).
+
+Con un **Web Service manual** en el dashboard de Render usa exactamente:
+
+| Campo | Valor |
+|---|---|
+| Repository | `noe359866-code/ADDON5` |
+| Branch | `main` (tras mergear) o la rama que quieras desplegar |
+| Root Directory | `subtitles-addon` |
+| Runtime | `Node` |
+| Build Command | `npm ci --omit=dev` (o `npm install`) |
+| Start Command | `npm start` |
+| Instance Type | `Free` |
+| Health Check Path | `/health` |
+
+Variables de entorno en Render → *Environment*: `NODE_ENV=production`,
+`NODE_VERSION=20`, `SUBTITLE_LANGUAGES=ES,EN`,
+`SUBTITLE_LANGUAGES_ONLY=false` y, solo si las tienes,
+`SUBDL_API_KEY` / `SUBSOURCE_API_KEY`. Tras el primer deploy, tu URL de
+instalación en Stremio será
+`https://addon5-subtitles.onrender.com/manifest.json` (el subdominio será
+el nombre que elijas para el servicio). En el plan gratuito el servicio se
+duerme tras un rato sin tráfico y la primera petición puede tardar
+~1 minuto en despertarlo: es normal; las siguientes ya responden rápido.
+
 ## Cómo decide Stremio llamarte (el manifest)
 
 ```json

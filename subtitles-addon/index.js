@@ -13,10 +13,12 @@
  *   3. Se unifican resultados: formato {id,url,lang}, sin duplicados y
  *      ordenados por idioma (español, inglés y después el resto).
  *   4. Se devuelve el JSON final { subtitles: [...] } que espera Stremio.
- *   5. El servidor HTTP escucha en el puerto 7000.
+ *   5. El servidor HTTP escucha en process.env.PORT (Render lo asigna
+ *      dinámicamente) o en el puerto 7000 si se ejecuta en local.
  *
  * Ejecutar:  npm start   (o npm run dev, con nodemon)
- * Instalar:  http://localhost:7000/manifest.json
+ * Instalar:  http://localhost:7000/manifest.json  (local)
+ *            https://<tu-servicio>.onrender.com/manifest.json  (Render)
  */
 
 // .env primero: src/config.js lee process.env al ser requerido.
@@ -32,7 +34,12 @@ const { parseSubtitlesId } = require('./src/utils/imdb');
 const { getCinemetaMeta } = require('./src/utils/cinemeta');
 const { providers, unifySettled } = require('./src/providers');
 
-const PORT = config.port || 7000;
+// Render (y cualquier PaaS) asigna el puerto en process.env.PORT: NUNCA se
+// debe hardcodear. En local, si nadie define PORT, usamos 7000 por defecto.
+const PORT = Number(process.env.PORT) || 7000;
+
+// Render expone la URL pública en RENDER_EXTERNAL_URL; en local no existe.
+const PUBLIC_BASE_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
 
 /* ------------------------------------------------------------------ *
  *  Builder del addon (publica manifest.json y registra el handler)   *
@@ -123,11 +130,13 @@ builder.defineSubtitlesHandler(handleSubtitlesRequest);
 const addonInterface = builder.getInterface();
 
 /* ------------------------------------------------------------------ *
- *  5) Servidor HTTP — puerto 7000                                     *
+ *  5) Servidor HTTP — puerto dinámico (process.env.PORT) o 7000 local  *
  *                                                                      *
  *  Express solo envuelve al router del SDK para poder añadir rutas    *
  *  propias (/health hoy; mañana /download/*.srt descomprimiendo).     *
  *  El SDK sirve él solito /manifest.json y /subtitles/…               *
+ *  Escuchamos en 0.0.0.0: Render enruta el tráfico externo al proceso *
+ *  solo si el servidor acepta conexiones en todas las interfaces.     *
  * ------------------------------------------------------------------ */
 function createApp() {
   const app = express();
@@ -157,8 +166,10 @@ const app = createApp();
 // (así los tests pueden require('./index') sin arrancar el servidor).
 if (require.main === module) {
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`${addonInterface.manifest.name} escuchando en http://localhost:${PORT}/manifest.json`);
-    console.log(`Fuentes activas: ${providers.map((p) => p.name).join(', ')}`);
+    console.log(`${addonInterface.manifest.name} escuchando en 0.0.0.0:${PORT}`);
+    console.log(`Instala en Stremio: ${PUBLIC_BASE_URL}/manifest.json`);
+    console.log(`Health check:      ${PUBLIC_BASE_URL}/health`);
+    console.log(`Fuentes activas:   ${providers.map((p) => p.name).join(', ')}`);
   });
 }
 
