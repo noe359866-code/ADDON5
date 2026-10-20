@@ -2,6 +2,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { isIP } from 'node:net';
 import { pathToFileURL } from 'node:url';
+import { scrapeCatalog, scrapeHlsFromPage } from './pelispedia.js';
 
 const APP_NAME = 'ADDON5 HLS';
 const APP_VERSION = '1.0.0';
@@ -228,6 +229,30 @@ export function createAddonServer(options = {}) {
   const streamsRaw = parseJsonEnv(env.STREAMS_JSON, [], 'STREAMS_JSON');
   const catalog = parseCatalog(catalogRaw);
   const streams = parseStreams(streamsRaw, allowedHosts);
+  const pelispediaEnabled = String(env.PELISPEDIA_ENABLED || '').toLowerCase() === 'true';
+  const pelispediaBaseUrl = env.PELISPEDIA_BASE_URL || 'https://pelispedia.mov/';
+  const dynamicCatalog = new Map();
+  const dynamicStreams = new Map();
+  let catalogCacheUntil = 0;
+  let catalogRefresh = null;
+  async function getPelispediaCatalog() {
+    if (!pelispediaEnabled) return [];
+    if (Date.now() < catalogCacheUntil) return [...dynamicCatalog.values()];
+    if (!catalogRefresh) catalogRefresh = scrapeCatalog(pelispediaBaseUrl, fetchImpl).then(items => { dynamicCatalog.clear(); for (const item of items) dynamicCatalog.set(item.id, item); catalogCacheUntil = Date.now() + 300000; return items; }).finally(() => { catalogRefresh = null; });
+    try { return await catalogRefresh; } catch { return [...dynamicCatalog.values()]; }
+  }
+  async function getPelispediaStreams(item) {
+    if (!pelispediaEnabled || !item || !item._sourceUrl) return [];
+    const cached = dynamicStreams.get(item.id);
+    if (cached && cached.until > Date.now()) return cached.items;
+    try {
+      const discovered = await scrapeHlsFromPage(item._sourceUrl, pelispediaBaseUrl, allowedHosts, fetchImpl);
+      const parsed = parseStreams(discovered.map(source => ({ id: item.id, type: item.type, url: source.url, quality: source.quality, language: source.language })), allowedHosts);
+      const result = parsed.map(source => ({ ...source, key: crypto.createHash('sha256').update(JSON.stringify([source.type, source.id, source.url, source.headers])).digest('hex').slice(0, 32) }));
+      dynamicStreams.set(item.id, { items: result, until: Date.now() + 120000 });
+      return result;
+    } catch { return []; }
+  }
   const configuredSecret = env.STREAM_TOKEN_SECRET;
   if (env.NODE_ENV === 'production' && (!configuredSecret || configuredSecret.length < 32)) {
     throw new Error('En producción, STREAM_TOKEN_SECRET debe tener al menos 32 caracteres');
@@ -428,7 +453,8 @@ export function createAddonServer(options = {}) {
       const extra = parseExtraArgs(url, parts[3]);
       const search = (extra.get('search') || '').trim().toLocaleLowerCase();
       const skip = Math.max(0, Math.min(100000, Number.parseInt(extra.get('skip') || '0', 10) || 0));
-      const matches = catalog.filter(item => item.type === type && (!search || [item.name, item.description, ...(Array.isArray(item.genres) ? item.genres : [])].filter(Boolean).join(' ').toLocaleLowerCase().includes(search)));
+      const sourceCatalog = pelispediaEnabled ? [...catalog, ...await getPelispediaCatalog()] : catalog;
+      const matches = sourceCatalog.filter(item => item.type === type && (!search || [item.name, item.description, ...(Array.isArray(item.genres) ? item.genres : [])].filter(Boolean).join(' ').toLocaleLowerCase().includes(search)));
       const metas = matches.slice(skip, skip + 100).map(item => cleanMeta(item, false));
       jsonResponse(res, 200, { metas });
       return;
@@ -436,7 +462,7 @@ export function createAddonServer(options = {}) {
     if (parts[0] === 'meta' && parts.length === 3 && parts[2].endsWith('.json')) {
       const type = safeMediaType(parts[1]);
       const id = safeDecode(parts[2].slice(0, -5));
-      const item = type ? catalog.find(entry => entry.type === type && entry.id === id) : null;
+      const item = type ? (catalog.find(entry => entry.type === type && entry.id === id) || (await getPelispediaCatalog()).find(entry => entry.type === type && entry.id === id)) : null;
       jsonResponse(res, 200, { meta: item ? cleanMeta(item, true) : null });
       return;
     }
@@ -447,7 +473,9 @@ export function createAddonServer(options = {}) {
         jsonResponse(res, 200, { streams: [] });
         return;
       }
-      const found = streams.filter(item => item.type === type && item.id === id).map(item => ({
+      const sourceItem = catalog.find(entry => entry.type === type && entry.id === id) || (await getPelispediaCatalog()).find(entry => entry.type === type && entry.id === id);
+      const dynamicFound = sourceItem ? await getPelispediaStreams(sourceItem) : [];
+      const found = [...streams.filter(item => item.type === type && item.id === id), ...dynamicFound].map(item => ({
         name: APP_NAME,
         title: [item.quality, item.language].filter(Boolean).join(' • '),
         url: makeProxyUrl(req, item.url, item.key),
