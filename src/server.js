@@ -246,7 +246,7 @@ export function createAddonServer(options = {}) {
     const cached = dynamicStreams.get(item.id);
     if (cached && cached.until > Date.now()) return cached.items;
     try {
-      const discovered = await scrapeHlsFromPage(item._sourceUrl, pelispediaBaseUrl, allowedHosts, fetchImpl);
+      const discovered = await scrapeHlsFromPage(item._sourceUrl, pelispediaBaseUrl, allowedHosts, fetchImpl, item.type);
       const parsed = parseStreams(discovered.map(source => ({ id: item.id, type: item.type, url: source.url, quality: source.quality, language: source.language })), allowedHosts);
       const result = parsed.map(source => ({ ...source, key: crypto.createHash('sha256').update(JSON.stringify([source.type, source.id, source.url, source.headers])).digest('hex').slice(0, 32) }));
       dynamicStreams.set(item.id, { items: result, until: Date.now() + 120000 });
@@ -304,7 +304,7 @@ export function createAddonServer(options = {}) {
       errorResponse(res, 403, 'Enlace HLS no válido');
       return;
     }
-    const stream = streams.find(item => item.key === tokenPayload.key);
+    const stream = streams.find(item => item.key === tokenPayload.key) || [...dynamicStreams.values()].flatMap(entry => entry.items).find(item => item.key === tokenPayload.key);
     if (!stream) {
       errorResponse(res, 403, 'Fuente HLS no disponible');
       return;
