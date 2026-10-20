@@ -10,7 +10,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: STREAM_TOKEN_SECRET
-        sync: false
+        generateValue: true
       - key: HLS_ALLOWED_HOSTS
         sync: false
       - key: CATALOG_JSON

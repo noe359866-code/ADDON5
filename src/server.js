@@ -228,11 +228,16 @@ export function createAddonServer(options = {}) {
   const streamsRaw = parseJsonEnv(env.STREAMS_JSON, [], 'STREAMS_JSON');
   const catalog = parseCatalog(catalogRaw);
   const streams = parseStreams(streamsRaw, allowedHosts);
-  const configuredSecret = env.STREAM_TOKEN_SECRET;
-  if (env.NODE_ENV === 'production' && (!configuredSecret || configuredSecret.length < 32)) {
-    throw new Error('En producción, STREAM_TOKEN_SECRET debe tener al menos 32 caracteres');
+  const configuredSecret = typeof env.STREAM_TOKEN_SECRET === 'string' ? env.STREAM_TOKEN_SECRET.trim() : '';
+  let secret;
+  if (configuredSecret.length >= 32) {
+    secret = configuredSecret;
+  } else {
+    secret = crypto.randomBytes(32).toString('hex');
+    if (env.NODE_ENV === 'production') {
+      process.stderr.write('Aviso: STREAM_TOKEN_SECRET no está configurado o tiene menos de 32 caracteres; usando un secreto autogenerado para esta instancia.\n');
+    }
   }
-  const secret = configuredSecret && configuredSecret.length >= 32 ? configuredSecret : crypto.randomBytes(32).toString('hex');
   const key = encryptionKey(secret);
   const manifest = buildManifest();
 

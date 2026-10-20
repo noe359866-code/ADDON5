@@ -35,7 +35,7 @@ Prueba `http://localhost:10000/health` y abre `http://localhost:10000/manifest.j
 | --- | --- |
 | `PORT` | Puerto HTTP. Render define esta variable automáticamente. |
 | `PUBLIC_BASE_URL` | URL HTTPS pública opcional del servicio. En Render puede omitirse y se utiliza `RENDER_EXTERNAL_URL`. |
-| `STREAM_TOKEN_SECRET` | Secreto estable de al menos 32 caracteres para cifrar y autenticar los enlaces HLS. No lo compartas ni lo incluyas en Git. |
+| `STREAM_TOKEN_SECRET` | Secreto estable opcional de al menos 32 caracteres para cifrar y autenticar los enlaces HLS. Si no se define (o tiene menos de 32 caracteres), el servidor autogenera uno automáticamente al iniciar. |
 | `HLS_ALLOWED_HOSTS` | Lista separada por comas de los dominios autorizados, incluyendo los dominios CDN usados por playlists, segmentos, claves y redirecciones. Admite `*.example.org` para subdominios. |
 | `CATALOG_JSON` | Arreglo JSON con metadatos del catálogo. |
 | `STREAMS_JSON` | Arreglo JSON de enlaces HLS autorizados por ID de Stremio. |
