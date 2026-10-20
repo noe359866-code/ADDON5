@@ -10,6 +10,9 @@ module.exports = {
     .split(',')
     .map((l) => l.trim().toUpperCase())
     .filter(Boolean),
+  // false (defecto): se devuelven TODOS los idiomas, con ES/EN primero.
+  // true: se descartan los subtítulos que no estén en SUBTITLE_LANGUAGES.
+  languagesOnly: /^(1|true|yes)$/i.test(process.env.SUBTITLE_LANGUAGES_ONLY || ''),
   providerTimeoutMs: Number(process.env.PROVIDER_TIMEOUT_MS) || 8000,
   cacheTtlSeconds: Number(process.env.CACHE_TTL_SECONDS) || 21600, // 6 h
   // Topes del scraping: cuántos subtítulos devuelve como máximo cada
