@@ -60,6 +60,8 @@ function parseSuggestResponse(data) {
         id: String(item.id),
         name: String(item.name),
         year: item.year ? Number(item.year) : undefined,
+        // /suggest ya devuelve el IMDb: nos evita depender del título exacto.
+        imdbId: item.imdb ? `tt${String(item.imdb).replace(/^tt/i, '').padStart(7, '0')}` : undefined,
         kind
       });
     }
@@ -68,19 +70,23 @@ function parseSuggestResponse(data) {
 }
 
 /** Película (o serie sin temporada): mejor coincidencia nombre/año/tipo. */
-function pickSuggestTitle(items, { type, title, year } = {}) {
-  if (!items.length || !title) return null;
-  const want = normalizeTitle(title);
+function pickSuggestTitle(items, { type, title, year, imdbId } = {}) {
+  if (!items.length || (!title && !imdbId)) return null;
+  const want = title ? normalizeTitle(title) : null;
   const wantKind = type === 'series' ? 'tv' : 'film';
   let best = null;
   let bestScore = -Infinity;
   items.forEach((item, i) => {
-    const name = normalizeTitle(stripParens(item.name));
+    const name = want ? normalizeTitle(stripParens(item.name)) : '';
     let score = -i * 0.01;
+    // Coincidencia exacta de IMDb: es la señal más fiable de todas.
+    if (imdbId && item.imdbId) score += item.imdbId === imdbId ? 8 : -4;
     if (item.kind === wantKind) score += 2;
     if (year && item.year) score += item.year === year ? 2 : -2;
-    if (name === want) score += 4;
-    else if (name.startsWith(want) || want.startsWith(name)) score += 1;
+    if (want) {
+      if (name === want) score += 4;
+      else if (name.startsWith(want) || want.startsWith(name)) score += 1;
+    }
     if (score > bestScore) { bestScore = score; best = item; }
   });
   return bestScore > 0 ? best : null;
@@ -90,19 +96,21 @@ function pickSuggestTitle(items, { type, title, year } = {}) {
  * Temporada concreta: "Title - First Season" > "Title … First Season"
  * > "Title Season 1" > la serie completa.
  */
-function pickSeasonTitle(items, { title, season } = {}) {
-  if (!items.length || !title || season === undefined) return null;
-  const want = normalizeTitle(title);
+function pickSeasonTitle(items, { title, season, imdbId } = {}) {
+  if (!items.length || (!title && !imdbId) || season === undefined) return null;
+  const want = title ? normalizeTitle(title) : null;
   const ordinal = (ordinalWord(season) || '').toLowerCase();
   let best = null;
   let bestRank = Infinity;
   for (const item of items) {
-    const full = normalizeTitle(stripParens(item.name));
+    if (imdbId && item.imdbId && item.imdbId !== imdbId) continue;
+    const full = want ? normalizeTitle(stripParens(item.name)) : '';
     let rank = null;
-    if (ordinal && full === `${want} ${ordinal} season`) rank = 0;
-    else if (ordinal && full.startsWith(`${want} `) && full.endsWith(` ${ordinal} season`)) rank = 1;
-    else if (full === `${want} season ${season}`) rank = 2;
-    else if (full === want) rank = 3;
+    if (want && ordinal && full === `${want} ${ordinal} season`) rank = 0;
+    else if (want && ordinal && full.startsWith(`${want} `) && full.endsWith(` ${ordinal} season`)) rank = 1;
+    else if (want && full === `${want} season ${season}`) rank = 2;
+    else if (want && full === want) rank = 3;
+    else if (imdbId && item.imdbId === imdbId) rank = 4;
     if (rank !== null && rank < bestRank) { bestRank = rank; best = item; }
   }
   return best;
@@ -203,26 +211,28 @@ async function suggest(text, referer) {
   const { data } = await http.get(`${BASE()}/suggest`, {
     params: { query: text },
     headers: { Accept: 'application/json', Referer: referer || `${BASE()}/` },
-    timeout: 6000
+    timeout: config.providerTimeoutMs
   });
   return parseSuggestResponse(data);
 }
 
-async function resolveTitle({ type, title, year, season }) {
-  if (!title) return null;
+async function resolveTitle(query) {
+  const { type, title, year, season, imdbId } = query;
+  if (!title && !imdbId) return null;
+  const searchText = title || imdbId;
   if (type === 'series' && season !== undefined) {
     const ordinal = ordinalWord(season);
-    const queries = ordinal ? [`${title} - ${ordinal} Season`, title] : [title];
+    const queries = title && ordinal ? [`${title} - ${ordinal} Season`, title] : [searchText];
     for (const q of queries) {
       const items = await suggest(q);
-      const hit = pickSeasonTitle(items.filter((i) => i.kind === 'tv'), { title, season })
-        || pickSuggestTitle(items, { type, title, year });
+      const hit = pickSeasonTitle(items.filter((i) => i.kind === 'tv'), { title, season, imdbId })
+        || pickSuggestTitle(items, { type, title, year, imdbId });
       if (hit) return hit;
     }
     return null;
   }
-  const items = await suggest(title);
-  return pickSuggestTitle(items, { type, title, year });
+  const items = await suggest(searchText);
+  return pickSuggestTitle(items, { type, title, year, imdbId });
 }
 
 function classifyCandidate(candidate, season, episode) {
@@ -267,6 +277,7 @@ function toProviderItems(candidates) {
     lang: c.lang || 'und',
     provider: PROVIDER,
     release: c.release || '',
+    referer: c.detailUrl,
     archive: true
   }));
 }

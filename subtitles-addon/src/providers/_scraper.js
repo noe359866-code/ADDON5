@@ -53,6 +53,7 @@ async function scrapeSubtitleLinks({ provider, searchUrl }) {
       url,
       lang: guessFromText(contextText),
       provider,
+      referer: searchUrl,
       directFile: isSubtitleFile
     });
   });

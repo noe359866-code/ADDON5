@@ -349,7 +349,7 @@ async function enrichDirectLinks(candidates, listingUrl) {
   const targets = candidates.slice(0, config.maxDetailFetches).filter((c) => c.infoUrl);
   for (const batch of chunks(targets, 4)) {
     await Promise.allSettled(batch.map(async (c) => {
-      const html = await http.getHtml(c.infoUrl, { referer: listingUrl, timeout: 6000 });
+      const html = await http.getHtml(c.infoUrl, { referer: listingUrl, timeout: config.providerTimeoutMs });
       const info = parseSubdlInfoPage(html, c.infoUrl);
       if (info.downloadUrl) {
         c.downloadUrl = info.downloadUrl;
@@ -375,13 +375,15 @@ async function fetchListingCandidates(listingUrl, referer) {
     }
   };
   const langSlugs = [...new Set(config.languages.map(code2ToSlug).filter(Boolean))].slice(0, 3);
-  for (const slug of langSlugs) {
+  // Los listados por idioma se piden EN PARALELO: secuencialmente, un sitio
+  // lento podía agotar el presupuesto de Stremio antes de devolver nada.
+  const settled = await Promise.allSettled(langSlugs.map(async (slug) => {
     const url = `${listingUrl}/${slug}`;
-    try {
-      pushAll(parseSubdlListing(await http.getHtml(url, { referer }), url));
-    } catch (err) {
-      console.warn(`[subdl] Sin listado en ${url}: ${err.message}`);
-    }
+    return { url, items: parseSubdlListing(await http.getHtml(url, { referer }), url) };
+  }));
+  for (const result of settled) {
+    if (result.status === 'fulfilled') pushAll(result.value.items);
+    else console.warn(`[subdl] Sin listado por idioma: ${result.reason?.message || result.reason}`);
   }
   if (!collected.length) {
     pushAll(parseSubdlListing(await http.getHtml(listingUrl, { referer }), listingUrl));
@@ -435,6 +437,7 @@ async function searchByScraping(query) {
     lang: c.lang || 'und',
     provider: 'subdl',
     release: c.release || '',
+    referer: listingUrl,
     archive: Boolean(c.isArchive)
   }));
 }

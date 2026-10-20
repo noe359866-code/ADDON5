@@ -39,6 +39,16 @@ services:
         value: ES,EN
       - key: SUBTITLE_LANGUAGES_ONLY
         value: "false"
+      # Firma ESTABLE de los enlaces de descarga /sub/{token}.srt.
+      # Sin esto se genera una nueva en cada arranque y los subtítulos que
+      # Stremio tenía cargados dejan de funcionar tras un reinicio.
+      - key: SUBTITLE_TOKEN_SECRET
+        generateValue: true
+      # Presupuesto de respuesta: Stremio abandona las peticiones lentas.
+      - key: HANDLER_DEADLINE_MS
+        value: "9000"
+      - key: PROVIDER_TIMEOUT_MS
+        value: "5000"
       # Opcionales: solo como respaldo si el scraping web no devuelve nada.
       - key: SUBDL_API_KEY
         sync: false

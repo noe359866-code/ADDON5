@@ -214,7 +214,7 @@ async function resolveViaInternalSearch(query) {
         Origin: BASE,
         Referer: `${BASE}/search`
       },
-      timeout: 6000
+      timeout: config.providerTimeoutMs
     }
   );
   const foundPaths = [];
@@ -240,12 +240,20 @@ async function resolveViaInternalSearch(query) {
 }
 
 async function resolveListing(query) {
-  for (const path of subsourceSlugCandidates(query)) {
-    try {
+  // Los slugs posibles se prueban EN PARALELO (el sitio tarda ~1-3 s por
+  // ficha y en serie hay dos variantes: con y sin año).
+  const attempts = await Promise.allSettled(
+    subsourceSlugCandidates(query).map(async (path) => {
       const resolved = await tryListingUrl(`${BASE}/subtitles/${path}`, query.imdbId, `${BASE}/`);
-      if (resolved) return resolved;
-    } catch (err) {
-      console.warn(`[subsource] Slug ${path} no válido: ${err.message}`);
+      if (!resolved) throw new Error(`sin coincidencia para ${path}`);
+      return resolved;
+    })
+  );
+  const match = attempts.find((r) => r.status === 'fulfilled');
+  if (match) return match.value;
+  for (const r of attempts) {
+    if (r.status === 'rejected') {
+      console.warn(`[subsource] Slug descartado: ${r.reason?.message || r.reason}`);
     }
   }
   try {
@@ -342,7 +350,7 @@ async function searchByScraping(query) {
   const out = [];
   for (const batch of chunks(ordered, 4)) {
     const results = await Promise.allSettled(batch.map(async (c) => {
-      const html = await http.getHtml(c.detailUrl, { referer: resolved.url, timeout: 6000 });
+      const html = await http.getHtml(c.detailUrl, { referer: resolved.url, timeout: config.providerTimeoutMs });
       const detail = parseSubsourceDetail(html, c.detailUrl);
       if (!detail.downloadUrl) return null;
       return {
@@ -350,7 +358,8 @@ async function searchByScraping(query) {
         url: detail.downloadUrl,
         lang: detail.lang || c.lang || 'und',
         provider: 'subsource',
-        release: detail.release || c.release || ''
+        release: detail.release || c.release || '',
+        referer: c.detailUrl
       };
     }));
     for (const r of results) {

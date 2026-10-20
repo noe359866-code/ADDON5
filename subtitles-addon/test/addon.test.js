@@ -7,10 +7,10 @@ const manifest = require('../manifest.json');
 const { parseSubtitlesId } = require('../src/utils/imdb');
 const { toIso6392 } = require('../src/utils/languages');
 
-test('manifest: solo recurso subtitles, movie/series e idPrefixes tt', () => {
+test('manifest: recurso subtitles, movie/series e IDs de IMDb + anime', () => {
   assert.deepEqual(manifest.resources, ['subtitles']);
   assert.deepEqual(manifest.types, ['movie', 'series']);
-  assert.deepEqual(manifest.idPrefixes, ['tt']);
+  assert.deepEqual(manifest.idPrefixes, ['tt', 'kitsu', 'mal', 'anidb']);
   assert.deepEqual(manifest.catalogs, []);
   assert.ok(manifest.id && manifest.version && manifest.name);
 });

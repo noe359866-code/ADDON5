@@ -74,7 +74,7 @@ test('HTTP: /manifest.json, /health y /subtitles con id inválido', async (t) =>
   assert.equal(manifest.id, 'org.addon5.subtitles');
   assert.deepEqual(manifest.resources, ['subtitles']);
   assert.deepEqual(manifest.types, ['movie', 'series']);
-  assert.deepEqual(manifest.idPrefixes, ['tt']);
+  assert.deepEqual(manifest.idPrefixes, ['tt', 'kitsu', 'mal', 'anidb']);
 
   const health = await (await fetch(`${base}/health`)).json();
   assert.equal(health.status, 'ok');

@@ -92,9 +92,15 @@ El servicio no incluye catálogo precargado ni fuentes de demostración. Hasta q
 
 En [`subtitles-addon/`](subtitles-addon/) vive un segundo addon, totalmente
 independiente del HLS anterior (su propio `package.json`, puerto `7000` por
-defecto y su propio `/manifest.json`): recurso `subtitles` para películas y
-series con IDs IMDb (`tt…`), buscando en SubDL y SubSource (APIs oficiales) y
-en Sub-Scene, YTS-Subs, JustSubtitles e IndexSubtitle (scraping con cheerio).
-Ambos addons se ejecutan y despliegan por separado y se instalan en Stremio
-como dos URLs `/manifest.json` distintas. Ver
-[`subtitles-addon/README.md`](subtitles-addon/README.md).
+defecto y su propio `/manifest.json`): recurso `subtitles` para películas,
+series y **anime** (IDs IMDb `tt…` y `kitsu:`/`mal:`/`anidb:`, que se traducen
+a IMDb), buscando en SubDL y SubSource (APIs oficiales) y en Sub-Scene,
+YTS-Subs, JustSubtitles e IndexSubtitle (scraping con cheerio).
+
+El addon responde en un máximo de ~9 s (Stremio abandona las peticiones lentas)
+y sirve cada subtítulo a través de su propio proxy `/sub/{token}.srt`, que
+descomprime los `.zip`, convierte a UTF-8/SRT y añade CORS. Ambos addons se
+ejecutan y despliegan por separado y se instalan en Stremio como dos URLs
+`/manifest.json` distintas: **el addon HLS no proporciona subtítulos**. Si no
+te aparece ninguno, sigue la lista de comprobación de
+[`subtitles-addon/README.md`](subtitles-addon/README.md#no-aparece-ningún-subtítulo-en-stremio).
