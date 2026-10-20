@@ -123,7 +123,7 @@ subtitles-addon/
 ├── index.js               # Entry point: Express + router del SDK + /health
 ├── src/
 │   ├── manifest.js        # Carga manifest.json
-│   ├── addon.js           # addonBuilder + defineSubtitlesHandler (con caché)
+│   ├── addon.js           # Shim de compatibilidad: reexporta la interfaz de index.js
 │   ├── config.js          # Variables de entorno centralizadas
 │   ├── cache.js           # Caché en memoria con TTL
 │   ├── utils/
