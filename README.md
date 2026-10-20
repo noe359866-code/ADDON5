@@ -87,3 +87,16 @@ Los dominios que sirven las playlists secundarias, segmentos, claves y mapas tam
 5. Instala la URL `https://TU-SERVICIO.onrender.com/manifest.json` en Stremio.
 
 El servicio no incluye catálogo precargado ni fuentes de demostración. Hasta que configures `CATALOG_JSON` y `STREAMS_JSON`, el catálogo y la lista de streams estarán vacíos.
+
+
+## Scraper público opcional de Pelispedia
+
+El adaptador opcional inspecciona páginas HTML públicas de `https://pelispedia.mov/`, crea entradas de catálogo a partir de enlaces internos y reconoce URLs HLS directas (`.m3u8`) presentes en el HTML. No resuelve reproductores externos ni evade CAPTCHA, DRM, autenticación o restricciones de acceso. El formato de la web puede cambiar y requiere validación manual antes de producción.
+
+Para activarlo en Render, define estas variables:
+
+- `PELISPEDIA_ENABLED=true`
+- `PELISPEDIA_BASE_URL=https://pelispedia.mov/`
+- `HLS_ALLOWED_HOSTS`: dominios HTTPS exactos o comodines de los CDN autorizados que sirven las playlists HLS.
+
+La fuente solo se publica si su URL HLS cumple la lista de hosts permitidos. El addon devuelve URLs de su propio proxy y etiquetas genéricas; no incluye el proveedor ni la URL original. Si la web carga sus enlaces desde un iframe o JavaScript que no expone una URL HLS en la página, el scraper no encontrará ese stream y devolverá una lista vacía.
