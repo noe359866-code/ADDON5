@@ -133,3 +133,25 @@ test('HLS playlist rewrites segments and key URIs to encrypted local routes', as
     await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
   }
 });
+
+test('production mode auto-generates STREAM_TOKEN_SECRET when omitted or shorter than 32 chars', async () => {
+  const prodEnv = {
+    ...env,
+    NODE_ENV: 'production',
+    STREAM_TOKEN_SECRET: ''
+  };
+  const server = createAddonServer({ env: prodEnv });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  const base = `http://127.0.0.1:${address.port}`;
+  try {
+    const health = await fetch(`${base}/health`);
+    assert.equal(health.status, 200);
+    const stream = await (await fetch(`${base}/stream/movie/tt0000001.json`)).json();
+    assert.equal(stream.streams.length, 1);
+    assert.match(stream.streams[0].url, /^https:\/\/addon5\.test\/hls\//);
+  } finally {
+    await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+  }
+});
+
