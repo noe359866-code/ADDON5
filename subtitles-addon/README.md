@@ -21,6 +21,48 @@ error a Stremio, en el peor caso responde `{ subtitles: [] }`.
 > el arreglo suele ser ajustar en su archivo los patrones de URL/selectores.
 > Solo JustSubtitles sigue en la base genérica (`src/providers/_scraper.js`).
 
+## Archivo principal: `index.js`
+
+Todo el flujo del addon vive en el `index.js` de la raíz del subproyecto
+(`npm start` = `node index.js`). En resumen, su esqueleto es exactamente este:
+
+```js
+const builder = new addonBuilder(manifest);
+
+builder.defineSubtitlesHandler(async ({ type, id, extra = {} }) => {
+  // 1) IMDb ID + temporada/episodio: 'tt0944947:1:3' -> tt0944947, S1, E3
+  const parsed = parseSubtitlesId(id);
+  if (!parsed || !['movie', 'series'].includes(type)) return { subtitles: [] };
+
+  //    (caché TTL) + título/año vía Cinemeta para los buscadores por texto…
+  const query = { type, imdbId: parsed.imdbId, season: parsed.season,
+                  episode: parsed.episode, title, year, filename: extra.filename };
+
+  // 2) TODAS las fuentes en paralelo: un fallo no tumba a las demás
+  const settled = await Promise.allSettled(
+    providers.map(async (p) => await p.search(query) ?? [])
+  );
+
+  // 3) Unificar: {id,url,lang}, sin duplicados, español > inglés > resto
+  const subtitles = unifySettled(settled, providers, {
+    preferredLanguages: config.languages,      // SUBTITLE_LANGUAGES=ES,EN
+    onlyPreferred: config.languagesOnly        // SUBTITLE_LANGUAGES_ONLY=true filtra
+  });
+
+  // 4) La forma exacta que espera Stremio
+  return { subtitles };
+});
+
+app.use(getRouter(builder.getInterface()));   // sirve /manifest.json y /subtitles/…
+app.listen(7000, '0.0.0.0');                    // 5) Puerto 7000 (o $PORT)
+```
+
+El puerto se puede cambiar con `PORT` (las plataformas tipo Render lo fijan
+ellas); en local, sin `PORT`, es **7000**. El handler también está exportado
+(`handleSubtitlesRequest`) para los tests, y el servidor solo hace `listen()`
+cuando `index.js` es el programa principal — por eso `src/addon.js` puede
+reexportar la interfaz sin arrancar nada.
+
 ## Cómo scrapean SubDL y SubSource
 
 Ambos buscadores web buscan por **título**, no por IMDb ID (el
@@ -120,7 +162,7 @@ subtitles-addon/
 ├── manifest.json          # Fuente de verdad del manifest (lo sirve el SDK en /manifest.json)
 ├── package.json
 ├── .env.example           # Copia a .env y pon tus API keys
-├── index.js               # Entry point: Express + router del SDK + /health
+├── index.js               # PRINCIPAL: builder + defineSubtitlesHandler + Express :7000
 ├── src/
 │   ├── manifest.js        # Carga manifest.json
 │   ├── addon.js           # Shim de compatibilidad: reexporta la interfaz de index.js
@@ -142,6 +184,7 @@ subtitles-addon/
 │       └── justSubtitles.js # Base genérica _scraper.js (pendiente)
 └── test/
     ├── addon.test.js      # Manifest, parser de IDs, idiomas
+    ├── index.test.js      # Handler, unificación/prioridad de idiomas y humo HTTP
     ├── scrapers.test.js   # Parsers SubDL/SubSource con fixtures, sin red
     └── scrapers-remaining.test.js # Parsers YTS/Subscene/IndexSubtitle, sin red
 ```
