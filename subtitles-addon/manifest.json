@@ -1,0 +1,14 @@
+{
+  "id": "org.addon5.subtitles",
+  "version": "1.0.0",
+  "name": "ADDON5 Subtitles",
+  "description": "Subtítulos para películas y series desde SubDL, SubSource, Sub-Scene, YTS-Subs, JustSubtitles e IndexSubtitle",
+  "resources": ["subtitles"],
+  "types": ["movie", "series"],
+  "idPrefixes": ["tt"],
+  "catalogs": [],
+  "behaviorHints": {
+    "configurable": false,
+    "configurationRequired": false
+  }
+}
