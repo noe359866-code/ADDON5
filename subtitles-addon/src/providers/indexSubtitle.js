@@ -86,7 +86,7 @@ async function postForm(url, form, { referer, jar } = {}) {
       Referer: referer || `${BASE()}/`,
       ...cookieHeader(jar)
     },
-    timeout: 6000
+    timeout: config.providerTimeoutMs
   });
   if (jar) absorbCookies(jar, res.headers);
   return res.data;
@@ -321,6 +321,7 @@ async function searchInternal(query, desiredIsoList) {
         lang: c.lang || 'und',
         provider: PROVIDER,
         release: c.release || '',
+        referer: resolved.pageUrl,
         archive: true
       };
     }));

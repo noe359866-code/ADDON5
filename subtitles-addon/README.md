@@ -1,9 +1,16 @@
 # ADDON5 Subtitles — Addon de subtítulos para Stremio
 
-Addon de Stremio (recurso `subtitles`, películas y series, IDs IMDb `tt…`) que
-busca subtítulos **en paralelo** en 6 fuentes y devuelve la unión de resultados.
-Si una fuente falla, las demás siguen funcionando: el addon nunca responde con
-error a Stremio, en el peor caso responde `{ subtitles: [] }`.
+Addon de Stremio (recurso `subtitles`, películas, series y anime, IDs IMDb
+`tt…` y de anime `kitsu:`/`mal:`/`anidb:`) que busca subtítulos **en paralelo**
+en 6 fuentes y devuelve la unión de resultados. Si una fuente falla, las demás
+siguen funcionando: el addon nunca responde con error a Stremio, en el peor
+caso responde `{ subtitles: [] }`.
+
+Además, cada resultado se sirve a través de un **proxy propio** (`/sub/…`) que
+descarga el archivo original, descomprime el `.zip` si hace falta, lo convierte
+a UTF-8 + SRT y lo entrega con CORS. Stremio no sabe abrir `.zip` y muchos de
+estos sitios bloquean las descargas directas: sin este paso, el subtítulo puede
+aparecer en la lista pero no cargarse nunca.
 
 | Fuente | Método | ¿Necesita clave? |
 | --- | --- | --- |
@@ -21,6 +28,66 @@ error a Stremio, en el peor caso responde `{ subtitles: [] }`.
 > el arreglo suele ser ajustar en su archivo los patrones de URL/selectores.
 > Solo JustSubtitles sigue en la base genérica (`src/providers/_scraper.js`).
 
+## ¿No aparece ningún subtítulo en Stremio?
+
+Revisa esto EN ORDEN; cubre el 95 % de los casos:
+
+1. **¿Estás instalando el addon correcto?** El addon de subtítulos es un
+   servicio aparte del addon HLS (el del catálogo y los streams). Instalar
+   `.../manifest.json` del HLS **no añade subtítulos**. La URL de ESTE addon
+   tiene que responder un JSON con `"resources": ["subtitles"]`:
+
+   ```bash
+   curl -s https://TU-SERVICIO.onrender.com/manifest.json
+   curl -s https://TU-SERVICIO.onrender.com/health
+   ```
+
+   Si el primero devuelve `Not Found` (404), el servicio no está desplegado o
+   el nombre del subdominio no es ese: Stremio no tiene a quién preguntar.
+
+2. **Los subtítulos se eligen DENTRO del reproductor**, no en la ficha del
+   título. Abre un capítulo/película, pulsa el icono de subtítulos (CC) y
+   aparecerá el nombre del addon con sus resultados.
+
+3. **El plan gratuito de Render se duerme.** Si nadie ha usado el addon en
+   ~15 minutos, la primera petición puede tardar 30-60 s y Stremio se rinde
+   antes (se ve como "no hay subtítulos"). Abre antes `/health` en el navegador
+   para despertarlo; las siguientes peticiones ya responden en segundos.
+
+4. **Prueba el diagnóstico del propio addon**, que ejecuta las 6 fuentes de
+   verdad y dice cuántos resultados y cuánto tarda cada una:
+
+   ```
+   https://TU-SERVICIO.onrender.com/selftest?id=tt0111161&type=movie
+   https://TU-SERVICIO.onrender.com/selftest?id=tt0944947:1:3&type=series
+   https://TU-SERVICIO.onrender.com/selftest?id=kitsu:1234:5&type=series
+   ```
+
+   - `ok: true` y `total > 0`: el addon funciona; el problema está en la app
+     (addon no instalado en este perfil, caché de Stremio, reproductor
+     externo…).
+   - `total: 0` con todos los proveedores en `count: 0`: los sitios están
+     bloqueando la IP del servidor. Configura `SUBDL_API_KEY` y
+     `SUBSOURCE_API_KEY` (son gratis) para tener las APIs oficiales de
+     respaldo.
+   - Algún proveedor con `"ok": false`: ese sitio ha cambiado o da 403; los
+     demás siguen aportando.
+
+5. **Comprueba la petición exacta de Stremio**:
+
+   ```bash
+   curl -s "https://TU-SERVICIO.onrender.com/subtitles/movie/tt0111161.json"
+   curl -s "https://TU-SERVICIO.onrender.com/subtitles/series/tt0944947%3A1%3A3.json"
+   ```
+
+   Debe devolver `{"subtitles":[{"id":…,"url":…,"lang":…}, …]}`.
+
+> **Importante:** el addon ya **no cachea respuestas vacías**. Antes, un fallo
+> puntual (Render despertando, timeout, Cloudflare) dejaba el menú de
+> subtítulos vacío durante 6 horas. Ahora solo se cachean listas con
+> resultados, y el handler responde en un máximo de `HANDLER_DEADLINE_MS`
+> (9 s por defecto) aunque alguna fuente se cuelgue.
+
 ## Archivo principal: `index.js`
 
 Todo el flujo del addon vive en el `index.js` de la raíz del subproyecto
@@ -30,31 +97,27 @@ Todo el flujo del addon vive en el `index.js` de la raíz del subproyecto
 const builder = new addonBuilder(manifest);
 
 builder.defineSubtitlesHandler(async ({ type, id, extra = {} }) => {
-  // 1) IMDb ID + temporada/episodio: 'tt0944947:1:3' -> tt0944947, S1, E3
-  const parsed = parseSubtitlesId(id);
+  // 1) ID de Stremio: tt0111161 | tt0944947:1:3 | kitsu:1234:5
+  const parsed = parseMediaId(id);
   if (!parsed || !['movie', 'series'].includes(type)) return { subtitles: [] };
 
-  //    (caché TTL) + título/año vía Cinemeta para los buscadores por texto…
-  const query = { type, imdbId: parsed.imdbId, season: parsed.season,
-                  episode: parsed.episode, title, year, filename: extra.filename };
+  //    2) anime kitsu/mal/anidb -> tt… equivalente (índice Fribb), y
+  //       título/año vía Cinemeta (o Kitsu) para los scrapers por texto.
+  const deadlineAt = Date.now() + config.handlerDeadlineMs;  // 9 s
+  const query = await resolveQuery(type, id, deadlineAt);
 
-  // 2) TODAS las fuentes en paralelo: un fallo no tumba a las demás
-  const settled = await Promise.allSettled(
-    providers.map(async (p) => await p.search(query) ?? [])
-  );
+  // 3) TODAS las fuentes en paralelo, con fecha límite global:
+  //    una fuente lenta NO bloquea la respuesta a Stremio.
+  const { subtitles } = await runProviders(query, deadlineAt);
 
-  // 3) Unificar: {id,url,lang}, sin duplicados, español > inglés > resto
-  const subtitles = unifySettled(settled, providers, {
-    preferredLanguages: config.languages,      // SUBTITLE_LANGUAGES=ES,EN
-    onlyPreferred: config.languagesOnly        // SUBTITLE_LANGUAGES_ONLY=true filtra
-  });
-
-  // 4) La forma exacta que espera Stremio
+  // 4) Cada URL se firma como https://…/sub/{token}.srt (proxy que
+  //    descomprime y sirve el SRT en UTF-8 con CORS).
   return { subtitles };
 });
 
-app.use(getRouter(builder.getInterface()));   // sirve /manifest.json y /subtitles/…
-app.listen(7000, '0.0.0.0');                    // 5) Puerto 7000 (o $PORT)
+app.use(createProxyRouter());                   // /sub/{token}.srt
+app.use(getRouter(builder.getInterface()));     // /manifest.json y /subtitles/…
+app.listen(7000, '0.0.0.0');                    // puerto 7000 (o $PORT)
 ```
 
 El puerto se puede cambiar con `PORT` (las plataformas tipo Render lo fijan
@@ -137,6 +200,11 @@ Peculiaridades de cada URL/flujo (verificadas contra las webs):
   duplicadas a montones → dedupe por idioma+release quedando el mejor
   rating. Espejos configurables con `YTS_SUBS_BASE_URLS`; reserva:
   `/search/{Título (Año)}`.
+  **Importante (verificado en 2026):** el espejo `yifysubtitles.ch` sí sirve
+  `/subtitle/{slug}.zip`, pero `www.yts-subs.com` devuelve 404 en esa misma
+  ruta (su botón de descarga es JS/formulario). Por eso el espejo `.ch` va
+  PRIMERO en la lista por defecto: así los enlaces que se firman para el
+  proxy son descargables.
 - **Subscene** (`subscene.js`): el `sub-scene.com` actual **no** usa las rutas
   clásicas (`?mac=`). Su `/search` está tras Cloudflare, así que resolvemos
   con el JSON de su caja de búsqueda `GET /suggest?query=…` (`film`/`tv`).
@@ -167,10 +235,15 @@ subtitles-addon/
 │   ├── manifest.js        # Carga manifest.json
 │   ├── addon.js           # Shim de compatibilidad: reexporta la interfaz de index.js
 │   ├── config.js          # Variables de entorno centralizadas
-│   ├── cache.js           # Caché en memoria con TTL
+│   ├── cache.js           # Caché en memoria con TTL (nunca guarda listas vacías)
+│   ├── proxy.js           # /sub/{token}.srt: descarga, descomprime y sirve UTF-8/SRT
 │   ├── utils/
 │   │   ├── http.js        # Axios: headers de navegador, getHtml(), anti-Cloudflare
-│   │   ├── imdb.js        # Parsea "tt0111161" y "tt0944947:1:3" (serie T:E)
+│   │   ├── imdb.js        # Parser histórico de "tt0111161" / "tt0944947:1:3"
+│   │   ├── mediaId.js     # tt…/kitsu:/mal:/anidb: -> IMDb (índice de anime + Kitsu)
+│   │   ├── token.js       # Firma HMAC de los enlaces del proxy (sin estado)
+│   │   ├── zip.js         # Lector ZIP mínimo (store + deflate), sin dependencias
+│   │   ├── subtitleText.js # Codificaciones (UTF-8/UTF-16/CP1252) y ASS/VTT/MicroDVD -> SRT
 │   │   ├── cinemeta.js    # tt… -> título/año (para buscadores por texto)
 │   │   ├── release.js     # SxxExx, packs de temporada, slugs de título
 │   │   └── languages.js   # Idiomas a ISO 639-2 (eng, spa...) + slugs (english...)
@@ -185,6 +258,7 @@ subtitles-addon/
 └── test/
     ├── addon.test.js      # Manifest, parser de IDs, idiomas
     ├── index.test.js      # Handler, unificación/prioridad de idiomas y humo HTTP
+    ├── core.test.js       # IDs de anime, tokens, zip, formatos y deadline
     ├── scrapers.test.js   # Parsers SubDL/SubSource con fixtures, sin red
     └── scrapers-remaining.test.js # Parsers YTS/Subscene/IndexSubtitle, sin red
 ```
@@ -227,6 +301,17 @@ curl http://localhost:7000/manifest.json
 curl http://localhost:7000/health
 curl "http://localhost:7000/subtitles/movie/tt0111161.json"
 curl "http://localhost:7000/subtitles/series/tt0944947%3A1%3A3.json"
+
+# Diagnóstico: cuántos subtítulos aporta cada fuente y cuánto tarda
+curl "http://localhost:7000/selftest?id=tt0111161&type=movie"
+```
+
+En local no hay `PUBLIC_BASE_URL`, así que se devuelven los enlaces originales
+del sitio (el proxy `/sub/…` solo se activa cuando el addon conoce su URL
+pública). Para probarlo en local:
+
+```bash
+PUBLIC_BASE_URL=http://localhost:7000 SUBTITLE_TOKEN_SECRET=un-secreto-largo npm start
 ```
 
 Para instalarlo en Stremio pega `http://localhost:7000/manifest.json` en el
@@ -263,7 +348,13 @@ Con un **Web Service manual** en el dashboard de Render usa exactamente:
 Variables de entorno en Render → *Environment*: `NODE_ENV=production`,
 `NODE_VERSION=20`, `SUBTITLE_LANGUAGES=ES,EN`,
 `SUBTITLE_LANGUAGES_ONLY=false` y, solo si las tienes,
-`SUBDL_API_KEY` / `SUBSOURCE_API_KEY`. Tras el primer deploy, tu URL de
+`SUBDL_API_KEY` / `SUBSOURCE_API_KEY`.
+
+Añade también **`SUBTITLE_TOKEN_SECRET`** (cadena aleatoria de 32+ caracteres,
+p. ej. `openssl rand -hex 32`). Firma los enlaces `/sub/…` del proxy: si no la
+defines se genera una al azar en cada arranque y los subtítulos que estuvieran
+cargados dejan de valer tras un reinicio/deploy. El `render.yaml` del repo ya
+la genera automáticamente (`generateValue: true`). Tras el primer deploy, tu URL de
 instalación en Stremio será
 `https://addon5-subtitles.onrender.com/manifest.json` (el subdominio será
 el nombre que elijas para el servicio). En el plan gratuito el servicio se
@@ -275,32 +366,47 @@ duerme tras un rato sin tráfico y la primera petición puede tardar
 ```json
 "resources": ["subtitles"],
 "types": ["movie", "series"],
-"idPrefixes": ["tt"]
+"idPrefixes": ["tt", "kitsu", "mal", "anidb"]
 ```
 
-Con `idPrefixes: ["tt"]` solo recibes peticiones con IDs de IMDb y no
-necesitas implementar `meta` ni `catalog`: los metadatos los aporta el addon
-Cinemeta de Stremio. Por eso `catalogs` va vacío. El SDK sirve este mismo
-archivo en `GET /manifest.json` a través de `getRouter()` — no hay que crear
-esa ruta a mano.
+Con esos `idPrefixes` recibes películas/series por IMDb y también anime de los
+catálogos que usan IDs de Kitsu/MAL/AniDB (el addon resuelve su `tt…`
+equivalente con el índice público de Fribb). No necesitas implementar `meta`
+ni `catalog`: los metadatos los aporta Cinemeta. Por eso `catalogs` va vacío.
+El SDK sirve este mismo archivo en `GET /manifest.json` a través de
+`getRouter()` — no hay que crear esa ruta a mano.
 
-## Siguientes pasos (cuando quieras producción de verdad)
+## Variables de entorno
 
-1. **Endpoint de descarga propio** (`/download/:token.srt`): estos sitios no
-   garantizan un `.srt` suelto — SubDL expone el archivo individual en la
-   ficha (ya lo aprovechamos), pero su *Quick Download* y muchos packs son
-   `.zip`, y SubSource puede entregar el archivo empaquetado. Stremio solo
-   consume la URL del subtítulo, así que el paso de producción es descargar
-   en tu servidor, extraer el `.srt` (p. ej. con `adm-zip`), normalizar a
-   UTF-8 y servirlo desde tu dominio. Por eso este proyecto usa Express +
-   `getRouter()` en lugar del `serveHTTP()` "todo en uno" del SDK. Los
-   resultados que siguen siendo zip van marcados internamente (`archive`)
-   y ordenados después de los archivos sueltos.
-2. **Scraper real para JustSubtitles**: es la única fuente que sigue con la
+| Variable | Defecto | Uso |
+| --- | --- | --- |
+| `PORT` | `7000` | Puerto HTTP (Render lo asigna solo). |
+| `PUBLIC_BASE_URL` | — | URL pública del addon. En Render se toma de `RENDER_EXTERNAL_URL`. Sin ella el proxy `/sub/…` queda desactivado. |
+| `SUBTITLE_TOKEN_SECRET` | aleatorio | Secreto HMAC de los enlaces de descarga. Defínelo para que sobrevivan reinicios. |
+| `SUBTITLE_PROXY` | `true` | `false` devuelve los enlaces originales de los sitios (sin descomprimir ni CORS). |
+| `SUBTITLE_LANGUAGES` | `ES,EN` | Idiomas preferidos (orden de prioridad). |
+| `SUBTITLE_LANGUAGES_ONLY` | `false` | `true` descarta el resto de idiomas. |
+| `HANDLER_DEADLINE_MS` | `9000` | Presupuesto total de una petición de Stremio. |
+| `PROVIDER_TIMEOUT_MS` | `5000` | Timeout de cada petición HTTP a un sitio. |
+| `MAX_DETAIL_FETCHES` | `4` | Fichas de detalle que abre cada proveedor (más = más lento). |
+| `CACHE_TTL_SECONDS` | `21600` | TTL de la caché (solo se guardan listas con resultados). |
+| `SUBDL_API_KEY` / `SUBSOURCE_API_KEY` | — | APIs oficiales de respaldo (gratis). |
+| `ANIME_MAPPING_ENABLED` | `true` | Resuelve `kitsu:`/`mal:`/`anidb:` a IMDb con el índice de Fribb. |
+| `ANIME_MAPPING_URLS` | Fribb mini | Una o varias URLs (separadas por comas) del índice de anime. |
+| `YTS_SUBS_BASE_URLS`, `SUBSCENE_BASE_URL`, `INDEXSUBTITLE_BASE_URL` | — | Espejos si un dominio cambia. |
+
+## Siguientes pasos
+
+1. **Scraper real para JustSubtitles**: es la única fuente que sigue con la
    base genérica `_scraper.js`; replica el patrón de las demás (resolver
    ficha → parsear listado → enlace/token de descarga).
-3. **Ranking**: usa `extra.filename` para puntuar subtítulos cuyo *release*
-   coincida con el del vídeo (1080p.WEB-DL, etc.) y ordénalos antes de responder.
+2. **Ranking fino**: usa `extra.filename` para puntuar subtítulos cuyo
+   *release* coincida con el del vídeo (1080p.WEB-DL, etc.). Hoy ya se usa
+   para elegir el archivo correcto dentro de un `.zip`, pero no para ordenar
+   la lista que ve el usuario.
+3. **Cookies de sesión en el proxy**: algunos sitios firman la descarga contra
+   su sesión. Guardar el cookie-jar del scraping y reenviarlo en `/sub/…`
+   haría más robustas esas descargas.
 4. **Configuración por usuario** (`behaviorHints.configurable` + `config` en el
    manifest) para que cada quien pegue SUS API keys en la página del addon
    en vez de usar las del servidor.

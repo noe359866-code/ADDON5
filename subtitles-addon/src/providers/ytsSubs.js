@@ -87,6 +87,7 @@ function candidateFrom(detailUrl, pageUrl, { release, languageText, rating }) {
     release: cleanRelease,
     lang: toIso6392(languageText || ''),
     rating: Number.isFinite(rating) ? rating : 0,
+    referer: pageUrl,
     isArchive: true
   };
 }
@@ -225,6 +226,7 @@ function toProviderItems(candidates) {
     provider: PROVIDER,
     release: c.release || '',
     rating: c.rating,
+    referer: c.referer,
     archive: true // la familia YTS descarga siempre .zip
   }));
 }

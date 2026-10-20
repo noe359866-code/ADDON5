@@ -1,6 +1,7 @@
 'use strict';
 
 const http = require('./http');
+const config = require('../config');
 
 /**
  * Cinemeta es el addon oficial de metadatos de Stremio y es público:
@@ -16,6 +17,7 @@ const http = require('./http');
  * con sus estrategias de reserva (buscar por el propio IMDb ID, etc.).
  */
 const CINEMETA_BASE = 'https://v3-cinemeta.strem.io';
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const cache = new Map();
 
 function parseCinemetaMeta(json) {
@@ -31,19 +33,26 @@ function parseCinemetaMeta(json) {
 
 async function getCinemetaMeta(type, imdbId) {
   const key = `${type}:${imdbId}`;
-  if (cache.has(key)) return cache.get(key);
+  const cached = cache.get(key);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+
   try {
     const { data } = await http.get(`${CINEMETA_BASE}/meta/${type}/${imdbId}.json`, {
       headers: { Accept: 'application/json' },
-      timeout: 4000
+      timeout: config.cinemetaTimeoutMs
     });
     const parsed = parseCinemetaMeta(data);
-    if (cache.size > 500) cache.clear();
-    cache.set(key, parsed);
+    if (parsed) {
+      if (cache.size > 500) cache.clear();
+      cache.set(key, { value: parsed, expiresAt: Date.now() + CACHE_TTL_MS });
+    }
     return parsed;
   } catch (err) {
+    // NO se cachea el fallo. Antes, un timeout puntual (Render frío, red
+    // lenta) dejaba ese título sin metadatos durante toda la vida del
+    // proceso: sin título, SubSource/SubScene no encuentran nada y el menú
+    // de subtítulos se quedaba vacío hasta reiniciar.
     console.warn(`[cinemeta] Sin metadatos para ${key}: ${err.message}`);
-    cache.set(key, null);
     return null;
   }
 }
