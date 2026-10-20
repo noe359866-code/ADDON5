@@ -1,6 +1,6 @@
 'use strict';
 
-const crypto = require('node:crypto');
+const { toStremioSubtitle } = require('../utils/stremio');
 
 // Registro de proveedores. Para añadir uno nuevo: crea su archivo con
 // { name, search(query) } y regístralo en esta lista. Nada más hay que tocar.
@@ -13,27 +13,9 @@ const providers = [
   require('./indexSubtitle')
 ];
 
-/**
- * Normaliza UN resultado de proveedor al formato del SDK de Stremio.
- * Entrada (flexible): { id?, url, lang?, release?, provider?, ... }
- * Salida (exacta):    { id, url, lang }   <- lo que Stremio consume
- * El proveedor puede proponer su propio id (p. ej. el numérico de SubSource o
- * el código /s/info/ de SubDL); nosotros lo prefijamos con el nombre del
- * proveedor para garantizar unicidad global en la respuesta.
- */
-function normalizeItem(providerName, sub) {
-  if (!sub || typeof sub.url !== 'string' || !/^https?:\/\//i.test(sub.url)) return null;
-  const provider = sub.provider || providerName;
-  let id;
-  if (sub.id !== undefined && sub.id !== null && String(sub.id).trim() !== '') {
-    const raw = String(sub.id).trim();
-    id = raw.startsWith(`${provider}-`) ? raw : `${provider}-${raw}`;
-  } else {
-    const hash = crypto.createHash('sha1').update(sub.url).digest('hex').slice(0, 10);
-    id = `${provider}-${hash}`;
-  }
-  return { id, url: sub.url, lang: sub.lang || 'und' };
-}
+// La normalización vive en utils/stremio.js para que cada proveedor pueda
+// usarla también en su API independiente getSubtitlesByImdb(imdbId, lang).
+const normalizeItem = toStremioSubtitle;
 
 /**
  * Consulta TODOS los proveedores en paralelo. Promise.allSettled garantiza

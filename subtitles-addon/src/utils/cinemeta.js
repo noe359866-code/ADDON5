@@ -48,4 +48,19 @@ async function getCinemetaMeta(type, imdbId) {
   }
 }
 
-module.exports = { getCinemetaMeta, parseCinemetaMeta };
+/**
+ * Igual que getCinemetaMeta pero sin saber el tipo: prueba el tipo indicado
+ * (o 'movie') y luego el otro. Útil para las APIs independientes
+ * getSubtitlesByImdb(imdbId, language), que solo reciben el tt...
+ * Devuelve { title, year, type } o null.
+ */
+async function getCinemetaMetaAny(imdbId, typeHint) {
+  const order = typeHint === 'series' ? ['series', 'movie'] : ['movie', 'series'];
+  for (const type of order) {
+    const meta = await getCinemetaMeta(type, imdbId);
+    if (meta) return { ...meta, type };
+  }
+  return null;
+}
+
+module.exports = { getCinemetaMeta, getCinemetaMetaAny, parseCinemetaMeta };

@@ -16,5 +16,11 @@ module.exports = {
   // proveedor y para cuántos candidatos merece la pena abrir su ficha de
   // detalle (SubDL "info" / SubSource detalle) en busca del enlace directo.
   maxPerProvider: Number(process.env.MAX_SUBTITLES_PER_PROVIDER) || 30,
-  maxDetailFetches: Number(process.env.MAX_DETAIL_FETCHES) || 10
+  maxDetailFetches: Number(process.env.MAX_DETAIL_FETCHES) || 10,
+  // Bases/espejos de los sitios que cambian de dominio con frecuencia.
+  // YTS: lista en orden de prueba (el primero que responda gana).
+  ytsSubsBaseUrls: (process.env.YTS_SUBS_BASE_URLS || 'https://www.yts-subs.com,https://yifysubtitles.ch')
+    .split(',').map((u) => u.trim().replace(/\/$/, '')).filter(Boolean),
+  subsceneBaseUrl: (process.env.SUBSCENE_BASE_URL || 'https://sub-scene.com').replace(/\/$/, ''),
+  indexSubtitleBaseUrl: (process.env.INDEXSUBTITLE_BASE_URL || 'https://indexsubtitle.cc').replace(/\/$/, '')
 };

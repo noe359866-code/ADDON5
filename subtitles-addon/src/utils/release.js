@@ -86,11 +86,18 @@ function cleanText(text) {
   return typeof text === 'string' ? text.replace(/\s+/g, ' ').trim() : '';
 }
 
+const ORDINALS = ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth', 'Ninth', 'Tenth', 'Eleventh', 'Twelfth', 'Thirteenth', 'Fourteenth', 'Fifteenth', 'Sixteenth', 'Seventeenth', 'Eighteenth', 'Nineteenth', 'Twentieth', 'Twenty-first', 'Twenty-second', 'Twenty-third', 'Twenty-fourth', 'Twenty-fifth', 'Twenty-sixth', 'Twenty-seventh', 'Twenty-eighth', 'Twenty-ninth', 'Thirtieth'];
+/** 1 -> 'First', 12 -> 'Twelfth'... (así nombran las temporadas Subscene & cía) */
+function ordinalWord(n) {
+  return ORDINALS[n - 1] || null;
+}
+
 module.exports = {
   parseSeasonEpisode,
   isSeasonPack,
   classifyRelease,
   slugifyTitle,
   normalizeTitle,
-  cleanText
+  cleanText,
+  ordinalWord
 };

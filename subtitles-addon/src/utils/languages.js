@@ -11,6 +11,10 @@ const BY_NAME_OR_CODE = {
   'spanish (latin america)': 'spa', 'spanish-latin': 'spa',
   portuguese: 'por', pt: 'por', por: 'por',
   'portuguese (brazil)': 'por', 'pt-br': 'por',
+  // Variantes tal cual las escribe la familia YIFY/Subscene (con erratas)
+  'brazilian portuguese': 'por', 'brazillian portuguese': 'por', brazilian: 'por',
+  'farsi/persian': 'per',
+  ukranian: 'ukr',
   french: 'fre', fr: 'fre', fra: 'fre', fre: 'fre',
   german: 'ger', de: 'ger', deu: 'ger', ger: 'ger',
   italian: 'ita', it: 'ita', ita: 'ita',

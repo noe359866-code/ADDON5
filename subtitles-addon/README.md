@@ -19,7 +19,7 @@ error a Stremio, en el peor caso responde `{ subtitles: [] }`.
 > `[]`). Los parsers de SubDL/SubSource se basan en la estructura verificada
 > de sus webs y están cubiertos por tests con fixtures; si un sitio cambia,
 > el arreglo suele ser ajustar en su archivo los patrones de URL/selectores.
-> Los otros 4 sitios usan la base genérica (`src/providers/_scraper.js`).
+> Solo JustSubtitles sigue en la base genérica (`src/providers/_scraper.js`).
 
 ## Cómo scrapean SubDL y SubSource
 
@@ -68,6 +68,51 @@ node -e "require('./src/providers/subdl').search({type:'movie',imdbId:'tt0111161
 node -e "require('./src/providers/subsource').search({type:'series',imdbId:'tt0944947',season:1,episode:3,title:'Game of Thrones',year:2011}).then(r=>console.log(JSON.stringify(r,null,2)))"
 ```
 
+## YTS-Subs, Subscene e IndexSubtitle
+
+Estos tres exponen además una **API independiente** pensada para llamarse con
+el IMDb ID y el idioma deseado, devolviendo ya objetos Stremio `{id,url,lang}`:
+
+```js
+const yts = require('./src/providers/ytsSubs');
+await yts.getSubtitlesByImdb('tt0111161', 'es');
+// [{ id:'yts-subs-125700', url:'https://www.yts-subs.com/subtitle/….zip', lang:'spa' }]
+
+const scene = require('./src/providers/subscene');
+await scene.getSubtitlesByImdb('tt0944947', 'spanish', { season: 1, episode: 3 });
+
+const idx = require('./src/providers/indexSubtitle');
+await idx.getSubtitlesByImdb('tt0111161', 'spa'); // sin idioma u opciones: resuelve solo
+```
+
+Peculiaridades de cada URL/flujo (verificadas contra las webs):
+
+- **YTS-Subs** (`ytsSubs.js`, solo películas): ficha directa por IMDb
+  `GET /movie-imdb/tt0111161` (sin buscador); tabla
+  *Rating | Language | Release | Uploader | Download* donde release y
+  download enlazan a `/subtitles/{slug}`, pero la descarga real se construye
+  cambiando a singular + `.zip`: `/subtitle/{slug}.zip`. Hay filas
+  duplicadas a montones → dedupe por idioma+release quedando el mejor
+  rating. Espejos configurables con `YTS_SUBS_BASE_URLS`; reserva:
+  `/search/{Título (Año)}`.
+- **Subscene** (`subscene.js`): el `sub-scene.com` actual **no** usa las rutas
+  clásicas (`?mac=`). Su `/search` está tras Cloudflare, así que resolvemos
+  con el JSON de su caja de búsqueda `GET /suggest?query=…` (`film`/`tv`).
+  Las temporadas son títulos propios ("… - First Season"): se pregunta
+  `"{Título} - {Ordinal} Season"` primero. Listado en `/subscene/{id}` con
+  `<span class="l">` (idioma) y `<span class="new">` (release) dentro de cada
+  `/subtitle/{id}`; descarga construible sin ficha: `GET /download/{id}`.
+- **IndexSubtitle** (`indexSubtitle.js`): slugs estilo SubSource, verificados
+  con el enlace IMDb de la ficha. La tabla visible es un DataTables cuyos
+  enlaces (`#download`) no sirven: la lista completa va **embebida en JSON**
+  dentro de un `<script>` (`data: [{"title","language","url",…}], columns`)
+  junto a un `ttl = …`. Cada descarga necesita token:
+  `POST /subtitlesInfo {id, lang, url}` → `{token}` →
+  `/d/{id}/{ttl}/{token}/{zipName}.zip` con el `zipName` exacto del JS del
+  sitio (`url.replace(/[^\w ]/,'').replace(/\//g,'_')`). Reserva de búsqueda:
+  `POST /search {query}`. Mantiene cookies de sesión durante la búsqueda y
+  se detiene con lo obtenido si el sitio devuelve 429 (rate-limit ~5 req/10 s).
+
 ## Estructura
 
 ```
@@ -91,13 +136,14 @@ subtitles-addon/
 │       ├── index.js       # Agregador: allSettled + normalize {id,url,lang}
 │       ├── subdl.js       # Scraping completo (+ API de reserva)
 │       ├── subsource.js   # Scraping completo (+ API de reserva)
-│       ├── subscene.js    # Base genérica _scraper.js
-│       ├── ytsSubs.js     # Base genérica
-│       ├── justSubtitles.js
-│       └── indexSubtitle.js
+│       ├── subscene.js    # Scraping completo (/suggest + /download/{id})
+│       ├── ytsSubs.js     # Scraping completo (/movie-imdb/tt… -> .zip)
+│       ├── indexSubtitle.js # Scraping completo (JSON embebido + token)
+│       └── justSubtitles.js # Base genérica _scraper.js (pendiente)
 └── test/
     ├── addon.test.js      # Manifest, parser de IDs, idiomas
-    └── scrapers.test.js   # Parsers SubDL/SubSource con fixtures, sin red
+    ├── scrapers.test.js   # Parsers SubDL/SubSource con fixtures, sin red
+    └── scrapers-remaining.test.js # Parsers YTS/Subscene/IndexSubtitle, sin red
 ```
 
 **Contrato de un proveedor** (así de simple es añadir el séptimo):
@@ -172,9 +218,9 @@ esa ruta a mano.
    `getRouter()` en lugar del `serveHTTP()` "todo en uno" del SDK. Los
    resultados que siguen siendo zip van marcados internamente (`archive`)
    y ordenados después de los archivos sueltos.
-2. **Scrapers reales para las otras 4 fuentes**: SubDL/SubSource ya tienen
-   parsers propios; replica el patrón (resolver ficha → parsear listado →
-   detalle) para Sub-Scene, YTS-Subs, JustSubtitles e IndexSubtitle.
+2. **Scraper real para JustSubtitles**: es la única fuente que sigue con la
+   base genérica `_scraper.js`; replica el patrón de las demás (resolver
+   ficha → parsear listado → enlace/token de descarga).
 3. **Ranking**: usa `extra.filename` para puntuar subtítulos cuyo *release*
    coincida con el del vídeo (1080p.WEB-DL, etc.) y ordénalos antes de responder.
 4. **Configuración por usuario** (`behaviorHints.configurable` + `config` en el
