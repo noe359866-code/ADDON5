@@ -80,8 +80,8 @@ Los dominios que sirven las playlists secundarias, segmentos, claves y mapas tam
 
 ## Despliegue en Render
 
-1. Sube el proyecto a GitHub y crea un Web Service en Render conectando `noe359866-code/ADDON5`.
-2. Render puede detectar `render.yaml`; configura los valores solicitados para `STREAM_TOKEN_SECRET`, `HLS_ALLOWED_HOSTS`, `CATALOG_JSON` y `STREAMS_JSON`.
+1. En Render crea un Blueprint y conecta `noe359866-code/ADDON5` para que Render lea `render.yaml`. Si prefieres crear un Web Service manual, usa `npm install` como Build Command, `npm start` como Start Command y `/health` como Health Check Path.
+2. Configura `STREAM_TOKEN_SECRET`, `HLS_ALLOWED_HOSTS`, `CATALOG_JSON` y `STREAMS_JSON` cuando Render los solicite.
 3. Genera un secreto fuerte con `openssl rand -hex 32`. Guárdalo únicamente en las variables de entorno de Render.
 4. Cuando el servicio esté desplegado, verifica `/health` y `/manifest.json`.
 5. Instala la URL `https://TU-SERVICIO.onrender.com/manifest.json` en Stremio.
