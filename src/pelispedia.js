@@ -1,0 +1,62 @@
+const MAX_HTML_BYTES = 2 * 1024 * 1024;
+const TIMEOUT_MS = 12000;
+
+function decodeHtml(s) {
+  return s.replace(/&amp;/gi, '&').replace(/&quot;/gi, '"')
+    .replace(/&#0*39;/g, "'").replace(/&lt;/gi, '<').replace(/&gt;/gi, '>')
+    .replace(/\\u0026/g, '&').replace(/\\\//g, '/');
+}
+function stripTags(s) {
+  return decodeHtml(s.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')).trim();
+}
+function siteUrl(value, baseUrl) {
+  try {
+    const u = new URL(decodeHtml(value), baseUrl), b = new URL(baseUrl);
+    if (u.protocol !== 'https:' || u.hostname !== b.hostname || u.username || u.password) return null;
+    u.hash = ''; return u.toString();
+  } catch { return null; }
+}
+async function getHtml(url, fetchImpl) {
+  const r = await fetchImpl(url, { redirect: 'error', headers: { accept: 'text/html,application/xhtml+xml', 'user-agent': 'ADDON5-HLS/1.1' }, signal: AbortSignal.timeout(TIMEOUT_MS) });
+  if (!r.ok) throw new Error('Página no disponible');
+  const type = r.headers.get('content-type') || '';
+  if (type && !/text\/html|application\/xhtml\+xml/i.test(type)) throw new Error('Tipo de respuesta no compatible');
+  const html = await r.text();
+  if (Buffer.byteLength(html) > MAX_HTML_BYTES) throw new Error('Página demasiado grande');
+  return html;
+}
+export async function scrapeCatalog(baseUrl, fetchImpl = fetch) {
+  const base = new URL(baseUrl);
+  if (base.protocol !== 'https:' || base.hostname !== 'pelispedia.mov') throw new Error('URL de origen no permitida');
+  const html = await getHtml(base.toString(), fetchImpl), found = new Map();
+  const re = /<a\b([^>]*?)href\s*=\s*(['"])(.*?)\2([^>]*)>([\s\S]*?)<\/a>/gi;
+  for (const m of html.matchAll(re)) {
+    const url = siteUrl(m[3], base.toString());
+    if (!url || url === base.toString() || /\.(jpg|jpeg|png|webp|svg|css|js|m3u8?)(\?|$)/i.test(url)) continue;
+    const title = stripTags(m[5]).slice(0, 180);
+    if (title.length < 2 || /^(ver más|leer más|inicio|home|contacto|privacidad)$/i.test(title)) continue;
+    const slug = new URL(url).pathname.split('/').filter(Boolean).pop();
+    if (!slug || slug.length < 2) continue;
+    const type = /serie|temporada|cap[ií]tulo|episodio/i.test(url + ' ' + title) ? 'series' : 'movie';
+    const id = 'pelispedia:' + slug.toLowerCase().replace(/[^a-z0-9:_-]/g, '-');
+    if (!found.has(id)) found.set(id, { id, type, name: title, description: 'Catálogo ADDON5 HLS', _sourceUrl: url });
+  }
+  return [...found.values()].slice(0, 100);
+}
+function allowed(host, list) {
+  const h = host.toLowerCase().replace(/\.$/, '');
+  return list.some(e => { const d = e.replace(/^\*\./, '').replace(/\.$/, ''); return e.startsWith('*.') ? h !== d && h.endsWith('.' + d) : h === d; });
+}
+export async function scrapeHlsFromPage(pageUrl, baseUrl, allowedHosts, fetchImpl = fetch, type = 'movie') {
+  const page = siteUrl(pageUrl, baseUrl);
+  if (!page) return [];
+  const html = await getHtml(page, fetchImpl);
+  const decoded = decodeHtml(html).replace(/\\\//g, '/');
+  const re = /https?:[^\s"'<>\\]+?\.m3u8(?:\?[^\s"'<>\\]*)?/gi, urls = new Set();
+  for (const m of decoded.matchAll(re)) {
+    try { const u = new URL(m[0].replace(/[),;]+$/, '')); if (u.protocol === 'https:' && allowed(u.hostname, allowedHosts)) urls.add(u.toString()); } catch {}
+  }
+  return [...urls].slice(0, 8).map(url => ({ id: page, type, url, quality: 'Auto', language: 'Desconocido' }));
+}
