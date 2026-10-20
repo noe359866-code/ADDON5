@@ -1,0 +1,14 @@
+{
+  "name": "addon5-hls",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Stremio catalog and authorized HLS delivery service",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test"
+  }
+}
