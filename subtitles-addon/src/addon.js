@@ -5,6 +5,7 @@ const manifest = require('./manifest');
 const config = require('./config');
 const TtlCache = require('./cache');
 const { parseSubtitlesId } = require('./utils/imdb');
+const { getCinemetaMeta } = require('./utils/cinemeta');
 const { searchAll } = require('./providers');
 
 const builder = new addonBuilder(manifest);
@@ -27,11 +28,16 @@ builder.defineSubtitlesHandler(async ({ type, id, extra = {} }) => {
 
   let subtitles = [];
   try {
+    // Título/año para los scrapers que buscan por texto (SubDL/SubSource).
+    // getCinemetaMeta nunca lanza: si falla, los proveedores usan el tt...
+    const metaInfo = await getCinemetaMeta(type, parsed.imdbId).catch(() => null);
     subtitles = await searchAll({
       type,
       imdbId: parsed.imdbId,
       season: parsed.season,
       episode: parsed.episode,
+      title: metaInfo ? metaInfo.title : undefined,
+      year: metaInfo ? metaInfo.year : undefined,
       filename: extra.filename,
       videoHash: extra.videoHash,
       videoSize: extra.videoSize

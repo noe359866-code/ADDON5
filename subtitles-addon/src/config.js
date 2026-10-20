@@ -11,5 +11,10 @@ module.exports = {
     .map((l) => l.trim().toUpperCase())
     .filter(Boolean),
   providerTimeoutMs: Number(process.env.PROVIDER_TIMEOUT_MS) || 8000,
-  cacheTtlSeconds: Number(process.env.CACHE_TTL_SECONDS) || 21600 // 6 h
+  cacheTtlSeconds: Number(process.env.CACHE_TTL_SECONDS) || 21600, // 6 h
+  // Topes del scraping: cuántos subtítulos devuelve como máximo cada
+  // proveedor y para cuántos candidatos merece la pena abrir su ficha de
+  // detalle (SubDL "info" / SubSource detalle) en busca del enlace directo.
+  maxPerProvider: Number(process.env.MAX_SUBTITLES_PER_PROVIDER) || 30,
+  maxDetailFetches: Number(process.env.MAX_DETAIL_FETCHES) || 10
 };

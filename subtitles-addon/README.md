@@ -7,18 +7,66 @@ error a Stremio, en el peor caso responde `{ subtitles: [] }`.
 
 | Fuente | Método | ¿Necesita clave? |
 | --- | --- | --- |
-| [SubDL](https://subdl.com/api-doc) | API oficial ✅ recomendado | Sí, gratis (`SUBDL_API_KEY`) |
-| [SubSource](https://subsource.net/api-docs) | API oficial ✅ recomendado | Sí, gratis (`SUBSOURCE_API_KEY`) |
-| Sub-Scene (`sub-scene.com`) | Scraping (cheerio) | No |
-| YTS-Subs (`yts-subs.com`) | Scraping (cheerio) | No |
-| JustSubtitles (`justsubtitles.com`) | Scraping (cheerio) | No |
-| IndexSubtitle (`indexsubtitle.cc`) | Scraping (cheerio) | No |
+| SubDL (`subdl.com`) | **Scraping Axios+Cheerio** (API oficial de reserva) | No (opcional `SUBDL_API_KEY`) |
+| SubSource (`subsource.net`) | **Scraping Axios+Cheerio** (API oficial de reserva) | No (opcional `SUBSOURCE_API_KEY`) |
+| Sub-Scene (`sub-scene.com`) | Scraping (base genérica) | No |
+| YTS-Subs (`yts-subs.com`) | Scraping (base genérica) | No |
+| JustSubtitles (`justsubtitles.com`) | Scraping (base genérica) | No |
+| IndexSubtitle (`indexsubtitle.cc`) | Scraping (base genérica) | No |
 
-> **Sé realista con el scraping:** los sitios sin API cambian su HTML y varios
-> están detrás de Cloudflare (responderán 403 y ese proveedor devolverá `[]`).
-> Los 4 scrapers incluidos son una **base defensiva** (`src/providers/_scraper.js`):
-> inspecciona el HTML real de cada sitio y ajusta la ruta de búsqueda y los
-> selectores en su archivo. Las dos APIs oficiales son la vía estable.
+> **Sé realista con el scraping:** los sitios cambian su HTML y varios están
+> detrás de Cloudflare (responderán 403/reto JS y ese proveedor devolverá
+> `[]`). Los parsers de SubDL/SubSource se basan en la estructura verificada
+> de sus webs y están cubiertos por tests con fixtures; si un sitio cambia,
+> el arreglo suele ser ajustar en su archivo los patrones de URL/selectores.
+> Los otros 4 sitios usan la base genérica (`src/providers/_scraper.js`).
+
+## Cómo scrapean SubDL y SubSource
+
+Ambos buscadores web buscan por **título**, no por IMDb ID (el
+`/search/tt0111161` de SubDL devuelve 0 resultados y el de SubSource carga por
+JS). Por eso el handler resuelve primero `tt… → título + año` con
+[Cinemeta](https://v3-cinemeta.strem.io) (el metaddon oficial de Stremio) y
+pasa `title`/`year` a los proveedores.
+
+**SubDL** (`src/providers/subdl.js`):
+`GET /search/{título}` → tarjeta `/subtitle/sd…/{slug}` (se elige por
+tipo/año/título) → para series, página de temporada
+(`first-season`, `specials-season` = T0) → páginas por idioma
+(`/{english}`, `/{spanish}` según `SUBTITLE_LANGUAGES`). Cada entrada enlaza
+el **release** (`/s/info/{código}`) con su *Quick Download*
+(`dl.subdl.com/subtitle/{n}-{n}.zip`); para los `MAX_DETAIL_FETCHES` primeros
+candidatos se abre la ficha `/s/info/` y se sustituye el `.zip` por el archivo
+individual (`dl.subdl.com/subtitle/{código}/{archivo}`), corrigiendo además
+idioma y release. Se filtran los releases que no coinciden en temporada/episodio.
+
+**SubSource** (`src/providers/subsource.js`):
+se construye el slug (`/subtitles/{slug}-{año}` o
+`/subtitles/{slug}/season-{n}`) y se **verifica** que la página enlaza al
+mismo `tt…` en IMDb antes de aceptarla. El listado es una tabla
+(*Language | Release Name | …*) con enlaces
+`/subtitle/{slug}/{idioma}/{id}`; un mismo subtítulo aparece una vez por
+release compatible, así que deduplicamos por `id`. Para cada candidato
+(priorizando tus idiomas y el episodio exacto) se abre la ficha y se extrae
+el enlace firmado `api.subsource.net/v1/subtitle/download/{token}`.
+
+**Headers:** `src/utils/http.js` centraliza un *User-Agent* de Chrome real,
+`Accept`, `Accept-Language`, `Accept-Encoding` (gzip/deflate, sin brotli),
+`Referer` encadenado búsqueda → ficha → detalle, timeout y límite de tamaño,
+además de detectar el reto de Cloudflare y abortar limpio en ese caso.
+
+**Errores:** cada proveedor envuelve TODO su `search()` en `try/catch`
+(etapas internas incluidas) y devuelve `[]` si algo falla; el agregador usa
+`Promise.allSettled`, así que un sitio caído jamás tumba el addon ni bloquea
+a los demás. Stremio siempre recibe `{ id, url, lang }` o una lista vacía.
+
+Probar un scraper suelto desde tu máquina (con internet normal):
+
+```bash
+cd subtitles-addon
+node -e "require('./src/providers/subdl').search({type:'movie',imdbId:'tt0111161',title:'The Shawshank Redemption',year:1994}).then(r=>console.log(JSON.stringify(r,null,2)))"
+node -e "require('./src/providers/subsource').search({type:'series',imdbId:'tt0944947',season:1,episode:3,title:'Game of Thrones',year:2011}).then(r=>console.log(JSON.stringify(r,null,2)))"
+```
 
 ## Estructura
 
@@ -34,33 +82,42 @@ subtitles-addon/
 │   ├── config.js          # Variables de entorno centralizadas
 │   ├── cache.js           # Caché en memoria con TTL
 │   ├── utils/
-│   │   ├── http.js        # Instancia axios compartida (timeout + User-Agent)
+│   │   ├── http.js        # Axios: headers de navegador, getHtml(), anti-Cloudflare
 │   │   ├── imdb.js        # Parsea "tt0111161" y "tt0944947:1:3" (serie T:E)
-│   │   └── languages.js   # Normaliza idiomas a ISO 639-2 (eng, spa...) que pide Stremio
+│   │   ├── cinemeta.js    # tt… -> título/año (para buscadores por texto)
+│   │   ├── release.js     # SxxExx, packs de temporada, slugs de título
+│   │   └── languages.js   # Idiomas a ISO 639-2 (eng, spa...) + slugs (english...)
 │   └── providers/
-│       ├── index.js       # Agregador: Promise.allSettled + dedupe por URL
-│       ├── subdl.js       # API oficial
-│       ├── subsource.js   # API oficial
-│       ├── subscene.js    # Scraping
-│       ├── ytsSubs.js     # Scraping
+│       ├── index.js       # Agregador: allSettled + normalize {id,url,lang}
+│       ├── subdl.js       # Scraping completo (+ API de reserva)
+│       ├── subsource.js   # Scraping completo (+ API de reserva)
+│       ├── subscene.js    # Base genérica _scraper.js
+│       ├── ytsSubs.js     # Base genérica
 │       ├── justSubtitles.js
 │       └── indexSubtitle.js
 └── test/
-    └── addon.test.js      # node --test (manifest, parser de IDs, idiomas)
+    ├── addon.test.js      # Manifest, parser de IDs, idiomas
+    └── scrapers.test.js   # Parsers SubDL/SubSource con fixtures, sin red
 ```
 
 **Contrato de un proveedor** (así de simple es añadir el séptimo):
 
 ```js
 // src/providers/miSitio.js
-async function search({ type, imdbId, season, episode, filename }) {
-  return [{ url: 'https://…/sub.srt', lang: 'spa', provider: 'misitio' }];
+async function search({ type, imdbId, season, episode, title, year }) {
+  try {
+    // id opcional (el agregador lo prefija); release/archive son internos
+    return [{ id: '123', url: 'https://…/sub.srt', lang: 'spa', release: 'Movie.2024.1080p', provider: 'misitio' }];
+  } catch {
+    return []; // nunca propagues: el addon debe seguir con las demás fuentes
+  }
 }
 module.exports = { name: 'misitio', search };
 ```
 
-Regístralo en `src/providers/index.js` y listo. El agregador le pone un `id`
-único y descarta URLs duplicadas.
+Regístralo en `src/providers/index.js` y listo. El agregador normaliza cada
+resultado a exactamente `{ id, url, lang }`, garantiza ids únicos y descarta
+URLs duplicadas.
 
 ## Instalación (terminal)
 
@@ -105,13 +162,19 @@ esa ruta a mano.
 
 ## Siguientes pasos (cuando quieras producción de verdad)
 
-1. **Endpoint de descarga propio** (`/download/:token.srt`): SubDL y SubSource
-   entregan `.zip`, pero Stremio necesita la URL del `.srt`. Descarga el zip
-   en tu servidor, extrae el `.srt` (p. ej. con `adm-zip`), conviértelo a
-   UTF-8 si hace falta y sírvelo desde tu dominio. Por eso este proyecto usa
-   Express + `getRouter()` en lugar del `serveHTTP()` "todo en uno" del SDK.
-2. **Selectores reales por scraper**: abre cada sitio, mira su buscador con
-   DevTools y sustituye la extracción genérica de `_scraper.js`.
+1. **Endpoint de descarga propio** (`/download/:token.srt`): estos sitios no
+   garantizan un `.srt` suelto — SubDL expone el archivo individual en la
+   ficha (ya lo aprovechamos), pero su *Quick Download* y muchos packs son
+   `.zip`, y SubSource puede entregar el archivo empaquetado. Stremio solo
+   consume la URL del subtítulo, así que el paso de producción es descargar
+   en tu servidor, extraer el `.srt` (p. ej. con `adm-zip`), normalizar a
+   UTF-8 y servirlo desde tu dominio. Por eso este proyecto usa Express +
+   `getRouter()` en lugar del `serveHTTP()` "todo en uno" del SDK. Los
+   resultados que siguen siendo zip van marcados internamente (`archive`)
+   y ordenados después de los archivos sueltos.
+2. **Scrapers reales para las otras 4 fuentes**: SubDL/SubSource ya tienen
+   parsers propios; replica el patrón (resolver ficha → parsear listado →
+   detalle) para Sub-Scene, YTS-Subs, JustSubtitles e IndexSubtitle.
 3. **Ranking**: usa `extra.filename` para puntuar subtítulos cuyo *release*
    coincida con el del vídeo (1080p.WEB-DL, etc.) y ordénalos antes de responder.
 4. **Configuración por usuario** (`behaviorHints.configurable` + `config` en el

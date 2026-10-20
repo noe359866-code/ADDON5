@@ -20,10 +20,10 @@ const { guessFromText } = require('../utils/languages');
  * archivo. Si algo falla, devolvemos [] y los demás proveedores siguen.
  */
 async function scrapeSubtitleLinks({ provider, searchUrl }) {
-  const { data: html } = await http.get(searchUrl, {
-    headers: { Accept: 'text/html,application/xhtml+xml' }
-  });
-  if (typeof html !== 'string' || !html.includes('<')) return [];
+  // getHtml añade headers de navegador completos, Referer encadenado y
+  // detección de retos Cloudflare (lanza -> el agregador devuelve []).
+  const html = await http.getHtml(searchUrl);
+  if (!html.includes('<')) return [];
 
   const $ = cheerio.load(html);
   const base = new URL(searchUrl);
