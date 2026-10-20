@@ -17,3 +17,30 @@ services:
         sync: false
       - key: STREAMS_JSON
         sync: false
+
+  # Addon de subtítulos (subproyecto en subtitles-addon/).
+  # Si creas el Web Service manualmente en el dashboard, estos son los
+  # mismos valores que debes introducir (Root Directory, build y start).
+  # OJO: no declares PORT aquí; Render lo inyecta automáticamente.
+  - type: web
+    name: addon5-subtitles
+    runtime: node
+    plan: free
+    rootDir: subtitles-addon
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "20"
+      - key: SUBTITLE_LANGUAGES
+        value: ES,EN
+      - key: SUBTITLE_LANGUAGES_ONLY
+        value: "false"
+      # Opcionales: solo como respaldo si el scraping web no devuelve nada.
+      - key: SUBDL_API_KEY
+        sync: false
+      - key: SUBSOURCE_API_KEY
+        sync: false

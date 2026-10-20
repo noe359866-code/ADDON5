@@ -87,3 +87,14 @@ Los dominios que sirven las playlists secundarias, segmentos, claves y mapas tam
 5. Instala la URL `https://TU-SERVICIO.onrender.com/manifest.json` en Stremio.
 
 El servicio no incluye catálogo precargado ni fuentes de demostración. Hasta que configures `CATALOG_JSON` y `STREAMS_JSON`, el catálogo y la lista de streams estarán vacíos.
+
+## Addon de subtítulos (subproyecto independiente)
+
+En [`subtitles-addon/`](subtitles-addon/) vive un segundo addon, totalmente
+independiente del HLS anterior (su propio `package.json`, puerto `7000` por
+defecto y su propio `/manifest.json`): recurso `subtitles` para películas y
+series con IDs IMDb (`tt…`), buscando en SubDL y SubSource (APIs oficiales) y
+en Sub-Scene, YTS-Subs, JustSubtitles e IndexSubtitle (scraping con cheerio).
+Ambos addons se ejecutan y despliegan por separado y se instalan en Stremio
+como dos URLs `/manifest.json` distintas. Ver
+[`subtitles-addon/README.md`](subtitles-addon/README.md).
