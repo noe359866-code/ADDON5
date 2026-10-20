@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: addon5-hls
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: STREAM_TOKEN_SECRET
+        sync: false
+      - key: HLS_ALLOWED_HOSTS
+        sync: false
+      - key: CATALOG_JSON
+        sync: false
+      - key: STREAMS_JSON
+        sync: false
