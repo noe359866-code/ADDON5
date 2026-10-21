@@ -3,31 +3,18 @@ on:
   push:
     branches:
       - main
-      - feat/addon5-hls-render
+      - 'arena/**'
   pull_request:
     branches:
       - main
 jobs:
-  node-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: node --check src/server.js
-      - run: npm test
-
   subtitles-tests:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: subtitles-addon
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - run: npm ci
-      - run: node --check index.js
+      - run: node --check subtitles-addon/index.js
       - run: npm test

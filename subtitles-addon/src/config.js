@@ -1,5 +1,7 @@
 'use strict';
 
+const { context } = require('./preferences');
+
 // Configuración centralizada: todo el proyecto lee process.env SOLO desde aquí.
 function number(value, fallback) {
   const n = Number(value);
@@ -19,13 +21,13 @@ module.exports = {
   subdlApiKey: process.env.SUBDL_API_KEY || '',
   subsourceApiKey: process.env.SUBSOURCE_API_KEY || '',
   // Idiomas que pedimos a las APIs que permiten filtrar (SubDL usa códigos en mayúsculas: ES, EN...)
-  languages: (process.env.SUBTITLE_LANGUAGES || 'ES,EN')
+  get languages() { return context.getStore()?.languages || (process.env.SUBTITLE_LANGUAGES || 'ES,EN')
     .split(',')
     .map((l) => l.trim().toUpperCase())
-    .filter(Boolean),
+    .filter(Boolean); },
   // false (defecto): se devuelven TODOS los idiomas, con ES/EN primero.
   // true: se descartan los subtítulos que no estén en SUBTITLE_LANGUAGES.
-  languagesOnly: /^(1|true|yes)$/i.test(process.env.SUBTITLE_LANGUAGES_ONLY || ''),
+  get languagesOnly() { return context.getStore()?.languagesOnly ?? /^(1|true|yes)$/i.test(process.env.SUBTITLE_LANGUAGES_ONLY || ''); },
   providerTimeoutMs: number(process.env.PROVIDER_TIMEOUT_MS, 5000),
   cacheTtlSeconds: number(process.env.CACHE_TTL_SECONDS, 21600), // 6 h
   // Presupuesto TOTAL del handler. Stremio abandona las peticiones lentas: si
@@ -55,7 +57,7 @@ module.exports = {
   proxyEnabled: !/^(0|false|no|off)$/i.test(String(process.env.SUBTITLE_PROXY || '').trim()),
   // Secreto para firmar los enlaces /sub/{token}. Si no se define se genera
   // uno aleatorio al arrancar (los enlaces dejan de valer tras un reinicio).
-  proxySecret: process.env.SUBTITLE_TOKEN_SECRET || process.env.STREAM_TOKEN_SECRET || '',
+  proxySecret: process.env.SUBTITLE_TOKEN_SECRET || '',
   proxyTokenTtlSeconds: number(process.env.SUBTITLE_TOKEN_TTL_SECONDS, 7 * 24 * 3600),
   proxyTimeoutMs: number(process.env.PROXY_TIMEOUT_MS, 20000),
   proxyMaxBytes: number(process.env.PROXY_MAX_BYTES, 20 * 1024 * 1024),

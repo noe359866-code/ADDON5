@@ -1,106 +1,70 @@
-# ADDON5 HLS
+# Subtítulos Plus
 
-Addon independiente de Stremio con catálogo de películas y series y reproducción exclusiva de listas HLS autorizadas. El servidor está preparado para Render y Node.js 22 o superior.
+Addon **exclusivamente de subtítulos** para películas, series y anime en Stremio.
+El servicio principal publica `resources: ["subtitles"]`, sin catálogos ni streams.
+El anime se recibe como película o serie con IDs IMDb, Kitsu, MAL o AniDB.
 
-## Funciones
-
-- Protocolo Stremio: manifest, catálogo, metadatos y streams.
-- Catálogos de películas y series con búsqueda y paginación.
-- Solo acepta fuentes HTTPS cuya ruta termine en `.m3u8` y cuyo hostname esté permitido en `HLS_ALLOWED_HOSTS`.
-- Las direcciones HLS se cifran en tokens autenticados AES-256-GCM. Stremio recibe URLs del propio servicio y el proxy reescribe playlists, variantes, segmentos, claves y mapas HLS.
-- No devuelve campos de proveedor, encabezados upstream, enlaces de iframe ni torrents.
-- Validación de redirecciones, lista de hosts permitidos, restricciones contra IP privadas y límites de tamaño de playlists.
-- No requiere dependencias de ejecución externas.
-
-## Ejecutar localmente
+## Iniciar
 
 Requiere Node.js 22 o superior.
 
 ```bash
-cp .env.example .env
-```
-
-Configura las variables en el entorno antes de iniciar. Genera una clave estable con `openssl rand -hex 32` y ponla en `STREAM_TOKEN_SECRET`.
-
-```bash
-npm test
+npm install
 npm start
 ```
 
-Prueba `http://localhost:10000/health` y abre `http://localhost:10000/manifest.json`. Para añadir el addon a Stremio, utiliza la URL pública de Render terminada en `/manifest.json`.
+La instalación en la raíz prepara las dependencias de `subtitles-addon/`.
+El servidor usa `PORT` o, en local, `7000`. Instala en Stremio la URL pública
+`https://TU-SERVICIO.onrender.com/manifest.json`.
 
-## Variables de entorno
+## Render
 
-| Variable | Uso |
-| --- | --- |
-| `PORT` | Puerto HTTP. Render define esta variable automáticamente. |
-| `PUBLIC_BASE_URL` | URL HTTPS pública opcional del servicio. En Render puede omitirse y se utiliza `RENDER_EXTERNAL_URL`. |
-| `STREAM_TOKEN_SECRET` | Secreto estable opcional de al menos 32 caracteres para cifrar y autenticar los enlaces HLS. Si no se define (o tiene menos de 32 caracteres), el servidor autogenera uno automáticamente al iniciar. |
-| `HLS_ALLOWED_HOSTS` | Lista separada por comas de los dominios autorizados, incluyendo los dominios CDN usados por playlists, segmentos, claves y redirecciones. Admite `*.example.org` para subdominios. |
-| `CATALOG_JSON` | Arreglo JSON con metadatos del catálogo. |
-| `STREAMS_JSON` | Arreglo JSON de enlaces HLS autorizados por ID de Stremio. |
+El Blueprint `render.yaml` despliega únicamente `addon5-subtitles`.
+Si tu servicio existente usa la raíz del repositorio, configura:
 
-`CATALOG_JSON` admite elementos con `id`, `type` (`movie` o `series`), `name` y campos opcionales como `poster`, `background`, `description`, `releaseInfo`, `year`, `genres`, `imdbRating` y `videos`. Cada vídeo de serie puede incluir `id`, `title`, `season` y `episode`.
+- **Build Command:** `npm install`
+- **Start Command:** `npm start`
+- **Health Check Path:** `/health`
 
-Ejemplo de estructura de metadatos:
+También puedes desplegar con Root Directory `subtitles-addon`, Build Command
+`npm ci --omit=dev` y Start Command `npm start`.
+Define `SUBTITLE_TOKEN_SECRET` con un secreto estable de al menos 32 caracteres.
+En Render se detecta automáticamente la URL pública con `RENDER_EXTERNAL_URL`;
+en otros alojamientos configura `PUBLIC_BASE_URL`.
 
-```json
-[
-  {
-    "id": "tt1234567",
-    "type": "movie",
-    "name": "Título autorizado",
-    "poster": "https://images.example.org/poster.jpg",
-    "releaseInfo": "2025",
-    "genres": ["Drama"]
-  }
-]
-```
+## Si no aparecen subtítulos
 
-`STREAMS_JSON` admite elementos con `id`, `type`, `url`, `quality`, `language` y `headers` opcionales. En películas, `id` debe coincidir con el ID de la película. En series, debe coincidir con el ID del episodio que Stremio envía a `/stream/series/{videoID}.json`. Las calidades permitidas son `4K`, `2160p`, `1080p`, `720p`, `480p`, `SD` y `Auto`; los idiomas visibles son `Español`, `Español latino`, `Inglés`, `Português`, `Original` y `Desconocido`.
+1. Comprueba `/manifest.json`: debe llamarse **Subtítulos Plus** y declarar
+   `resources: ["subtitles"]` y el identificador `org.addon5.subtitles`.
+2. Instala el manifest del servicio de subtítulos en Stremio.
+3. Inicia un video con otro addon de reproducción y abre el **selector de
+   subtítulos del reproductor**. Este addon no ofrece películas para reproducir
+   ni muestra fuentes de video al tocar una portada.
+4. Abre `/health` para comprobar que el servicio está despierto. En Render Free
+   el primer arranque puede tardar y Stremio puede abandonar esa petición;
+   vuelve a abrir el video cuando el servicio responda.
+5. Consulta `/selftest?id=tt0111161&type=movie` (o tu ID real) para ver resultados
+   por proveedor. No hay garantía de subtítulos para todos los títulos: pueden
+   faltar en las fuentes o estar bloqueadas. Las claves `SUBDL_API_KEY` y
+   `SUBSOURCE_API_KEY` habilitan APIs de respaldo.
 
-Ejemplo estructural; reemplaza el hostname, ID, metadatos y enlaces por contenido autorizado de tu servicio:
+Más detalles de proveedores, idiomas y diagnóstico en
+[`subtitles-addon/README.md`](subtitles-addon/README.md).
 
-```json
-[
-  {
-    "id": "tt1234567",
-    "type": "movie",
-    "url": "https://media.example.org/master.m3u8",
-    "quality": "1080p",
-    "language": "Español latino",
-    "headers": {
-      "Referer": "https://media.example.org/"
-    }
-  }
-]
-```
+## Configuración de idiomas por persona
 
-Los dominios que sirven las playlists secundarias, segmentos, claves y mapas también deben estar incluidos en `HLS_ALLOWED_HOSTS`. No se aceptan URLs HTTP, hosts que no estén permitidos ni direcciones IP privadas. Los headers configurados se usan únicamente en peticiones upstream y no se envían a Stremio.
+Abre `https://TU-SERVICIO.onrender.com/configure` (también disponible en la
+página de inicio). Marca entre 1 y 8 idiomas y activa **Mostrar solo los idiomas
+elegidos** si quieres ocultar el resto. Si lo dejas desactivado, los idiomas
+seleccionados tendrán prioridad. Para cambiar la prioridad, desmarca y vuelve a
+marcar un idioma: se añade al final de la lista.
 
-## Despliegue en Render
+Pulsa **Instalar en Stremio** o copia el enlace generado. La selección queda en
+esa URL de instalación, no en las preferencias globales del servidor. Si ya
+instalaste otra configuración, desinstala esa instalación antes de añadir la
+nueva. El botón de configuración de Stremio abre la selección existente.
 
-1. En Render crea un Blueprint y conecta `noe359866-code/ADDON5` para que Render lea `render.yaml`. Si prefieres crear un Web Service manual, usa `npm install` como Build Command, `npm start` como Start Command y `/health` como Health Check Path.
-2. Configura `STREAM_TOKEN_SECRET`, `HLS_ALLOWED_HOSTS`, `CATALOG_JSON` y `STREAMS_JSON` cuando Render los solicite.
-3. Genera un secreto fuerte con `openssl rand -hex 32`. Guárdalo únicamente en las variables de entorno de Render.
-4. Cuando el servicio esté desplegado, verifica `/health` y `/manifest.json`.
-5. Instala la URL `https://TU-SERVICIO.onrender.com/manifest.json` en Stremio.
-
-El servicio no incluye catálogo precargado ni fuentes de demostración. Hasta que configures `CATALOG_JSON` y `STREAMS_JSON`, el catálogo y la lista de streams estarán vacíos.
-
-## Addon de subtítulos (subproyecto independiente)
-
-En [`subtitles-addon/`](subtitles-addon/) vive un segundo addon, totalmente
-independiente del HLS anterior (su propio `package.json`, puerto `7000` por
-defecto y su propio `/manifest.json`): recurso `subtitles` para películas,
-series y **anime** (IDs IMDb `tt…` y `kitsu:`/`mal:`/`anidb:`, que se traducen
-a IMDb), buscando en SubDL y SubSource (APIs oficiales) y en Sub-Scene,
-YTS-Subs, JustSubtitles e IndexSubtitle (scraping con cheerio).
-
-El addon responde en un máximo de ~9 s (Stremio abandona las peticiones lentas)
-y sirve cada subtítulo a través de su propio proxy `/sub/{token}.srt`, que
-descomprime los `.zip`, convierte a UTF-8/SRT y añade CORS. Ambos addons se
-ejecutan y despliegan por separado y se instalan en Stremio como dos URLs
-`/manifest.json` distintas: **el addon HLS no proporciona subtítulos**. Si no
-te aparece ninguno, sigue la lista de comprobación de
-[`subtitles-addon/README.md`](subtitles-addon/README.md#no-aparece-ningún-subtítulo-en-stremio).
+Las búsquedas y la caché se separan por idiomas y modo de filtrado. Los códigos
+regionales de español se agrupan como español; no se garantiza distinguir
+español latino de España. Elegir un idioma no garantiza resultados: depende de
+los subtítulos disponibles en cada proveedor.

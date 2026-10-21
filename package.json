@@ -1,14 +1,15 @@
 {
-  "name": "addon5-hls",
+  "name": "addon5-subtitles-service",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Stremio catalog and authorized HLS delivery service",
+  "description": "Stremio subtitles-only addon for movies, series and anime",
   "engines": {
     "node": ">=22"
   },
   "scripts": {
-    "start": "node src/server.js",
-    "test": "node --test test/*.test.js"
+    "postinstall": "npm ci --prefix subtitles-addon --omit=dev",
+    "start": "node subtitles-addon/index.js",
+    "test": "node --test test/*.test.js && npm test --prefix subtitles-addon"
   }
 }
