@@ -1,4 +1,4 @@
-# ADDON5 Subtitles — Addon de subtítulos para Stremio
+# Subtítulos Plus — Addon de subtítulos para Stremio
 
 Addon de Stremio (recurso `subtitles`, películas, series y anime, IDs IMDb
 `tt…` y de anime `kitsu:`/`mal:`/`anidb:`) que busca subtítulos **en paralelo**
@@ -32,9 +32,7 @@ aparecer en la lista pero no cargarse nunca.
 
 Revisa esto EN ORDEN; cubre el 95 % de los casos:
 
-1. **¿Estás instalando el addon correcto?** El addon de subtítulos es un
-   servicio aparte del addon HLS (el del catálogo y los streams). Instalar
-   `.../manifest.json` del HLS **no añade subtítulos**. La URL de ESTE addon
+1. **Comprueba el manifest del addon.** La URL de Subtítulos Plus
    tiene que responder un JSON con `"resources": ["subtitles"]`:
 
    ```bash
@@ -407,6 +405,13 @@ El SDK sirve este mismo archivo en `GET /manifest.json` a través de
 3. **Cookies de sesión en el proxy**: algunos sitios firman la descarga contra
    su sesión. Guardar el cookie-jar del scraping y reenviarlo en `/sub/…`
    haría más robustas esas descargas.
-4. **Configuración por usuario** (`behaviorHints.configurable` + `config` en el
-   manifest) para que cada quien pegue SUS API keys en la página del addon
-   en vez de usar las del servidor.
+4. **API keys por usuario**: la configuración de idiomas ya está disponible
+   en `/configure`; las claves de proveedores siguen siendo del servidor.
+
+## Configuración por usuario
+
+Visita `/configure`, elige de 1 a 8 idiomas y el modo de filtrado, e instala el
+manifest personalizado que genera la página. Las rutas de esa instalación
+incluyen la selección y no modifican las variables de entorno ni la selección
+de otros usuarios. El manifest anuncia `behaviorHints.configurable: true`.
+La URL sin configuración sigue usando los valores por defecto del servidor.

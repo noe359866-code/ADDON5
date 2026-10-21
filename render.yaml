@@ -1,23 +1,4 @@
 services:
-  - type: web
-    name: addon5-hls
-    runtime: node
-    plan: free
-    buildCommand: npm install
-    startCommand: npm start
-    healthCheckPath: /health
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: STREAM_TOKEN_SECRET
-        generateValue: true
-      - key: HLS_ALLOWED_HOSTS
-        sync: false
-      - key: CATALOG_JSON
-        sync: false
-      - key: STREAMS_JSON
-        sync: false
-
   # Addon de subtítulos (subproyecto en subtitles-addon/).
   # Si creas el Web Service manualmente en el dashboard, estos son los
   # mismos valores que debes introducir (Root Directory, build y start).
@@ -34,7 +15,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: NODE_VERSION
-        value: "20"
+        value: "22"
       - key: SUBTITLE_LANGUAGES
         value: ES,EN
       - key: SUBTITLE_LANGUAGES_ONLY

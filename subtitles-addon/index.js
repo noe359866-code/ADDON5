@@ -36,6 +36,11 @@ const { addonBuilder, getRouter } = require('stremio-addon-sdk');
 
 const manifest = require('./src/manifest');
 const config = require('./src/config');
+const { context, languages, parsePreferences } = require('./src/preferences');
+
+function requestKey(type, id, extra = {}) {
+  return JSON.stringify([type, id, config.languages, config.languagesOnly, extra.filename || '', extra.videoHash || '', extra.videoSize || '']);
+}
 const TtlCache = require('./src/cache');
 const { parseMediaId, resolveAnimeImdb, getKitsuMeta, getAnimeIndex } = require('./src/utils/mediaId');
 const { getCinemetaMeta } = require('./src/utils/cinemeta');
@@ -244,7 +249,7 @@ async function computeSubtitles({ type, id, extra = {} } = {}) {
     return { subtitles: [] };
   }
 
-  const cacheKey = `${type}:${id}`;
+  const cacheKey = requestKey(type, id, extra);
   const cached = cache.get(cacheKey);
   if (cached) return { subtitles: cached };
 
@@ -293,7 +298,7 @@ async function handleSubtitlesRequest(params = {}) {
   const parsed = parseMediaId(id);
   if (!parsed || !MEDIA_TYPES.has(type)) return { subtitles: [] };
 
-  const key = `${type}:${id}`;
+  const key = requestKey(type, id, params.extra);
   if (inFlight.has(key)) return inFlight.get(key);
 
   const promise = computeSubtitles(params)
@@ -327,12 +332,33 @@ function createApp() {
   // El proxy va ANTES del router del SDK (rutas /sub/* propias).
   app.use(createProxyRouter());
 
-  // También antes: el router del SDK ya sirve su propia landing en "/".
-  app.get('/', (req, res) => {
-    res.type('text/plain').send(
-      `${addonInterface.manifest.name} — instala en Stremio la URL que termina en /manifest.json\n` +
-      `Diagnóstico: ${PUBLIC_BASE_URL}/selftest?id=tt0111161&type=movie\n`
-    );
+  // Marca y página de instalación propias, antes del router del SDK.
+  app.use('/assets', express.static(require('node:path').join(__dirname, 'public')));
+  app.get(['/', '/configure', '/:preferences/configure'], (req, res) => {
+    res.sendFile(require('node:path').join(__dirname, 'public', 'index.html'));
+  });
+  app.get('/api/languages', (req, res) => res.json({ languages, defaults: { languages: config.languages, languagesOnly: config.languagesOnly } }));
+  app.get(['/manifest.json', '/:preferences/manifest.json'], (req, res) => {
+    if (req.params.preferences) {
+      try { parsePreferences(req.params.preferences); }
+      catch (error) { return res.status(400).json({ error: error.message }); }
+    }
+    const host = String(req.get('host') || 'localhost');
+    const protocol = req.get('x-forwarded-proto') === 'https' ? 'https' : req.protocol;
+    const base = config.publicBaseUrl || (/^[a-z0-9.:[\]-]+$/i.test(host) ? `${protocol}://${host}` : PUBLIC_BASE_URL);
+    res.set('Access-Control-Allow-Origin', '*');
+    res.json({ ...addonInterface.manifest, logo: `${base.replace(/\/$/, '')}/assets/logo.png` });
+  });
+
+  // Each installation carries its own preferences; no global mutations.
+  app.get(['/:preferences/subtitles/:type/:id.json', '/:preferences/subtitles/:type/:id/:extra.json'], async (req, res) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    let preferences;
+    try { preferences = parsePreferences(req.params.preferences); }
+    catch (error) { return res.status(400).json({ error: error.message }); }
+    const extra = Object.fromEntries(new URLSearchParams(req.params.extra || req.url.split('?')[1] || ''));
+    const result = await context.run(preferences, () => handleSubtitlesRequest({ type: req.params.type, id: req.params.id, extra }));
+    res.set('Cache-Control', 'no-store').json(result);
   });
 
   app.use(getRouter(addonInterface));
