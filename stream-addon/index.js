@@ -34,7 +34,7 @@ export function createAddon(resolveStreams = resolveAuthorizedStreams) {
       const streams = await resolveStreams(args);
       return {
         streams: Array.isArray(streams)
-          ? streams.filter((stream) => stream && typeof stream.url === "string" && /^https?:\\/\\//i.test(stream.url))
+          ? streams.filter((stream) => stream && typeof stream.url === "string" && (stream.url.startsWith("https://") || stream.url.startsWith("http://")))
           : []
       };
     } catch (error) {
