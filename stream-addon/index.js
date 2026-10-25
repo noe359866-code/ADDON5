@@ -1,4 +1,6 @@
 import sdk from "stremio-addon-sdk";
+import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 
 const { addonBuilder, serveHTTP } = sdk;
 
@@ -19,11 +21,6 @@ export function isSupportedRequest(args) {
   return true;
 }
 
-/**
- * Adapter boundary for a source that you own or are authorized to access.
- * Return only direct, playable stream URLs that you have permission to distribute.
- * Keep source-specific parsing/resolution in a separate module.
- */
 export async function resolveAuthorizedStreams(_args) {
   return [];
 }
@@ -37,7 +34,7 @@ export function createAddon(resolveStreams = resolveAuthorizedStreams) {
       const streams = await resolveStreams(args);
       return {
         streams: Array.isArray(streams)
-          ? streams.filter((stream) => stream && typeof stream.url === "string" && /^https?:\/\//i.test(stream.url))
+          ? streams.filter((stream) => stream && typeof stream.url === "string" && /^https?:\\/\\//i.test(stream.url))
           : []
       };
     } catch (error) {
@@ -48,8 +45,8 @@ export function createAddon(resolveStreams = resolveAuthorizedStreams) {
   return builder;
 }
 
-const isMain = process.argv[1] && new URL(import.meta.url).pathname === process.argv[1].replaceAll("\\\\", "/");
-if (isMain) {
+const currentFile = process.argv[1] ? resolve(process.argv[1]) : "";
+if (currentFile && fileURLToPath(import.meta.url) === currentFile) {
   const port = Number.parseInt(process.env.PORT || "7000", 10);
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new Error("PORT must be a valid TCP port");
