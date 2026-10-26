@@ -46,6 +46,32 @@ function proxyModeEnv() {
   return 'auto';
 }
 
+const FORMAT_ALIASES = {
+  m3u8: 'hls',
+  m3u: 'hls',
+  hls: 'hls',
+  mp4: 'mp4',
+  m4v: 'mp4',
+  mkv: 'mkv',
+  webm: 'webm',
+  mpd: 'dash',
+  dash: 'dash'
+};
+
+function parseFormats(raw, fallback) {
+  const value = String(raw == null ? '' : raw).trim();
+  if (!value) return fallback;
+  const formats = value
+    .split(/[,\s]+/)
+    .map((item) => FORMAT_ALIASES[item.trim().toLowerCase()] || '')
+    .filter(Boolean);
+  if (!formats.length) {
+    console.warn(`[config] STREMIO_FORMATS="${value}" no es válido; se usa ${fallback.join(',')}`);
+    return fallback;
+  }
+  return [...new Set(formats)];
+}
+
 export const config = {
   // 0 = puerto efímero (lo usa el test de arranque).
   port: intEnv('PORT', 7000, { min: 0, max: 65535 }),
@@ -111,17 +137,15 @@ export const config = {
   streamProxy: proxyModeEnv(),
 
   /**
-   * true: descarta todo lo que no sea HLS (.m3u8). Por defecto se aceptan
-   * también MP4 directos, que Stremio reproduce igual.
+   * Formatos que se entregan: SOLO los que reproduce Stremio.
+   *   hls   (.m3u8)  nativo en todas las plataformas
+   *   mp4   (.mp4/.m4v) nativo en todas las plataformas
+   *   mkv   solo escritorio/TV (opt-in explícito)
+   *   dash  (.mpd) la mayoría de clientes no lo abre (opt-in explícito)
+   *   webm  opt-in explícito
+   * Cualquier otro enlace se descarta aunque el reproductor lo exponga.
    */
-  onlyHls: boolEnv('ONLY_HLS', false),
-
-  /**
-   * false (defecto): el addon solo devuelve streams reproducibles (HLS/MP4).
-   * Si ningún reproductor entrega video, responde `{ streams: [] }`.
-   * true: añade entradas «abrir en el navegador» cuando no hay video directo.
-   */
-  allowExternalFallback: boolEnv('ALLOW_EXTERNAL_FALLBACK', false),
+  stremioFormats: parseFormats(process.env.STREMIO_FORMATS, ['hls', 'mp4']),
 
   /** Log detallado por consola. */
   debug: boolEnv('DEBUG', false),

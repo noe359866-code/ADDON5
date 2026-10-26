@@ -5,11 +5,15 @@
  *   2. El título se busca EN PARALELO en todas las fuentes (Gnula y GnulaHD).
  *   3. Los reproductores de las fuentes que respondieron se abren en paralelo
  *      hasta dar con la URL de video.
- *   4. Se construyen los `stream` de Stremio (proxy propio si hace falta),
+ *   4. Cada enlace se verifica y se descarta si Stremio no lo puede reproducir
+ *      (ver src/formats.js: HLS y MP4 por defecto).
+ *   5. Se construyen los `stream` de Stremio (proxy propio si hace falta),
  *      indicando de qué web viene cada uno.
  *
- * Si algo falla se devuelve `{ streams: [] }`: Stremio nunca debe recibir un
- * error de este addon porque lo interpreta como que el addon está roto.
+ * Nada más: no hay catálogo, ni fichas, ni entradas «abrir en el navegador».
+ * Si no hay ningún enlace reproducible se devuelve `{ streams: [] }`; Stremio
+ * nunca debe recibir un error de este addon porque lo interpreta como que el
+ * addon está roto.
  */
 
 import { config } from './config.js';
@@ -17,10 +21,11 @@ import { Deadline, mapLimit } from './http.js';
 import { mediaCache } from './cache.js';
 import { lookupTitle } from './titles.js';
 import { findEpisode, findMovie, hostLabel, isHttpUrl, selectEmbedsForResolution } from './gnula.js';
+import { classifyMedia, formatLabel } from './formats.js';
 import { resolveEmbed } from './players/index.js';
 import { isMediaUrl } from './players/shared.js';
 import { SOURCES } from './sources.js';
-import { buildExternalStream, buildStream, dedupeStreams } from './streams.js';
+import { buildStream, dedupeStreams } from './streams.js';
 
 const SUPPORTED_TYPES = new Set(['movie', 'series']);
 
@@ -49,21 +54,35 @@ async function resolveOneEmbed(embed, deadline, resolve = resolveEmbed) {
   }
   if (!resolved || !isHttpUrl(resolved.media)) return null;
 
+  const referer = resolved.referer || embed.pageUrl;
+  // ¿Lo puede abrir Stremio? Si no, es como si no se hubiera resuelto.
+  const verdict = await classifyMedia(resolved.media, { deadline: subDeadline, referer });
+
   const value = {
     media: resolved.media,
-    referer: resolved.referer || embed.pageUrl,
+    referer,
     via: resolved.via,
-    ms: Date.now() - startedAt
+    ms: Date.now() - startedAt,
+    format: verdict.format,
+    compatible: verdict.compatible,
+    reason: verdict.reason
   };
   mediaCache.set(embed.url, value, config.mediaCacheTtlSeconds);
   return value;
 }
 
-function directEmbedMedia(embed) {
-  if (isMediaUrl(embed.url)) {
-    return { media: embed.url, referer: embed.pageUrl, via: 'directo', ms: 0 };
-  }
-  return null;
+function directEmbedMedia(embed, deadline) {
+  if (!isMediaUrl(embed.url)) return null;
+  return classifyMedia(embed.url, { deadline, referer: embed.pageUrl })
+    .then((verdict) => ({
+      media: embed.url,
+      referer: embed.pageUrl,
+      via: 'directo',
+      ms: 0,
+      format: verdict.format,
+      compatible: verdict.compatible,
+      reason: verdict.reason
+    }));
 }
 
 /**
@@ -189,12 +208,7 @@ export async function collectStreams({
       embeds: 0
     };
     trace.errors.push('las fichas no expusieron reproductores');
-    if (!config.allowExternalFallback) return { streams: [], trace };
-    const fallbacks = pages.map((entry) => buildExternalStream({
-      pageUrl: entry.page.pageUrl,
-      label: entry.source.label
-    }));
-    return { streams: dedupeStreams(fallbacks), trace };
+    return { streams: [], trace };
   }
 
   trace.page = {
@@ -225,15 +239,18 @@ export async function collectStreams({
   const pending = [];
 
   for (const embed of all) {
-    const direct = directEmbedMedia(embed);
+    const direct = await directEmbedMedia(embed, deadline);
     if (direct) {
-      resolved.push({ embed, ...direct });
+      if (direct.compatible) resolved.push({ embed, ...direct });
       trace.resolved.push({
         embed: embed.url,
         language: embed.language,
         source: embed.source,
         media: direct.media,
         via: 'directo',
+        format: direct.format,
+        compatible: direct.compatible,
+        reason: direct.reason,
         ms: 0
       });
     } else {
@@ -247,13 +264,16 @@ export async function collectStreams({
   outcomes.forEach((outcome, index) => {
     const embed = queue[index];
     if (outcome && outcome.media) {
-      resolved.push({ embed, ...outcome });
+      if (outcome.compatible) resolved.push({ embed, ...outcome });
       trace.resolved.push({
         embed: embed.url,
         language: embed.language,
         source: embed.source,
         media: outcome.media,
         via: outcome.via,
+        format: outcome.format,
+        compatible: outcome.compatible,
+        reason: outcome.reason,
         ms: outcome.ms || 0
       });
     } else {
@@ -273,10 +293,8 @@ export async function collectStreams({
   // primero, que es el enlace directo, y se evita el duplicado.
   const seenMedia = new Set();
   const built = [];
-  for (const { embed, media, referer } of resolved) {
+  for (const { embed, media, referer, format } of resolved) {
     if (seenMedia.has(media)) continue;
-    // ONLY_HLS=true deja fuera los MP4 directos: solo listas HLS.
-    if (config.onlyHls && !/\.m3u8(\?|#|$)/i.test(media)) continue;
     seenMedia.add(media);
     built.push(buildStream({
       baseUrl,
@@ -285,31 +303,16 @@ export async function collectStreams({
       language: embed.language,
       label: embed.kind === 'direct' ? 'Enlace directo' : hostLabel(embed.url),
       quality: embed.quality || '',
-      source: embed.sourceLabel
+      source: embed.sourceLabel,
+      format: formatLabel(format)
     }));
   }
 
   const streams = dedupeStreams(built);
 
   if (!streams.length) {
-    trace.errors.push('ningún reproductor devolvió una URL de video');
-    // Solo stream reproducibles: si nada dio video, se responde vacío.
-    if (!config.allowExternalFallback) return { streams: [], trace };
-
-    const fallbacks = all.slice(0, 3)
-      .map((embed) => buildExternalStream({
-        embedUrl: embed.url,
-        language: embed.language,
-        label: `${embed.sourceLabel} · ${hostLabel(embed.url)}`
-      }))
-      .filter(Boolean);
-    if (!fallbacks.length) {
-      fallbacks.push(...pages.map((entry) => buildExternalStream({
-        pageUrl: entry.page.pageUrl,
-        label: entry.source.label
-      })));
-    }
-    return { streams: dedupeStreams(fallbacks), trace };
+    trace.errors.push('ningún enlace reproducible por Stremio');
+    return { streams: [], trace };
   }
 
   return { streams, trace };

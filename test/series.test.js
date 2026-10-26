@@ -17,6 +17,7 @@ function seriesRoutes() {
     'https://streamtape.com/e/st2': '<div id="robotlink">//streamtape.com/get_video?id=st2abc&expires=1&ip=2&token=</div><script>document.getElementById("robotlink").innerHTML += "Tok";</script>',
     'https://voe.sx/e/voe3': fixture('voe-player.html'),
     'https://filemoon.sx/e/fm4': fixture('filemoon-packed.html'),
+    'https://streamtape.com/get_video': { body: '', headers: { 'content-type': 'video/mp4' } },
     'https://voe.sx/e/chain789': fixture('voe-player.html'),
     'https://streamtape.com/e/chain456': '<div id="robotlink">//streamtape.com/get_video?id=ch4&expires=1&ip=2&token=</div>'
   };
@@ -51,7 +52,7 @@ test('una serie se resuelve por temporada y episodio', async (t) => {
   // Cada stream conserva el idioma que le tocó en la ficha del episodio.
   const filemoon = streams.find((stream) => mediaOf(stream.url) === 'https://cdn.example.com/master.m3u8');
   assert.equal(filemoon.name, 'Gnula · Sub Español');
-  assert.equal(filemoon.title, 'Filemoon · HD');
+  assert.equal(filemoon.title, 'Filemoon · HLS · HD');
 });
 
 test('sin temporada ni episodio no se busca nada', async (t) => {

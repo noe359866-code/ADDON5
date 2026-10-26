@@ -40,10 +40,10 @@ export function shouldProxy(mediaUrl, referer) {
   return Boolean(referer);
 }
 
-function titleFor({ language, label, quality }) {
+function titleFor({ label, format, quality }) {
   const parts = [];
-  if (language) parts.push(language);
   if (label) parts.push(label);
+  if (format) parts.push(format);
   if (quality) parts.push(quality);
   return clip(parts.join(' · '), 90) || 'Gnula';
 }
@@ -57,6 +57,7 @@ function titleFor({ language, label, quality }) {
  * @param {string} input.label     Nombre del reproductor (Voe, Streamtape…)
  * @param {string} input.quality   «HD», «1080P»…
  * @param {string} input.source    Web de origen («Gnula», «GnulaHD»)
+ * @param {string} input.format    «HLS», «MP4»… (solo se entregan estos)
  */
 export function buildStream({
   baseUrl,
@@ -65,7 +66,8 @@ export function buildStream({
   language = '',
   label = '',
   quality = '',
-  source = 'Gnula'
+  source = 'Gnula',
+  format = ''
 }) {
   const proxied = shouldProxy(media, referer);
   const url = proxied ? buildProxyUrl(baseUrl, media, referer) : media;
@@ -73,7 +75,7 @@ export function buildStream({
 
   const stream = {
     name: language ? `${name} · ${language}` : name,
-    title: titleFor({ language: '', label, quality }),
+    title: titleFor({ label, format, quality }),
     url
   };
 
@@ -92,22 +94,6 @@ export function buildStream({
   }
 
   return stream;
-}
-
-/**
- * Último recurso: el reproductor no se pudo abrir, pero la persona puede
- * verlo en su navegador. Stremio abre estas entradas fuera del reproductor.
- */
-export function buildExternalStream({ embedUrl, pageUrl = '', language = '', label = '', source = 'Gnula' }) {
-  const target = embedUrl || pageUrl;
-  if (!target) return null;
-  const suffix = embedUrl ? 'abrir reproductor' : 'abrir la ficha';
-  return {
-    name: language ? `${source} · ${language}` : source,
-    title: clip(`${label ? `${label} · ` : ''}${suffix} en el navegador`, 90),
-    externalUrl: target,
-    behaviorHints: { notWebReady: true }
-  };
 }
 
 /** Quita repetidos por URL conservando el orden (y los idiomas distintos). */

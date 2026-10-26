@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { config } from '../src/config.js';
 import {
-  buildExternalStream,
   buildProxyUrl,
   buildStream,
   decodeParam,
@@ -97,19 +96,14 @@ test('sin Referer (modo auto) se devuelve la URL directa', () => {
   });
 });
 
-test('buildExternalStream abre el reproductor fuera de Stremio', () => {
-  const external = buildExternalStream({
-    embedUrl: 'https://voe.sx/e/abc',
-    language: 'Subtitulado',
-    label: 'Voe'
-  });
-  assert.equal(external.externalUrl, 'https://voe.sx/e/abc');
-  assert.equal(external.behaviorHints.notWebReady, true);
-  assert.match(external.title, /abrir reproductor/);
+test('el título muestra el formato reproducible (HLS/MP4)', () => {
+  withProxyMode('never', () => {
+    const hls = buildStream({ baseUrl: BASE, media: 'https://cdn.tv/a.m3u8', label: 'Voe', quality: 'HD', format: 'HLS' });
+    assert.equal(hls.title, 'Voe · HLS · HD');
 
-  const page = buildExternalStream({ pageUrl: 'https://www2.gnula.one/movie/x/' });
-  assert.match(page.title, /abrir la ficha/);
-  assert.equal(buildExternalStream({}), null);
+    const mp4 = buildStream({ baseUrl: BASE, media: 'https://cdn.tv/a.mp4', label: 'Enlace directo', format: 'MP4' });
+    assert.equal(mp4.title, 'Enlace directo · MP4');
+  });
 });
 
 test('dedupeStreams quita repetidos sin perder idiomas distintos', () => {

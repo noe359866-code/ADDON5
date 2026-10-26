@@ -5,7 +5,7 @@ import { collectStreams, interleaveEmbeds } from '../src/addon.js';
 import { config } from '../src/config.js';
 import { SOURCES, sourceLabel } from '../src/sources.js';
 import { decodeParam } from '../src/streams.js';
-import { pageCache } from '../src/cache.js';
+import { mediaCache, pageCache } from '../src/cache.js';
 import { xorEncrypt } from '../src/gnulahd.js';
 import { installFetchStub, jsonRoute } from './helpers/stub-fetch.js';
 
@@ -46,7 +46,11 @@ function routes() {
     [`${SITE}/wp-json/gnrd/v1/player?id=48213`]: jsonRoute(gnulahdPayload()),
     [`${SITE}/panel/the-tube-resolve.php?code=abc123`]: jsonRoute({ master: 'https://cdn.thetube.tv/hls/master.m3u8' }),
     'https://filemoon.sx/e/gnhd1': fixture('filemoon-packed-hd.html'),
-    'https://streamtape.com/e/gnhd2': '<div id="robotlink">//streamtape.com/get_video?id=gnhd2&expires=1&ip=2&token=</div><script>document.getElementById("robotlink").innerHTML += "AA";</script>'
+    'https://streamtape.com/e/gnhd2': '<div id="robotlink">//streamtape.com/get_video?id=gnhd2&expires=1&ip=2&token=</div><script>document.getElementById("robotlink").innerHTML += "AA";</script>',
+
+    // Los CDN sin extensión se identifican por Content-Type al clasificarlos.
+    'https://streamtape.com/get_video': { body: '', headers: { 'content-type': 'video/mp4' } },
+    'https://dood.pm/landing123': { body: '', headers: { 'content-type': 'video/mp4' } }
   };
 }
 
@@ -100,7 +104,7 @@ test('los streams de Gnula y GnulaHD se mezclan en la misma respuesta', async (t
 
   const fromHd = streams.find((stream) => mediaOf(stream.url) === 'https://cdn.example.net/v/master.m3u8');
   assert.equal(fromHd.name, 'GnulaHD · Latino');
-  assert.equal(fromHd.title, 'Filemoon · HD');
+  assert.equal(fromHd.title, 'Filemoon · HLS · HD');
 
   const theTube = streams.find((stream) => mediaOf(stream.url) === 'https://cdn.thetube.tv/hls/master.m3u8');
   assert.equal(theTube.name, 'GnulaHD · Subtitulado');
@@ -171,22 +175,29 @@ test('si ninguna fuente tiene ficha, se responde lista vacía', async (t) => {
   assert.deepEqual(streams, []);
 });
 
-test('con ONLY_HLS solo quedan las listas .m3u8', async (t) => {
+test('STREMIO_FORMATS decide qué se entrega: m3u8 deja fuera los MP4', async (t) => {
   pageCache.clear();
+  mediaCache.clear();
   const stub = installFetchStub(routes());
   t.after(() => stub.restore());
 
-  const previous = config.onlyHls;
-  config.onlyHls = true;
-  t.after(() => { config.onlyHls = previous; });
+  const previous = config.stremioFormats;
+  config.stremioFormats = ['hls'];
+  t.after(() => { config.stremioFormats = previous; });
 
-  const { streams } = await collectStreams({
+  const { streams, trace } = await collectStreams({
     type: 'movie',
     id: 'tt0816692',
     baseUrl: 'https://addon.example.com'
   });
 
-  assert.ok(streams.length >= 3);
+  assert.ok(streams.length >= 2);
   assert.ok(streams.every((stream) => /\.m3u8(\?|#|$)/i.test(mediaOf(stream.url))), 'solo HLS');
   assert.equal(streams.some((stream) => mediaOf(stream.url).endsWith('.mp4')), false);
+
+  // El MP4 directo sí se resolvió, pero se descarta por formato.
+  const dropped = trace.resolved.find((item) => item.media.endsWith('.mp4'));
+  assert.ok(dropped, 'el MP4 aparece en el diagnóstico');
+  assert.equal(dropped.compatible, false);
+  assert.match(dropped.reason, /mp4/);
 });

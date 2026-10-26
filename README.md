@@ -23,12 +23,13 @@ título, la otra sigue respondiendo. Cada stream indica de dónde viene
 
 ## Qué hace
 
-0. **Cero catálogo.** El manifest declara `resources: ["stream"]` y
-   `catalogs: []`: no hay filas en Descubrir, no hay fichas y no hay
-   metadatos. Este addon **solo entrega HLS/MP4 reproducibles**; si un título
-   no da ningún servidor con video, responde `{ streams: [] }` en vez de
-   inventar entradas (`ALLOW_EXTERNAL_FALLBACK=true` recupera las entradas
-   «abrir en el navegador», y `ONLY_HLS=true` deja solo listas `.m3u8`).
+0. **Cero catálogo y cero relleno.** El manifest declara
+   `resources: ["stream"]` y `catalogs: []`: no hay filas en Descubrir, ni
+   fichas, ni metadatos. Y de cada reproductor **solo se entrega lo que
+   Stremio puede reproducir**: HLS (`.m3u8`) y MP4 (`.mp4`/`.m4v`). Todo lo
+   demás —páginas de reproductor, `.mpd`, `.zip`, enlaces de descarga— se
+   descarta, y si un título no deja ningún enlace válido la respuesta es
+   `{ streams: [] }`.
 1. **ID → nombre (el resolvedor).** Stremio solo manda el ID
    (`tt0944947:2:1`, `tmdb:1399:1:3`). Como Gnula y GnulaHD son webs en
    español que buscan **por nombre**, el ID se traduce a una lista de títulos
@@ -65,6 +66,22 @@ título, la otra sigue respondiendo. Cada stream indica de dónde viene
    addon sirve el video por `/proxy` y reescribe las listas HLS para que
    también los segmentos viajen con las cabeceras correctas. En modo `auto`
    (por defecto) solo se usa cuando el enlace lo necesita.
+
+## Solo lo que Stremio reproduce
+
+| Enlace encontrado | ¿Se entrega? | Por qué |
+| --- | --- | --- |
+| `.m3u8` (HLS) | **sí** | nativo en web, móvil, escritorio y TV |
+| `.mp4` / `.m4v` | **sí** | nativo en todas las plataformas |
+| CDN sin extensión (`/get_video?id=…`) | **sí**, si su `Content-Type` es video | se comprueba con un `HEAD` (o un `Range` de 1 byte), sin descargar |
+| `.mkv` | no por defecto | solo escritorio/TV → `STREMIO_FORMATS=hls,mp4,mkv` |
+| `.mpd` (DASH) | no por defecto | la mayoría de clientes no lo abre → `STREMIO_FORMATS=…,dash` |
+| página del reproductor, `.zip`, `.ts`, `.html` | **nunca** | Stremio no los abre |
+
+El addon no devuelve entradas «abrir en el navegador» ni enlaces de descarga:
+si un título no deja ningún enlace reproducible, la respuesta es
+`{"streams": []}`. El título de cada stream muestra el formato
+(`Voe · HLS · HD`) para que se vea de un vistazo.
 
 ## Instalar
 
@@ -119,8 +136,7 @@ Todo es opcional; los valores por defecto están en `.env.example`.
 | `SERIES_BASE_URL` | `https://ver.verteleseriesonline.com` | sitio de series de Gnula |
 | `TMDB_API_KEY` | — | opcional: título en español y IDs `tmdb:…` |
 | `TMDB_LANGUAGE` | `es-MX` | idioma en que se piden los títulos a TMDB |
-| `ONLY_HLS` | `false` | `true` descarta los MP4 y deja solo `.m3u8` |
-| `ALLOW_EXTERNAL_FALLBACK` | `false` | `true` añade entradas «abrir en el navegador» |
+| `STREMIO_FORMATS` | `hls,mp4` | formatos que se entregan (`mkv`, `dash` son opt-in) |
 | `GNULAHD_BASE_URL` | `https://ww3.gnulahd.nu` | hermano GnulaHD |
 | `THE_TUBE_TOKEN` | (incluido) | token de `the-tube-resolve.php` para los enlaces they.tube |
 | `STREAM_PROXY` | `auto` | `auto` / `always` / `never` |
@@ -141,6 +157,7 @@ src/server.js            rutas HTTP, CORS, /health, /selftest
 src/manifest.js          manifest de Stremio
 src/addon.js             petición → título → ficha → streams
 src/titles.js            ID → títulos con los que buscar (TMDB/Cinemeta/IMDb)
+src/formats.js           qué puede reproducir Stremio (HLS/MP4) y sondeo HEAD
 src/sources.js           las dos webs: Gnula y GnulaHD
 src/gnula.js             búsqueda, fichas, pestañas, idiomas
 src/gnulahd.js           /ver/<slug>/, API gnrd cifrada, episodios, they.tube
@@ -159,7 +176,7 @@ test/                    pruebas con fixtures (sin salir a internet)
 npm test
 ```
 
-76 pruebas con `node:test` y HTML de ejemplo que imita el marcado real de las
+82 pruebas con `node:test` y HTML de ejemplo que imita el marcado real de las
 dos webs, de los reproductores y de las listas HLS (incluido el payload
 cifrado de GnulaHD). Ninguna prueba sale a internet:
 `test/helpers/stub-fetch.js` sustituye `fetch` por fixtures.
@@ -172,10 +189,11 @@ cifrado de GnulaHD). Ninguna prueba sale a internet:
    dice qué ficha encontró cada web y cuántos reproductores tiene, y
    `trace.resolved` muestra, reproductor por reproductor, si entregó video.
 3. `trace.page` presente significa que la ficha existe, pero los reproductores
-   bloquean al servidor (Cloudflare, captcha) o cambiaron su HTML. Con
-   `ALLOW_EXTERNAL_FALLBACK=true` el addon devuelve además entradas «abrir
-   reproductor / abrir la ficha en el navegador». Revisa `trace.meta.titles`:
-   son los nombres que se buscaron, y `trace.meta.sources` de dónde salieron.
+   bloquean al servidor (Cloudflare, captcha) o cambiaron su HTML. Revisa
+   `trace.meta.titles` (los nombres que se buscaron) y `trace.meta.sources`
+   (de dónde salieron). En `trace.resolved` cada enlace trae `format`,
+   `compatible` y `reason`: ahí se ve si el video se encontró pero se descartó
+   por no ser reproducible (por ejemplo un `.mpd`).
 4. Los dominios de Gnula, GnulaHD y de los reproductores cambian a menudo: si
    una búsqueda deja de responder, ajusta `GNULA_BASE_URL`,
    `SERIES_BASE_URL` o `GNULAHD_BASE_URL`; la otra fuente sigue funcionando.
