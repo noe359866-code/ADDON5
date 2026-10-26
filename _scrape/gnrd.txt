@@ -36,3 +36,25 @@ scr 200 1484B
 _scrape/gnulahd-episode-api-plain.json -> 1106 bytes -> _scrape/gnulahd-episode-api-plain-decrypted.json
 _scrape/gnulahd-episode-api-ref.json -> 1106 bytes -> _scrape/gnulahd-episode-api-ref-decrypted.json
 _scrape/gnulahd-episode-api-scr.json -> 1106 bytes -> _scrape/gnulahd-episode-api-scr-decrypted.json
+===== _scrape/gnulahd-movie.html =====
+_gnrdPid=206802
+_gnrdTok="d234878290579f4c1b79aaf5605e3f12"
+gnrdUnpack(s){try{var b=atob(s),k=[103,78,55,100],a=new Uint8Array(b.length),i;for(i=0;i<b.length;i++)a[i]=b.charCodeAt(i)^k[i&3];return JSON.parse(new TextDecoder('utf-8').decode(a));}
+plain 200 3392B
+ref 200 3392B
+scr 200 3392B
+_scrape/gnulahd-movie-api-plain.json -> 2531 bytes -> _scrape/gnulahd-movie-api-plain-decrypted.json
+_scrape/gnulahd-movie-api-ref.json -> 2531 bytes -> _scrape/gnulahd-movie-api-ref-decrypted.json
+_scrape/gnulahd-movie-api-scr.json -> 2531 bytes -> _scrape/gnulahd-movie-api-scr-decrypted.json
+===== _scrape/gnulahd-serie.html =====
+gnrdUnpack(s){try{var b=atob(s),k=[103,78,55,100],a=new Uint8Array(b.length),i;for(i=0;i<b.length;i++)a[i]=b.charCodeAt(i)^k[i&3];return JSON.parse(new TextDecoder('utf-8').decode(a));}
+===== _scrape/gnulahd-episode.html =====
+_gnrdPid=513823
+_gnrdTok="c7215f939c3e1b643a73942d296ce518"
+gnrdUnpack(s){try{var b=atob(s),k=[103,78,55,100],a=new Uint8Array(b.length),i;for(i=0;i<b.length;i++)a[i]=b.charCodeAt(i)^k[i&3];return JSON.parse(new TextDecoder('utf-8').decode(a));}
+plain 200 1484B
+ref 200 1484B
+scr 200 1484B
+_scrape/gnulahd-episode-api-plain.json -> 1106 bytes -> _scrape/gnulahd-episode-api-plain-decrypted.json
+_scrape/gnulahd-episode-api-ref.json -> 1106 bytes -> _scrape/gnulahd-episode-api-ref-decrypted.json
+_scrape/gnulahd-episode-api-scr.json -> 1106 bytes -> _scrape/gnulahd-episode-api-scr-decrypted.json
