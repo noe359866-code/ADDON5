@@ -3,3 +3,4 @@ gnulahd-movie         https://ww3.gnulahd.nu/ver/interestelar/
 gnulahd-serie         https://ww3.gnulahd.nu/ver/el-encargado/
 gnulahd-episode       https://ww3.gnulahd.nu/el-encargado-4x07/
 # trigger 1792976575
+# trigger2 1792976667
