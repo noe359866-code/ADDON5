@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { unpackFromHtml, findPackedCall } from '../src/players/packer.js';
 import {
+  fetchPlayer,
   findAtobMedia,
   findEmbedTargets,
   findMedia,
@@ -157,4 +158,29 @@ test('los vídeos de demostración de un reproductor caído no cuentan como pel�
 
   const resolved = await resolveEmbed('https://voe.sx/e/caido', { deadline: new Deadline(4000) });
   assert.equal(resolved, null, 'el Big Buck Bunny de relleno se descarta');
+});
+
+test('si el host bloquea las peticiones con Referer se reintenta sin él', async (t) => {
+  // uqload contesta 38 bytes a cualquier GET con Referer y el reproductor
+  // completo sin él; sin el reintento la película se quedaba sin ese HLS.
+  const full = `<html>${'<div>reproductor</div>'.repeat(200)}</html>`;
+  const stub = installFetchStub({
+    'https://uqload.com/embed-x.html': (url, init) => {
+      const headers = init.headers || {};
+      const referer = headers.Referer || headers.referer;
+      return new Response(referer ? 'bloqueado' : full, { status: 200 });
+    }
+  });
+  t.after(() => stub.restore());
+
+  const page = await fetchPlayer('https://uqload.com/embed-x.html', {
+    deadline: new Deadline(6000),
+    referer: 'https://www2.gnula.one/movie/interestelar/'
+  });
+
+  assert.ok(page);
+  assert.equal(page.text, full);
+  // El Referer que se guarda es el del propio host, no el de la web de origen.
+  assert.equal(page.referer, 'https://uqload.com/');
+  assert.equal(stub.calls.length, 3, 'referer ajeno → referer propio → sin referer');
 });
