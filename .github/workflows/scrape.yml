@@ -1,0 +1,92 @@
+name: scrape
+
+# Utilidad de mantenimiento: baja el HTML real de las webs para revisar los
+# selectores de los scrapers. Se lanza a mano y deja las páginas como artefacto.
+on:
+  workflow_dispatch:
+    inputs:
+      note:
+        description: 'Nota para identificar la ejecución'
+        required: false
+        default: 'revision de scrapers'
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bajar páginas
+        run: |
+          set -u
+          mkdir -p out
+          UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+          get() {
+            name="$1"; url="$2"
+            code=$(curl -sL -A "$UA" -H 'Accept-Language: es-MX,es;q=0.9,en;q=0.8' \
+              --max-time 60 -o "out/$name.html" -w '%{http_code}' "$url" || echo 000)
+            echo "$code  $url  -> out/$name.html" >> out/index.txt
+            echo "· $name: $code"
+          }
+
+          # --- Gnula (WordPress) ---
+          get gnula-home        'https://www2.gnula.one/'
+          get gnula-search      'https://www2.gnula.one/?s=interestelar'
+          get gnula-search-jk   'https://www2.gnula.one/?s=jay+kelly'
+          get gnula-movie-jk    'https://www2.gnula.one/movie/jay-kelly/'
+          get gnula-movie-int   'https://www2.gnula.one/movie/interestelar/'
+
+          # --- Gnula series ---
+          get series-home       'https://ver.verteleseriesonline.com/'
+          get series-search     'https://ver.verteleseriesonline.com/?s=the+last+of+us'
+
+          # --- GnulaHD ---
+          get gnulahd-home      'https://ww3.gnulahd.nu/'
+          get gnulahd-search    'https://ww3.gnulahd.nu/?s=interstellar'
+          get gnulahd-movie     'https://ww3.gnulahd.nu/ver/interestelar/'
+          get gnulahd-series-list 'https://ww3.gnulahd.nu/ver/series/'
+          get gnulahd-api-root  'https://ww3.gnulahd.nu/wp-json/'
+          get gnulahd-api-gnrd  'https://ww3.gnulahd.nu/wp-json/gnrd/v1/'
+
+      - name: Llamar a la API del reproductor
+        run: |
+          set -u
+          UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+          page=out/gnulahd-movie.html
+          echo '--- window.GNRD ---' >> out/index.txt
+          grep -o 'window\.GNRD[^;]\{0,300\}' "$page" | head -3 >> out/index.txt || true
+          pid=$(grep -o 'pid:[[:space:]]*[0-9"]*' "$page" | head -1 | grep -o '[0-9]\+' || true)
+          tok=$(grep -o 'tok:[[:space:]]*"[^"]*"' "$page" | head -1 | sed 's/.*"\(.*\)"/\1/' || true)
+          key=$(grep -o '\bk:[[:space:]]*"[^"]*"' "$page" | head -1 | sed 's/.*"\(.*\)"/\1/' || true)
+          {
+            echo "pid=$pid"
+            echo "tok=$tok"
+            echo "k=$key"
+          } >> out/index.txt
+          if [ -n "${pid:-}" ] && [ -n "${tok:-}" ]; then
+            curl -sL -A "$UA" -H 'Accept: application/json' \
+              -H 'X-Requested-With: gnrd' -H 'Referer: https://ww3.gnulahd.nu/ver/interestelar/' \
+              --max-time 60 -o out/gnrd-player.json -w 'player %{http_code}\n' \
+              "https://ww3.gnulahd.nu/wp-json/gnrd/v1/player?id=$pid&t=$tok" | tee -a out/index.txt
+          fi
+          if [ -n "${key:-}" ]; then
+            node -e '
+              const fs=require("fs");
+              const key=Buffer.from(process.argv[1].replace(/-/g,"+").replace(/_/g,"/"),"base64");
+              const raw=fs.readFileSync("out/gnrd-player.json","utf8");
+              let p="";
+              try { p=JSON.parse(raw).p || ""; } catch { p=""; }
+              if (!p) { console.log("sin payload p"); process.exit(0); }
+              const b=Buffer.from(p.replace(/-/g,"+").replace(/_/g,"/"),"base64");
+              const o=Buffer.alloc(b.length);
+              for(let i=0;i<b.length;i++) o[i]=b[i]^key[i%key.length];
+              fs.writeFileSync("out/gnrd-decrypted.json", o.toString("utf8"));
+              console.log("descifrado ok:", b.length, "bytes");
+            ' "$key" 2>&1 | tee -a out/index.txt
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pages
+          path: out
+          retention-days: 3
