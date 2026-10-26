@@ -15,6 +15,13 @@ export const MEDIA_EXTENSION_RE = /\.(m3u8|mp4|mpd|m4v)(\?|#|$)/i;
 
 const JUNK_PATTERNS = [
   /\/sprite[s]?\//i,
+  // Los reproductores caídos a veces devuelven un vídeo de demostración en
+  // lugar del capítulo: no es la película y no debe llegar a Stremio.
+  /test-videos\.co\.uk/i,
+  /bigbuckbunny/i,
+  /sample-videos\.com/i,
+  /gtv-videos-bucket/i,
+  /commondatastorage\.googleapis\.com/i,
   /\/thumb[s]?\//i,
   /poster\.(?:jpe?g|png|webp)/i,
   /trailer/i,

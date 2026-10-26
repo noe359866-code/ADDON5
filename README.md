@@ -161,8 +161,8 @@ Todo es opcional; los valores por defecto están en `.env.example`.
 | `STREMIO_FORMATS` | `hls,mp4` | formatos que se entregan (`mkv`, `dash` son opt-in) |
 | `GNULAHD_BASE_URL` | `https://ww3.gnulahd.nu` | hermano GnulaHD |
 | `STREAM_PROXY` | `auto` | `auto` / `always` / `never` |
-| `HANDLER_DEADLINE_MS` | `15000` | presupuesto total de una petición |
-| `FETCH_TIMEOUT_MS` | `7000` | timeout de cada petición HTTP |
+| `HANDLER_DEADLINE_MS` | `20000` | presupuesto total de una petición |
+| `FETCH_TIMEOUT_MS` | `12000` | timeout de cada petición HTTP (las webs tardan) |
 | `MAX_RESOLVE_PER_REQUEST` | `8` | reproductores que se abren por petición |
 | `RESOLVE_CONCURRENCY` | `3` | aperturas simultáneas |
 | `CACHE_TTL_SECONDS` | `900` | caché de la ficha (lista de reproductores) |

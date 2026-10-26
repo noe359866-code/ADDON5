@@ -104,11 +104,15 @@ export const config = {
 
   userAgent: (process.env.USER_AGENT || '').trim() || DEFAULT_USER_AGENT,
 
-  /** Presupuesto total de una petición de Stremio. */
-  handlerDeadlineMs: intEnv('HANDLER_DEADLINE_MS', 15000, { min: 1000, max: 120000 }),
+  /**
+   * Presupuesto total de una petición de Stremio. Las webs tardan: la ficha de
+   * GnulaHD responde en 12-25 s cuando el servidor está cargado, así que un
+   * presupuesto corto equivale a «sin resultados».
+   */
+  handlerDeadlineMs: intEnv('HANDLER_DEADLINE_MS', 20000, { min: 1000, max: 120000 }),
 
   /** Timeout de cada petición HTTP individual. */
-  fetchTimeoutMs: intEnv('FETCH_TIMEOUT_MS', 7000, { min: 1000, max: 60000 }),
+  fetchTimeoutMs: intEnv('FETCH_TIMEOUT_MS', 12000, { min: 1000, max: 60000 }),
 
   /** Embed que se intentan resolver por petición (los mejores primero). */
   maxResolvePerRequest: intEnv('MAX_RESOLVE_PER_REQUEST', 8, { min: 1, max: 24 }),

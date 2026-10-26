@@ -1,9 +1,2 @@
-# nombre  url   (una por línea; al cambiar este archivo se relanza el scraping)
+# nombre  url
 gnulahd-movie         https://ww3.gnulahd.nu/ver/interestelar/
-gnulahd-serie         https://ww3.gnulahd.nu/ver/el-encargado/
-gnulahd-episode       https://ww3.gnulahd.nu/el-encargado-4x07/
-# trigger 1792976575
-# trigger2 1792976667
-# trigger3 1792976799
-# trigger4 1792976964
-# trigger5 1792977225

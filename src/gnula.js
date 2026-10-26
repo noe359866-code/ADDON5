@@ -703,7 +703,10 @@ export async function findMovie({ titles, year }, ctx = {}) {
   for (const term of terms) {
     if (deadline && deadline.remaining() < 1500) break;
     add(await searchSite(config.gnulaBaseUrl, term, { deadline }));
-    if (candidates.length >= 6) break;
+    // Se sigue probando mientras no haya una ficha que pase el corte: el
+    // buscador devuelve el listado del tema cuando no encuentra el título.
+    if (rankCandidates(candidates, titles, year).length) break;
+    if (candidates.length >= 12) break;
   }
 
   let ranked = rankCandidates(candidates, titles, year);
@@ -776,7 +779,8 @@ export async function findEpisode({ titles, year, season, episode }, ctx = {}) {
   for (const term of terms) {
     if (deadline && deadline.remaining() < 1500) break;
     add(await searchSite(site, term, { deadline }, 'serie'));
-    if (candidates.length >= 6) break;
+    if (rankCandidates(candidates, titles, year).length) break;
+    if (candidates.length >= 12) break;
   }
 
   let ranked = rankCandidates(candidates, titles, year);

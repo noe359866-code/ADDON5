@@ -560,7 +560,8 @@ async function candidatesFor(titles, year, ctx) {
       seen.add(card.slug);
       cards.push(card);
     }
-    if (cards.length >= 6) break;
+    if (rankCandidates(cards, titles, year).length) break;
+    if (cards.length >= 12) break;
   }
 
   const ranked = rankCandidates(cards, titles, year);

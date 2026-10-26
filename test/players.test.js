@@ -10,6 +10,8 @@ import {
   normalizeUrl
 } from '../src/players/shared.js';
 import { extractDoodstream, extractStreamtape, extractVoe, resolveEmbed } from '../src/players/index.js';
+import { Deadline } from '../src/http.js';
+import { installFetchStub } from './helpers/stub-fetch.js';
 
 const fixture = (name) => readFileSync(new URL(`./fixtures/${name}`, import.meta.url), 'utf8');
 
@@ -145,4 +147,14 @@ test('un reproductor caído no rompe la resolución', async () => {
   const ctx = stubCtx({});
   const result = await resolveEmbed('https://filemoon.sx/e/roto', ctx);
   assert.equal(result, null);
+});
+
+test('los vídeos de demostración de un reproductor caído no cuentan como película', async (t) => {
+  const stub = installFetchStub({
+    'https://voe.sx/e/caido': '<script>jwplayer("v").setup({sources:[{file:"https://test-videos.co.uk/rids/bigbuckbunny/mp4-h264"}]});</script>'
+  });
+  t.after(() => stub.restore());
+
+  const resolved = await resolveEmbed('https://voe.sx/e/caido', { deadline: new Deadline(4000) });
+  assert.equal(resolved, null, 'el Big Buck Bunny de relleno se descarta');
 });
