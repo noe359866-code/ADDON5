@@ -51,7 +51,21 @@ título, la otra sigue respondiendo. Cada stream indica de dónde viene
   Ese `t` es **distinto en cada ficha**, por eso se lee de la página en el
   momento y no se guarda en la configuración.
 - Los enlaces de **descarga** que publica la ficha (`dl`, `.zip`, 1fichier,
-  megaup…) no son streams: se ignoran.
+  megaup, katfile, nitro…) no son streams: se ignoran aunque acaben en `.mp4`.
+- Los reproductores caídos devuelven a veces un **vídeo de demostración**
+  (Big Buck Bunny, `test-videos.co.uk`, `sample-videos.com`): también se
+  descartan, porque no son la película.
+
+Resumen de lo comprobado contra las webs en octubre de 2026:
+
+| Qué | Gnula (`www2.gnula.one`) | GnulaHD (`ww3.gnulahd.nu`) |
+| --- | --- | --- |
+| Buscador | `/?s=<título>`; **solo acierta con el título en español** (`Interestelar`), con el inglés devuelve el listado del tema | `/?s=` **se cuelga con mayúsculas**; en minúsculas responde y acierta |
+| Atajo | — | slug directo `/ver/<slug>/` (1-2 s) y REST de WordPress si el slug falla |
+| Ficha | pestañas `#tabN`, un iframe (a veces `data-lazy-src`) por pestaña | `h1.gnrd-fi-title`, filas `.qf-l`/`.qf-v`, episodios `a.gnrd-epc` |
+| Reproductor | iframes de `uqload.com`, `viewsb.com`, `jawcloud.co` | `_gnrdPid`/`_gnrdTok` → `/wp-json/gnrd/v1/player` (base64 + XOR) |
+| Servidores vivos | **solo uqload**, y **solo si NO se manda `Referer`** (con él contesta 38 bytes) | **vidara** (HLS en una petición) y **cuevana** (HLS); voe/byse/savefiles responden 403/404 |
+| Series | `?s=` da **403 de Cloudflare** → se va directo a `/serie/<slug>/` y de ahí al capítulo | el capítulo trae `data-id`/`data-t`: se pide la API sin abrir su página |
 
 ## Qué hace
 
