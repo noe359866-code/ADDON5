@@ -1,0 +1,14 @@
+# nombre  url   — una por línea; al cambiar este archivo se relanza el scraping
+gnula-home            https://www2.gnula.one/
+gnula-search          https://www2.gnula.one/?s=interestelar
+gnula-search-jk       https://www2.gnula.one/?s=jay+kelly
+gnula-movie-jk        https://www2.gnula.one/movie/jay-kelly/
+gnula-movie-int       https://www2.gnula.one/movie/interestelar/
+series-home           https://ver.verteleseriesonline.com/
+series-search         https://ver.verteleseriesonline.com/?s=the+last+of+us
+gnulahd-home          https://ww3.gnulahd.nu/
+gnulahd-search        https://ww3.gnulahd.nu/?s=interstellar
+gnulahd-movie         https://ww3.gnulahd.nu/ver/interestelar/
+gnulahd-series-list   https://ww3.gnulahd.nu/ver/series/
+gnulahd-api-root      https://ww3.gnulahd.nu/wp-json/
+gnulahd-api-gnrd      https://ww3.gnulahd.nu/wp-json/gnrd/v1/

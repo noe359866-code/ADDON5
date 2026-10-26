@@ -1,14 +1,14 @@
 name: scrape
 
-# Utilidad de mantenimiento: baja el HTML real de las webs para revisar los
-# selectores de los scrapers. Se lanza a mano y deja las páginas como artefacto.
+# Utilidad de mantenimiento: baja el HTML real de las webs para contrastar los
+# selectores de los scrapers. Se relanza al tocar scrape-urls.txt y deja las
+# páginas como artefacto (no se commitea nada del sitio).
 on:
-  workflow_dispatch:
-    inputs:
-      note:
-        description: 'Nota para identificar la ejecución'
-        required: false
-        default: 'revision de scrapers'
+  push:
+    branches:
+      - 'arena/**'
+    paths:
+      - 'scrape-urls.txt'
 
 jobs:
   fetch:
@@ -21,69 +21,51 @@ jobs:
           set -u
           mkdir -p out
           UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
-          get() {
-            name="$1"; url="$2"
+          while read -r name url; do
+            case "$name" in ''|'#'*) continue ;; esac
             code=$(curl -sL -A "$UA" -H 'Accept-Language: es-MX,es;q=0.9,en;q=0.8' \
               --max-time 60 -o "out/$name.html" -w '%{http_code}' "$url" || echo 000)
-            echo "$code  $url  -> out/$name.html" >> out/index.txt
-            echo "· $name: $code"
-          }
+            size=$(wc -c < "out/$name.html" | tr -d ' ')
+            echo "$code  $size  $url  -> out/$name.html" >> out/index.txt
+            echo "· $name: $code ($size bytes)"
+          done < scrape-urls.txt
 
-          # --- Gnula (WordPress) ---
-          get gnula-home        'https://www2.gnula.one/'
-          get gnula-search      'https://www2.gnula.one/?s=interestelar'
-          get gnula-search-jk   'https://www2.gnula.one/?s=jay+kelly'
-          get gnula-movie-jk    'https://www2.gnula.one/movie/jay-kelly/'
-          get gnula-movie-int   'https://www2.gnula.one/movie/interestelar/'
-
-          # --- Gnula series ---
-          get series-home       'https://ver.verteleseriesonline.com/'
-          get series-search     'https://ver.verteleseriesonline.com/?s=the+last+of+us'
-
-          # --- GnulaHD ---
-          get gnulahd-home      'https://ww3.gnulahd.nu/'
-          get gnulahd-search    'https://ww3.gnulahd.nu/?s=interstellar'
-          get gnulahd-movie     'https://ww3.gnulahd.nu/ver/interestelar/'
-          get gnulahd-series-list 'https://ww3.gnulahd.nu/ver/series/'
-          get gnulahd-api-root  'https://ww3.gnulahd.nu/wp-json/'
-          get gnulahd-api-gnrd  'https://ww3.gnulahd.nu/wp-json/gnrd/v1/'
-
-      - name: Llamar a la API del reproductor
+      - name: API del reproductor de GnulaHD
         run: |
           set -u
           UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
-          page=out/gnulahd-movie.html
-          echo '--- window.GNRD ---' >> out/index.txt
-          grep -o 'window\.GNRD[^;]\{0,300\}' "$page" | head -3 >> out/index.txt || true
-          pid=$(grep -o 'pid:[[:space:]]*[0-9"]*' "$page" | head -1 | grep -o '[0-9]\+' || true)
-          tok=$(grep -o 'tok:[[:space:]]*"[^"]*"' "$page" | head -1 | sed 's/.*"\(.*\)"/\1/' || true)
-          key=$(grep -o '\bk:[[:space:]]*"[^"]*"' "$page" | head -1 | sed 's/.*"\(.*\)"/\1/' || true)
-          {
-            echo "pid=$pid"
-            echo "tok=$tok"
-            echo "k=$key"
-          } >> out/index.txt
-          if [ -n "${pid:-}" ] && [ -n "${tok:-}" ]; then
-            curl -sL -A "$UA" -H 'Accept: application/json' \
-              -H 'X-Requested-With: gnrd' -H 'Referer: https://ww3.gnulahd.nu/ver/interestelar/' \
-              --max-time 60 -o out/gnrd-player.json -w 'player %{http_code}\n' \
-              "https://ww3.gnulahd.nu/wp-json/gnrd/v1/player?id=$pid&t=$tok" | tee -a out/index.txt
-          fi
-          if [ -n "${key:-}" ]; then
-            node -e '
-              const fs=require("fs");
-              const key=Buffer.from(process.argv[1].replace(/-/g,"+").replace(/_/g,"/"),"base64");
-              const raw=fs.readFileSync("out/gnrd-player.json","utf8");
-              let p="";
-              try { p=JSON.parse(raw).p || ""; } catch { p=""; }
-              if (!p) { console.log("sin payload p"); process.exit(0); }
-              const b=Buffer.from(p.replace(/-/g,"+").replace(/_/g,"/"),"base64");
-              const o=Buffer.alloc(b.length);
-              for(let i=0;i<b.length;i++) o[i]=b[i]^key[i%key.length];
-              fs.writeFileSync("out/gnrd-decrypted.json", o.toString("utf8"));
-              console.log("descifrado ok:", b.length, "bytes");
-            ' "$key" 2>&1 | tee -a out/index.txt
-          fi
+          for page in out/gnulahd-movie.html out/gnulahd-home.html; do
+            [ -f "$page" ] || continue
+            echo "--- $page ---" >> out/gnrd.txt
+            grep -o 'window\.GNRD[^;]\{0,400\}' "$page" | head -3 >> out/gnrd.txt || true
+            pid=$(grep -o 'pid:[[:space:]]*"\?[0-9]\+' "$page" | head -1 | grep -o '[0-9]\+' || true)
+            tok=$(grep -o 'tok:[[:space:]]*"[^"]*"' "$page" | head -1 | sed 's/.*"\(.*\)"/\1/' || true)
+            key=$(grep -o '\bk:[[:space:]]*"[^"]*"' "$page" | head -1 | sed 's/.*"\(.*\)"/\1/' || true)
+            echo "pid=$pid tok=$tok k=$key" >> out/gnrd.txt
+            if [ -n "${pid:-}" ] && [ -n "${tok:-}" ]; then
+              curl -sL -A "$UA" -H 'Accept: application/json' -H 'X-Requested-With: gnrd' \
+                -H "Referer: https://ww3.gnulahd.nu/" --max-time 60 \
+                -o "out/gnrd-player-$(basename "$page" .html).json" \
+                -w "api %{http_code} %{size_download}B\n" \
+                "https://ww3.gnulahd.nu/wp-json/gnrd/v1/player?id=$pid&t=$tok" >> out/gnrd.txt
+              if [ -n "${key:-}" ]; then
+                node -e '
+                  const fs=require("fs");
+                  const [file,key64]=process.argv.slice(1);
+                  const key=Buffer.from(key64.replace(/-/g,"+").replace(/_/g,"/"),"base64");
+                  let p="";
+                  try { p=JSON.parse(fs.readFileSync(file,"utf8")).p || ""; } catch {}
+                  if (!p) { console.log("sin payload p en", file); process.exit(0); }
+                  const b=Buffer.from(p.replace(/-/g,"+").replace(/_/g,"/"),"base64");
+                  const o=Buffer.alloc(b.length);
+                  for(let i=0;i<b.length;i++) o[i]=b[i]^key[i%key.length];
+                  const out=file.replace(".json","-decrypted.json");
+                  fs.writeFileSync(out,o.toString("utf8"));
+                  console.log("descifrado", b.length, "bytes ->", out);
+                ' "out/gnrd-player-$(basename "$page" .html).json" "$key" >> out/gnrd.txt 2>&1
+              fi
+            fi
+          done
 
       - uses: actions/upload-artifact@v4
         with:
