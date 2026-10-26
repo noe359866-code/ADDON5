@@ -99,6 +99,14 @@ export const config = {
   tmdbBaseUrl: urlEnv('TMDB_BASE_URL', 'https://api.themoviedb.org/3'),
   tmdbLanguage: (process.env.TMDB_LANGUAGE || '').trim() || 'es-MX',
 
+  /**
+   * Wikipedia en español: da el título latino de la ficha («Interestelar» para
+   * Interstellar). Sin clave y sin coste; es lo que hace que el buscador de las
+   * webs —que busca por nombre en español— encuentre la película.
+   */
+  wikipediaTitles: (process.env.WIKIPEDIA_TITLES || 'true').trim().toLowerCase() !== 'false',
+  wikipediaBaseUrl: urlEnv('WIKIPEDIA_BASE_URL', 'https://es.wikipedia.org'),
+
   /** Buscador público de IMDb, respaldo si Cinemeta no responde. */
   imdbSuggestionBaseUrl: urlEnv('IMDB_SUGGESTION_BASE_URL', 'https://v2.sg.media-imdb.com/suggestion/t'),
 

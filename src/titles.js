@@ -7,7 +7,8 @@
  *
  *   1. Cinemeta  (IMDb → name / originalName / año)   sin clave
  *   2. TMDB      (→ título en español, vía /find)      con TMDB_API_KEY
- *   3. IMDb      (sugerencias, si Cinemeta no responde) sin clave
+ *   3. Wikipedia es (→ «Interestelar» desde Interstellar) sin clave
+ *   4. IMDb      (sugerencias, si Cinemeta no responde) sin clave
  *
  * Cuantos más nombres se prueben, más fácil es que el buscador del sitio
  * encuentre la ficha: «Interestelar» además de «Interstellar». Todo se cachea
@@ -153,6 +154,112 @@ async function fromImdbSuggestion(imdbId, deadline) {
 }
 
 /* ------------------------------------------------------------------ *
+ *  Wikipedia en español (sin clave)
+ * ------------------------------------------------------------------ */
+
+/**
+ * Limpia un valor de ficha de Wikipedia: `''Interestelar'' ([[Hispanoamérica]])`
+ * → «Interestelar». Quita referencias, plantillas, enlaces y aclaraciones entre
+ * paréntesis (el país donde se usó ese título, «película de 2014»…).
+ */
+export function cleanWikiName(value) {
+  return String(value == null ? '' : value)
+    .replace(/<ref[^>]*\/>/gi, ' ')
+    .replace(/<ref[\s\S]*?<\/ref>/gi, ' ')
+    .replace(/\{\{[^{}]*\}\}/g, ' ')
+    .replace(/\[\[[^\]|]*\|([^\]]*)\]\]/g, '$1')
+    .replace(/\[\[([^\]]*)\]\]/g, '$1')
+    .replace(/'{2,}/g, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;|&#160;/gi, ' ')
+    .replace(/\([^()]*\)/g, ' ')
+    .replace(/[|{}[\]]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/^[\s.,;:–—-]+|[\s.,;:–—-]+$/g, '')
+    .trim();
+}
+
+/** Corta el valor del campo en el siguiente `|` de la misma línea (plantillas en una línea). */
+function cutFileValue(value) {
+  let links = 0;
+  let templates = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    const pair = value.slice(i, i + 2);
+    if (pair === '[[') { links += 1; i += 1; continue; }
+    if (pair === ']]') { links = Math.max(0, links - 1); i += 1; continue; }
+    if (pair === '{{') { templates += 1; i += 1; continue; }
+    if (pair === '}}') { templates = Math.max(0, templates - 1); i += 1; continue; }
+    if (value[i] === '|' && links === 0 && templates === 0) return value.slice(0, i);
+  }
+  return value;
+}
+
+/**
+ * Títulos en español que declara la ficha de Wikipedia.
+ * Se leen los campos `título`, `nombre` y sus variantes por país, nunca
+ * `título original` (ese es el inglés y ya lo da Cinemeta).
+ */
+export function parseSpanishTitlesFromWikitext(wikitext) {
+  const text = String(wikitext == null ? '' : wikitext);
+  const titles = [];
+  const seen = new Set();
+  const re = /\|\s*((?:t[ií]tulo|nombre)[^=|\n]{0,32})\s*=\s*([^\n]*)/gi;
+  let match;
+
+  while ((match = re.exec(text))) {
+    if (/original/i.test(match[1])) continue;
+    const value = cutFileValue(match[2]);
+    for (const piece of value.split(/<br\s*\/?>|\n/i)) {
+      const quoted = [...piece.matchAll(/''+(.+?)''+/g)].map((item) => item[1]);
+      for (const candidate of (quoted.length ? quoted : [piece])) {
+        const title = cleanWikiName(candidate);
+        if (!title || title.length > 90) continue;
+        const key = compact(title);
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        titles.push(title);
+      }
+    }
+  }
+
+  return titles.slice(0, 4);
+}
+
+/** Pide la sección 0 (ficha) de un artículo; '' si no existe. */
+async function wikipediaWikitext(page, deadline) {
+  const base = config.wikipediaBaseUrl.replace(/\/+$/, '');
+  const url = `${base}/w/api.php?action=parse&page=${encodeURIComponent(page)}`
+    + '&prop=wikitext&section=0&redirects=1&format=json&formatversion=2';
+  const result = await requestJson(url, { deadline, headers: { Accept: 'application/json' } });
+  const parsed = result.json && result.json.parse;
+  return parsed && typeof parsed.wikitext === 'string' ? parsed.wikitext : '';
+}
+
+/**
+ * Títulos en español según Wikipedia. Primero se prueba el nombre exacto (la
+ * mayoría de películas conservan el título inglés como artículo) y, si no
+ * existe, el buscador interno.
+ */
+async function fromWikipedia(name, deadline) {
+  if (!config.wikipediaTitles || !name) return null;
+
+  let wikitext = await wikipediaWikitext(name, deadline).catch(() => '');
+  if (!wikitext) {
+    const base = config.wikipediaBaseUrl.replace(/\/+$/, '');
+    const url = `${base}/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(name)}`
+      + '&srlimit=1&format=json&formatversion=2';
+    const found = await requestJson(url, { deadline, headers: { Accept: 'application/json' } }).catch(() => null);
+    const hits = found && found.json && found.json.query && found.json.query.search;
+    const title = Array.isArray(hits) && hits[0] ? clean(hits[0].title) : '';
+    if (!title) return null;
+    wikitext = await wikipediaWikitext(title, deadline).catch(() => '');
+  }
+
+  const titles = parseSpanishTitlesFromWikitext(wikitext);
+  return titles.length ? titles : null;
+}
+
+/* ------------------------------------------------------------------ *
  *  Resolución
  * ------------------------------------------------------------------ */
 
@@ -160,7 +267,13 @@ function mergeTitles(candidates) {
   const seen = new Set();
   const titles = [];
   for (const candidate of candidates) {
-    for (const value of [candidate.name, candidate.originalName]) {
+    // Un título suelto («Interestelar») o un objeto {name, originalName}.
+    const values = typeof candidate === 'string'
+      ? [candidate]
+      : (Array.isArray(candidate)
+        ? candidate
+        : [candidate && candidate.name, candidate && candidate.originalName]);
+    for (const value of values) {
       const title = clean(value);
       if (!title) continue;
       const key = compact(title);
@@ -169,7 +282,7 @@ function mergeTitles(candidates) {
       titles.push(title);
     }
   }
-  return titles.slice(0, 3);
+  return titles.slice(0, 4);
 }
 
 /**
@@ -190,6 +303,7 @@ export async function lookupTitle(type, rawId, { deadline } = {}) {
   const sources = [];
   let imdb = null;
   let tmdb = null;
+  let wikipedia = null;
 
   if (parsed.kind === 'imdb') {
     // Cinemeta y TMDB son independientes: se piden a la vez.
@@ -201,6 +315,11 @@ export async function lookupTitle(type, rawId, { deadline } = {}) {
     tmdb = tmdbResult;
     if (imdb) sources.push('cinemeta');
     if (tmdb) sources.push('tmdb');
+
+    // Wikipedia traduce «Interstellar» → «Interestelar», que es el nombre con
+    // el que las webs tienen la ficha. Necesita el nombre, así que va después.
+    wikipedia = await fromWikipedia(imdb && imdb.name, deadline).catch(() => null);
+    if (wikipedia) sources.push('wikipedia');
 
     if (!imdb) {
       const suggestion = await fromImdbSuggestion(parsed.imdbId, deadline).catch(() => null);
@@ -219,8 +338,10 @@ export async function lookupTitle(type, rawId, { deadline } = {}) {
     return null;
   }
 
-  // El título del sitio manda (es una web en español); después el original.
-  const ordered = parsed.kind === 'imdb' ? [tmdb, imdb] : [tmdb, imdb];
+  // El español manda (las dos webs buscan por el título de su ficha): primero
+  // Wikipedia —es el que usa Latinoamérica—, después TMDB y por último el
+  // título original de Cinemeta.
+  const ordered = [...(wikipedia || []), tmdb, imdb];
   const info = {
     imdbId: parsed.imdbId,
     tmdbId: parsed.tmdbId,

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { config } from '../src/config.js';
-import { lookupTitle, parseStremioId, tmdbEnabled } from '../src/titles.js';
+import { lookupTitle, parseSpanishTitlesFromWikitext, parseStremioId, tmdbEnabled } from '../src/titles.js';
 import { Deadline } from '../src/http.js';
 import { metaCache } from '../src/cache.js';
 import { installFetchStub, jsonRoute } from './helpers/stub-fetch.js';
@@ -165,5 +165,45 @@ test('el resultado se cachea por ID', async (t) => {
     const again = await lookupTitle('movie', 'tt0816692:0:0', { deadline: deadline() });
     assert.equal(stub.calls.length, callsAfterFirst, 'no debe repetir la petición');
     assert.equal(again.name, 'Interstellar');
+  });
+});
+
+const interstellaresWikitext = `{{Ficha de película
+| título original = Interstellar
+| título = ''Interestelar'' ([[Hispanoamérica]])
+| dirección = Christopher Nolan
+| estreno = 2014
+}}`;
+
+test('de la ficha de Wikipedia se lee el título latino, no el original', () => {
+  assert.deepEqual(parseSpanishTitlesFromWikitext(interstellaresWikitext), ['Interestelar']);
+});
+
+test('también se leen los campos por país y las plantillas escritas en una línea', () => {
+  const spanish = "{{Ficha de película |título = ''Sueños de libertad'' |título original = The Shawshank Redemption |estreno = 1994}}";
+  assert.deepEqual(parseSpanishTitlesFromWikitext(spanish), ['Sueños de libertad']);
+
+  const local = "{{Ficha de película\n| nombre hispanoamérica = ''Buscando a Nemo''\n| nombre España = ''Buscando a Nemo''\n}}";
+  assert.deepEqual(parseSpanishTitlesFromWikitext(local), ['Buscando a Nemo']);
+  // Sin ficha (un artículo cualquiera) no se inventa nada.
+  assert.deepEqual(parseSpanishTitlesFromWikitext('Interstellar es una película de 2014.'), []);
+});
+
+test('sin TMDB, Wikipedia pone el nombre en español con el que buscan las webs', async (t) => {
+  metaCache.clear();
+  const stub = installFetchStub({
+    'https://v3-cinemeta.strem.io/meta/movie/tt0816692.json': jsonRoute(cinemetaMovie),
+    'https://es.wikipedia.org/w/api.php': jsonRoute({ parse: { title: 'Interstellar', wikitext: interstellaresWikitext } })
+  });
+  t.after(() => stub.restore());
+
+  await withEnv({ tmdbApiKey: '' }, async () => {
+    const info = await lookupTitle('movie', 'tt0816692', { deadline: deadline() });
+
+    assert.ok(info);
+    // El título español va primero: es el que existe en la ficha de la web.
+    assert.deepEqual(info.titles, ['Interestelar', 'Interstellar']);
+    assert.deepEqual(info.sources, ['cinemeta', 'wikipedia']);
+    assert.ok(stub.calls.some((call) => call.url.startsWith('https://es.wikipedia.org/w/api.php')));
   });
 });

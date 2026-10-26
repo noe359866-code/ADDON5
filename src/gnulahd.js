@@ -26,15 +26,17 @@
  */
 
 import { config } from './config.js';
-import { request } from './http.js';
+import { request, safeDecodeEntities } from './http.js';
 import { pageCache } from './cache.js';
 import {
+  MIN_SCORE,
   canonicalLanguage,
   embedPriority,
   hostOf,
   isHttpUrl,
   isSkippedEmbed,
   rankCandidates,
+  scoreCandidate,
   searchTerms
 } from './gnula.js';
 import { compact, slugify } from './utils/text.js';
@@ -207,7 +209,9 @@ export function parseQuickFacts(html) {
 
 export function parseDetailTitle(html) {
   const title = firstMatch(html, /<h1[^>]*class\s*=\s*["'][^"']*gnrd-fi-title[^"']*["'][^>]*>([\s\S]*?)<\/h1>/i);
-  return title.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+  // El sitio escribe «4&#215;07» (×) y acentos como entidades: se decodifican
+  // para que el nombre llegue limpio a Stremio.
+  return safeDecodeEntities(title.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
 }
 
 export function parseQuality(html) {
@@ -541,43 +545,98 @@ async function fetchPage(url, ctx) {
   });
 }
 
+/**
+ * Búsqueda. `/?s=` se cuelga (más de 60 s medidos) cuando el sitio está
+ * cargado, pero la API REST de WordPress responde en ~12 s: se usa esa y, si
+ * el tema la tapa, se cae al HTML de siempre con un tope corto.
+ *
+ * `/wp-json/wp/v2/search` devuelve [{title, url, subtype}] — sin año ni tipo,
+ * así que se completa con la URL (`/ver/<slug>/`).
+ */
+/** `/wp-json/wp/v2/search` → tarjetas {slug,url,title,year,type}. */
+export function cardsFromRest(list, { site = BASE() } = {}) {
+  const cards = [];
+  if (!Array.isArray(list)) return cards;
+
+  for (const item of list) {
+    if (!item || !item.url) continue;
+    const slug = firstMatch(String(item.url), /\/ver\/([^/?#]+)/i);
+    if (!slug) continue;
+    const title = safeDecodeEntities(String(item.title || '').replace(/<[^>]+>/g, '')).trim();
+    if (!title) continue;
+    let url = String(item.url);
+    if (url.startsWith('/')) url = `${site}${url}`;
+    cards.push({ slug, url, title, year: '', type: String(item.subtype || '').toLowerCase() });
+  }
+
+  return cards;
+}
+
 async function search(term, ctx) {
-  const result = await request(`${BASE()}/?s=${encodeURIComponent(term)}`, {
+  const api = `${BASE()}/wp-json/wp/v2/search?search=${encodeURIComponent(term)}&per_page=20`;
+  const result = await request(api, {
+    deadline: ctx.deadline,
+    headers: { Referer: `${BASE()}/`, Accept: 'application/json' }
+  });
+
+  if (result.ok && result.text) {
+    try {
+      const cards = cardsFromRest(JSON.parse(result.text));
+      if (cards.length) return cards;
+    } catch {
+      // No era JSON: se intenta el HTML.
+    }
+  }
+
+  const html = await request(`${BASE()}/?s=${encodeURIComponent(term)}`, {
     deadline: ctx.deadline,
     headers: { Referer: `${BASE()}/` }
   });
-  if (!result.ok) return [];
-  return parseCards(result.text);
+  return html.ok ? parseCards(html.text) : [];
 }
 
 async function candidatesFor(titles, year, ctx) {
-  const cards = [];
-  const seen = new Set();
-  for (const term of searchTerms(titles).slice(0, 2)) {
-    if (ctx.deadline && ctx.deadline.remaining() < 1500) break;
-    for (const card of await search(term, ctx)) {
-      if (seen.has(card.slug)) continue;
-      seen.add(card.slug);
-      cards.push(card);
+  // Dos caminos a la vez y gana el primero que sirva:
+  //  · slug directo, /ver/<título>/ — 1-2 s cuando el slug coincide;
+  //  · búsqueda REST — ~12 s, pero resuelve los títulos que no son el slug.
+  const searchable = searchTerms(titles).slice(0, 2);
+  const cardsPromise = (async () => {
+    const cards = [];
+    const seen = new Set();
+    for (const term of searchable) {
+      if (ctx.deadline && ctx.deadline.remaining() < 1500) break;
+      for (const card of await search(term, ctx)) {
+        if (seen.has(card.slug)) continue;
+        seen.add(card.slug);
+        cards.push(card);
+      }
+      if (rankCandidates(cards, titles, year).length) break;
+      if (cards.length >= 12) break;
     }
-    if (rankCandidates(cards, titles, year).length) break;
-    if (cards.length >= 12) break;
-  }
+    return cards;
+  })().catch(() => []);
 
-  const ranked = rankCandidates(cards, titles, year);
-  if (ranked.length) return ranked;
-
-  // El slug es predecible: se prueba directo antes de darse por vencido.
-  for (const title of titles) {
+  for (const title of titles.slice(0, 2)) {
     const slug = slugify(title);
     if (!slug) continue;
-    const url = `${BASE()}/ver/${slug}/`;
-    const page = await fetchPage(url, { deadline: ctx.deadline });
-    if (page.ok && /gnrd-fi-title|gnrd-epc|_gnrdTok/i.test(page.text)) {
-      return [{ slug, url: page.url || url, title, year: year || '', score: 0.7, preloaded: page.text }];
-    }
+    const page = await fetchPage(`${BASE()}/ver/${slug}/`, ctx).catch(() => null);
+    if (!page || !page.ok || !/gnrd-fi-title|gnrd-epc|_gnrdTok/i.test(page.text)) continue;
+
+    const card = {
+      slug,
+      url: page.url || `${BASE()}/ver/${slug}/`,
+      title: parseDetailTitle(page.text) || title,
+      year: parseQuickFacts(page.text).año || year || '',
+      preloaded: page.text
+    };
+    // El slug es una apuesta: `/ver/it/` puede ser otra película. Se comprueba
+    // el título de la ficha antes de darla por buena.
+    if (scoreCandidate(card, titles, year) < MIN_SCORE) continue;
+    // Acierto: se devuelve ya, sin esperar a la búsqueda (tarda ~12 s).
+    return [{ ...card, score: 1 }];
   }
-  return [];
+
+  return rankCandidates(await cardsPromise, titles, year);
 }
 
 async function pageFor(candidate, ctx) {

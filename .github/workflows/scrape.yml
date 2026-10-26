@@ -90,6 +90,8 @@ jobs:
             curl -s --max-time 90 "http://127.0.0.1:7311/selftest?id=$id" \
               -o "_scrape/selftest-$name.json" -w "selftest $name %{http_code}\n" >> _scrape/index.txt
           done
+          curl -s --max-time 120 'http://127.0.0.1:7311/stream/series/tt8111088:1:1.json' \
+            -o _scrape/stream-mando.json -w 'stream mando %{http_code}\n' >> _scrape/index.txt
           curl -s --max-time 120 'http://127.0.0.1:7311/stream/series/tt9140554:2:1.json' \
             -o _scrape/stream-loki.json -w 'stream loki %{http_code}\n' >> _scrape/index.txt
           curl -s --max-time 90 'http://127.0.0.1:7311/stream/movie/tt0816692.json' \

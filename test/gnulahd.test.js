@@ -7,6 +7,7 @@ import {
   findEpisode,
   findMovie,
   parseCards,
+  parseDetailTitle,
   parseEpisodes,
   parsePlayerConfig,
   parseQuickFacts,
@@ -20,6 +21,7 @@ import {
 import { Deadline } from '../src/http.js';
 import { pageCache } from '../src/cache.js';
 import { installFetchStub, jsonRoute } from './helpers/stub-fetch.js';
+import { cardsFromRest } from '../src/gnulahd.js';
 
 /**
  * Fixtures recortados del HTML real de ww3.gnulahd.nu (octubre de 2026):
@@ -205,4 +207,32 @@ test('sin la API el scraper no inventa reproductores', async (t) => {
   // Devuelve la ficha (para el diagnóstico) pero sin ningún reproductor.
   assert.equal(page.embeds.length, 0);
   assert.equal(config.gnulahdBaseUrl, SITE);
+});
+
+test('la API REST de WordPress da las mismas tarjetas cuando /?s= se cuelga', () => {
+  const cards = cardsFromRest([
+    { title: 'Interestelar', url: 'https://ww3.gnulahd.nu/ver/interestelar/', subtype: 'movie' },
+    { title: 'La ciencia de &quot;Interstellar&quot;', url: '/ver/la-ciencia-de-interstellar/', subtype: 'post' },
+    { title: 'sin url', url: '' },
+    { title: 'otra sección', url: 'https://ww3.gnulahd.nu/el-encargado-4x07/' }
+  ]);
+
+  assert.equal(cards.length, 2);
+  assert.deepEqual(cards[0], {
+    slug: 'interestelar',
+    url: 'https://ww3.gnulahd.nu/ver/interestelar/',
+    title: 'Interestelar',
+    year: '',
+    type: 'movie'
+  });
+  // Las entidades del título se decodifican y las rutas relativas se completan.
+  assert.equal(cards[1].title, 'La ciencia de "Interstellar"');
+  assert.equal(cards[1].url, 'https://ww3.gnulahd.nu/ver/la-ciencia-de-interstellar/');
+});
+
+test('el título del capítulo llega sin entidades HTML («4&#215;07» → «4×07»)', () => {
+  // La web real escribe el signo de multiplicar como entidad; Stremio lo
+  // mostraría tal cual si no se decodificara.
+  const html = '<h1 class="gnrd-fi-title">El encargado 4&#215;07</h1>';
+  assert.equal(parseDetailTitle(html), 'El encargado 4×07');
 });
