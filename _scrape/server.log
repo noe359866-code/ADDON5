@@ -5,8 +5,12 @@ Manifest: http://localhost:7311/manifest.json
 [player] viewsb.com → fetch failed
 [http] GET https://viewsb.com/e/beypa68rqj3t.html → fetch failed
 [player] viewsb.com → fetch failed
+[http] GET https://viewsb.com/e/beypa68rqj3t.html → fetch failed
+[player] viewsb.com → fetch failed
 [player] jawcloud.co → HTTP 404
 [player] jawcloud.co → HTTP 404
+[player] jawcloud.co → HTTP 404
+[player] savefiles.com → HTTP 403
 [player] savefiles.com → HTTP 403
 [player] savefiles.com → HTTP 403
 [titles] tt9140554 → "Loki" (cinemeta+wikipedia)
@@ -15,28 +19,41 @@ Manifest: http://localhost:7311/manifest.json
 [player] viewsb.com → fetch failed
 [http] GET https://viewsb.com/e/oenpw8kx4v99.html → fetch failed
 [player] viewsb.com → fetch failed
+[http] GET https://viewsb.com/e/oenpw8kx4v99.html → fetch failed
+[player] viewsb.com → fetch failed
 [player] voe.sx → HTTP 404
 [player] voe.sx → HTTP 404
-[stream] series/tt8111088:1:1 → 0 en 6390 ms
+[player] voe.sx → HTTP 404
+[stream] series/tt8111088:1:1 → 0 en 7885 ms
 [player] streamtape.com → HTTP 404
 [player] streamtape.com → HTTP 404
+[player] streamtape.com → HTTP 404
+[player] savefiles.com → HTTP 403
 [player] savefiles.com → HTTP 403
 [player] savefiles.com → HTTP 403
 [player] doodstream.com → HTTP 403
 [player] doodstream.com → HTTP 403
 [http] GET https://upstream.to/embed-zby84wzdqoqh.html → fetch failed
 [player] upstream.to → fetch failed
+[player] doodstream.com → HTTP 403
 [player] mixdrop.ch → HTTP 436
 [http] GET https://upstream.to/embed-zby84wzdqoqh.html → fetch failed
 [player] upstream.to → fetch failed
 [player] mixdrop.ch → HTTP 436
-[stream] series/tt9140554:2:1 → 1 en 4653 ms
+[http] GET https://upstream.to/embed-zby84wzdqoqh.html → fetch failed
+[player] upstream.to → fetch failed
+[player] mixdrop.ch → HTTP 436
+[stream] series/tt9140554:2:1 → 1 en 5736 ms
+[player] jawcloud.co → HTTP 404
+[player] jawcloud.co → HTTP 404
+[player] jawcloud.co → HTTP 404
 [http] GET https://viewsb.com/e/beypa68rqj3t.html → fetch failed
 [player] viewsb.com → fetch failed
-[player] jawcloud.co → HTTP 404
-[player] jawcloud.co → HTTP 404
+[http] GET https://viewsb.com/e/beypa68rqj3t.html → fetch failed
+[player] viewsb.com → fetch failed
 [http] GET https://viewsb.com/e/beypa68rqj3t.html → fetch failed
 [player] viewsb.com → fetch failed
 [player] savefiles.com → HTTP 403
 [player] savefiles.com → HTTP 403
-[stream] movie/tt0816692 → 2 en 634 ms
+[player] savefiles.com → HTTP 403
+[stream] movie/tt0816692 → 2 en 1191 ms
