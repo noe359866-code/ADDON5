@@ -5,3 +5,4 @@ gnulahd-movie         https://ww3.gnulahd.nu/ver/interestelar/
 # trigger8 1792978082
 # trigger9 1792978180
 # trigger10 1792978276
+# trigger11 1792978382

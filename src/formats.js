@@ -97,14 +97,9 @@ function mediaHeaders(referer) {
     Accept: '*/*',
     'Accept-Language': 'es-ES,es;q=0.9,en;q=0.6'
   };
-  if (referer) {
-    headers.Referer = referer;
-    try {
-      headers.Origin = new URL(referer).origin;
-    } catch {
-      // referer inválido: se omite Origin
-    }
-  }
+  // Igual que en los reproductores: Referer sí, Origin no (un <video> no lo
+  // manda y algunos CDN lo rechazan).
+  if (referer) headers.Referer = referer;
   return headers;
 }
 

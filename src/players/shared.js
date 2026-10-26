@@ -152,14 +152,10 @@ export function playerHeaders(referer) {
     Accept: '*/*',
     'Accept-Language': 'es-ES,es;q=0.9,en;q=0.6'
   };
-  if (referer) {
-    headers.Referer = referer;
-    try {
-      headers.Origin = new URL(referer).origin;
-    } catch {
-      // referer inválido: se omite Origin
-    }
-  }
+  // Solo Referer. Un GET de navegación no lleva `Origin`, y algunos hosts
+  // (uqload) lo leen como petición cruzada y contestan una página de 38 bytes
+  // en vez del reproductor.
+  if (referer) headers.Referer = referer;
   return headers;
 }
 
