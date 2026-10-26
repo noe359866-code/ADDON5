@@ -37,7 +37,7 @@ jobs:
         run: |
           set -u
           UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
-          for page in _scrape/gnulahd-movie.html _scrape/gnulahd-serie.html; do
+          for page in _scrape/gnulahd-movie.html _scrape/gnulahd-serie.html _scrape/gnulahd-episode.html; do
             [ -f "$page" ] || continue
             echo "===== $page =====" >> _scrape/gnrd.txt
             grep -o '_gnrdPid=[0-9]*' "$page" | head -2 >> _scrape/gnrd.txt || true

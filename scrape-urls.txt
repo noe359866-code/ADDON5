@@ -1,12 +1,10 @@
 # nombre  url   (una por línea; al cambiar este archivo se relanza el scraping)
-gnula-search          https://www2.gnula.one/?s=interestelar
-gnula-movie-int       https://www2.gnula.one/movie/interestelar/
-gnulahd-search        https://ww3.gnulahd.nu/?s=interstellar
 gnulahd-movie         https://ww3.gnulahd.nu/ver/interestelar/
 gnulahd-serie         https://ww3.gnulahd.nu/ver/el-encargado/
-vsb-embed             https://viewsb.com/e/beypa68rqj3t.html
-uqload-embed          https://uqload.com/embed-fqhl3m5h3zcn.html
-jawcloud-embed        https://jawcloud.co/embed-lww3ummjhnxl.html
-series-alt-home       https://verteleseriesonline.com/
-series-alt-search     https://verteleseriesonline.com/?s=the+last+of+us
-series-ver-home       https://ver.verteleseriesonline.com/
+gnulahd-episode       https://ww3.gnulahd.nu/el-encargado-4x07/
+vidaraa-embed         https://vidaraa.cc/e/3RSpbzKZgfoy8
+byse-embed            https://byse.sx/e/ltd6r245u81w
+voe-embed             https://voe.sx/e/rvnyarijf6gm
+savefiles-embed       https://savefiles.com/e/j1zo9m2tgvcs
+series-detail         https://ver.verteleseriesonline.com/serie/loki/
+gnula-movie-int       https://www2.gnula.one/movie/interestelar/
