@@ -86,7 +86,13 @@ const SKIPPED_HOST_PATTERNS = [
   /(^|\.)nitroflare\.com$/i,
   /(^|\.)turbobit\.net$/i,
   /(^|\.)uploadhaven\.com$/i,
-  /(^|\.)ddownload\.com$/i
+  /(^|\.)ddownload\.com$/i,
+  /(^|\.)nitro\.download$/i,
+  /(^|\.)uploadgig\.com$/i,
+  /(^|\.)hitfile\.net$/i,
+  /(^|\.)keep2share\.cc$/i,
+  /(^|\.)tezfiles\.com$/i,
+  /(^|\.)fboom\.me$/i
 ];
 
 export function isSkippedEmbed(url) {

@@ -15,6 +15,12 @@ export const MEDIA_EXTENSION_RE = /\.(m3u8|mp4|mpd|m4v)(\?|#|$)/i;
 
 const JUNK_PATTERNS = [
   /\/sprite[s]?\//i,
+  // Clips de demostración que ponen algunos reproductores cuando el video ya
+  // no existe: entregarlos como «la película» sería peor que no dar nada.
+  /test-videos\.co\.uk/i,
+  /sample-videos?\.com/i,
+  /bigbuckbunny/i,
+  /gtv-videos-bucket/i,
   // Los reproductores caídos a veces devuelven un vídeo de demostración en
   // lugar del capítulo: no es la película y no debe llegar a Stremio.
   /test-videos\.co\.uk/i,

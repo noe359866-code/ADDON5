@@ -184,3 +184,19 @@ test('si el host bloquea las peticiones con Referer se reintenta sin él', async
   assert.equal(page.referer, 'https://uqload.com/');
   assert.equal(stub.calls.length, 3, 'referer ajeno → referer propio → sin referer');
 });
+
+test('la «ficha» de un .mp4 en un alojamiento de descarga no es un video', () => {
+  // links.cuevana.ac anuncia «loki.2x01.1080p.lat.mp4», pero es katfile/nitro:
+  // una página web con botón de descarga, no un stream.
+  assert.equal(findMedia('<a href="https://nitro.download/view/ABC/loki.2x01.lat.mp4">', 'https://links.cuevana.ac/'), '');
+  // Un MP4 de un host normal sigue valiendo.
+  assert.match(
+    findMedia('<video src="https://cdn.example.org/peli.mp4"></video>', 'https://example.org/') || '',
+    /cdn\.example\.org\/peli\.mp4/
+  );
+});
+
+test('el clip de demostración de un reproductor caído no se entrega como película', () => {
+  assert.equal(findMedia('<script>sources:[{file:"https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/720/Big_Buck_Bunny_720_10s_1MB.mp4"}]</script>', 'https://voe.sx/e/x'), '');
+  assert.equal(findMedia('<video src="https://sample-videos.com/video321/mp4/720/big_buck_bunny_720p_1mb.mp4"></video>', 'https://voe.sx/e/x'), '');
+});
