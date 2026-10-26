@@ -3,23 +3,41 @@ Manifest: http://localhost:7311/manifest.json
 [titles] tt0816692 → "Interestelar" / "Interstellar" (cinemeta+wikipedia)
 [http] GET https://viewsb.com/e/beypa68rqj3t.html → fetch failed
 [player] viewsb.com → fetch failed
+[http] GET https://viewsb.com/e/beypa68rqj3t.html → fetch failed
+[player] viewsb.com → fetch failed
 [player] jawcloud.co → HTTP 404
+[player] jawcloud.co → HTTP 404
+[player] savefiles.com → HTTP 403
 [player] savefiles.com → HTTP 403
 [titles] tt9140554 → "Loki" (cinemeta+wikipedia)
 [titles] tt8111088:1:1 → "The Mandalorian" (cinemeta+wikipedia)
 [http] GET https://viewsb.com/e/oenpw8kx4v99.html → fetch failed
 [player] viewsb.com → fetch failed
+[http] GET https://viewsb.com/e/oenpw8kx4v99.html → fetch failed
+[player] viewsb.com → fetch failed
 [player] voe.sx → HTTP 404
-[stream] series/tt8111088:1:1 → 0 en 6817 ms
+[player] voe.sx → HTTP 404
+[player] vidsonic.net → The operation was aborted due to timeout
+[stream] series/tt8111088:1:1 → 0 en 16485 ms
+[player] streamtape.com → HTTP 404
 [player] streamtape.com → HTTP 404
 [player] savefiles.com → HTTP 403
+[player] savefiles.com → HTTP 403
+[player] doodstream.com → HTTP 403
 [player] doodstream.com → HTTP 403
 [http] GET https://upstream.to/embed-zby84wzdqoqh.html → fetch failed
 [player] upstream.to → fetch failed
+[http] GET https://upstream.to/embed-zby84wzdqoqh.html → fetch failed
+[player] upstream.to → fetch failed
 [player] mixdrop.ch → HTTP 436
-[stream] series/tt9140554:2:1 → 1 en 4845 ms
+[player] mixdrop.ch → HTTP 436
+[stream] series/tt9140554:2:1 → 1 en 11425 ms
+[http] GET https://viewsb.com/e/beypa68rqj3t.html → fetch failed
+[player] viewsb.com → fetch failed
 [player] jawcloud.co → HTTP 404
 [http] GET https://viewsb.com/e/beypa68rqj3t.html → fetch failed
 [player] viewsb.com → fetch failed
+[player] jawcloud.co → HTTP 404
 [player] savefiles.com → HTTP 403
-[stream] movie/tt0816692 → 2 en 674 ms
+[player] savefiles.com → HTTP 403
+[stream] movie/tt0816692 → 2 en 970 ms
