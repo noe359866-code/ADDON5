@@ -1,6 +1,6 @@
 import { resolveEmbed } from '../src/players/index.js';
 import { fetchPlayer } from '../src/players/shared.js';
-import { Deadline } from '../src/http.js';
+import { Deadline, request } from '../src/http.js';
 
 const REFERER = 'https://www2.gnula.one/movie/interestelar/';
 const embeds = [
@@ -24,11 +24,14 @@ for (const url of embeds) {
     status = `exc ${error.message}`;
   }
 
-  try {
-    const own = await fetchPlayer(url, { deadline: new Deadline(15000) });
-    console.log(`   sin referer ajeno: ${own ? own.text.length + ' B' : 'null'}`);
-  } catch (error) {
-    console.log('   sin referer ajeno: exc', error.message);
+  for (const [label, headers] of [
+    ['UA navegador', { Accept: '*/*' }],
+    ['UA curl', { 'User-Agent': 'curl/8.5.0', Accept: '*/*' }],
+    ['sin UA', { 'User-Agent': '', Accept: '*/*' }]
+  ]) {
+    if (!/uqload/.test(url)) continue;
+    const r = await request(url, { deadline: new Deadline(15000), headers });
+    console.log(`   ${label}: ${r.status} ${r.text.length} B ${JSON.stringify(r.text.slice(0, 100))}`);
   }
 
   const t1 = Date.now();
