@@ -105,3 +105,22 @@ selftest tt0816692 200
 selftest tt9140554 200
 stream loki 200
 stream interestelar 200
+200  259318  https://ww3.gnulahd.nu/ver/interestelar/
+200  293289  https://ww3.gnulahd.nu/ver/el-encargado/
+200  251328  https://ww3.gnulahd.nu/el-encargado-4x07/
+--- 0 0 25003ms https://ww3.gnulahd.nu/wp-json/gnrd/v1/search?q=interstellar | err: timeout tras 25000 ms
+    
+--- 0 0 25000ms https://ww3.gnulahd.nu/wp-json/gnrd/v1/search?s=interstellar | err: timeout tras 25000 ms
+    
+--- 200 316 12069ms https://ww3.gnulahd.nu/wp-json/wp/v2/search?search=interstellar&per_page=10 | err: -
+    [{"id":6146,"title":"La ciencia de Interstellar","url":"https:\/\/ww3.gnulahd.nu\/ver\/la-ciencia-de-interstellar\/","type":"post","subtype":"series","_links":{"about":[{"href":"https:\/\/ww3.gnulahd.nu\/wp-json\/wp\/v2\/types\/series"}],"collection":[{"href":"https:\/\/ww3.gnulahd.nu\/wp-json\/wp\/v2\/search"}]}}]
+--- 200 2 13450ms https://ww3.gnulahd.nu/wp-json/wp/v2/estreno?search=interstellar&per_page=10&_fields=id,slug,title,link | err: -
+    []
+--- 200 2 842ms https://www2.gnula.one/wp-json/wp/v2/search?search=Interestelar&per_page=10 | err: -
+    []
+--- 200 2 507ms https://www2.gnula.one/wp-json/wp/v2/search?search=Interstellar&per_page=10 | err: -
+    []
+selftest tt0816692 200
+selftest tt9140554 200
+stream loki 200
+stream interestelar 200
