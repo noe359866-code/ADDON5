@@ -1,14 +1,12 @@
 # nombre  url   (una por línea; al cambiar este archivo se relanza el scraping)
-gnula-home            https://www2.gnula.one/
 gnula-search          https://www2.gnula.one/?s=interestelar
-gnula-search-jk       https://www2.gnula.one/?s=jay+kelly
-gnula-movie-jk        https://www2.gnula.one/movie/jay-kelly/
 gnula-movie-int       https://www2.gnula.one/movie/interestelar/
-series-home           https://ver.verteleseriesonline.com/
-series-search         https://ver.verteleseriesonline.com/?s=the+last+of+us
-gnulahd-home          https://ww3.gnulahd.nu/
 gnulahd-search        https://ww3.gnulahd.nu/?s=interstellar
 gnulahd-movie         https://ww3.gnulahd.nu/ver/interestelar/
-gnulahd-series-list   https://ww3.gnulahd.nu/ver/series/
-gnulahd-api-root      https://ww3.gnulahd.nu/wp-json/
-gnulahd-api-gnrd      https://ww3.gnulahd.nu/wp-json/gnrd/v1/
+gnulahd-serie         https://ww3.gnulahd.nu/ver/el-encargado/
+vsb-embed             https://viewsb.com/e/beypa68rqj3t.html
+uqload-embed          https://uqload.com/embed-fqhl3m5h3zcn.html
+jawcloud-embed        https://jawcloud.co/embed-lww3ummjhnxl.html
+series-alt-home       https://verteleseriesonline.com/
+series-alt-search     https://verteleseriesonline.com/?s=the+last+of+us
+series-ver-home       https://ver.verteleseriesonline.com/
