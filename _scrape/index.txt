@@ -124,3 +124,8 @@ selftest tt0816692 200
 selftest tt9140554 200
 stream loki 200
 stream interestelar 200
+200  259318  https://ww3.gnulahd.nu/ver/interestelar/
+selftest tt0816692 200
+selftest tt9140554 200
+stream loki 200
+stream interestelar 200
