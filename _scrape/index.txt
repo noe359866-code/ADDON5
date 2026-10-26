@@ -11,3 +11,14 @@
 200  192423  https://ww3.gnulahd.nu/ver/series/
 200  253186  https://ww3.gnulahd.nu/wp-json/
 200  2448  https://ww3.gnulahd.nu/wp-json/gnrd/v1/
+200  48283  https://www2.gnula.one/?s=interestelar
+200  65759  https://www2.gnula.one/movie/interestelar/
+200  94140  https://ww3.gnulahd.nu/?s=interstellar
+200  259318  https://ww3.gnulahd.nu/ver/interestelar/
+200  293289  https://ww3.gnulahd.nu/ver/el-encargado/
+000000    https://viewsb.com/e/beypa68rqj3t.html
+200  29409  https://uqload.com/embed-fqhl3m5h3zcn.html
+404  48697  https://jawcloud.co/embed-lww3ummjhnxl.html
+200  313239  https://verteleseriesonline.com/
+403  5707  https://verteleseriesonline.com/?s=the+last+of+us
+200  313239  https://ver.verteleseriesonline.com/
