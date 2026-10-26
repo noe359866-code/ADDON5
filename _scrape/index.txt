@@ -339,3 +339,25 @@ selftest tt9140554 200
 stream mando 200
 stream loki 200
 stream interestelar 200
+200  259317  https://ww3.gnulahd.nu/ver/interestelar/
+gnulahd ?s=Interstellar
+   0 0 B err=timeout tras 12000 ms
+gnulahd ?s=interstellar
+   200 94345 B err=-
+   cards: interestelar(2014) , la-ciencia-de-interstellar(2014) , mi-perro-y-yo(2026)
+gnulahd REST
+   200 316 B err=-
+   cards: la-ciencia-de-interstellar
+cinemeta es-ES
+   200 2712 B err=-
+   name: Interstellar
+cinemeta ?lang=es
+   504 6442 B err=HTTP 504
+gnula ?s=Interestelar
+   200 48479 B err=-
+   cards: 45 | ranked: interestelar=0.88
+selftest tt0816692 200
+selftest tt9140554 200
+stream mando 200
+stream loki 200
+stream interestelar 200
