@@ -163,14 +163,16 @@ export function playerHeaders(referer) {
  * Texto de una URL de reproductor. `ctx.fetchText` permite inyectar una
  * respuesta en los tests sin salir a la red.
  */
-export async function fetchText(url, ctx = {}, referer = '') {
+export async function fetchText(url, ctx = {}, referer = undefined) {
   if (typeof ctx.fetchText === 'function') {
     return String((await ctx.fetchText(url, ctx)) || '');
   }
+  // `undefined` = Referer del propio host (lo normal); `null` = sin Referer.
+  const ref = referer === undefined ? `${safeOrigin(url)}/` : referer;
   const result = await request(url, {
     deadline: ctx.deadline,
     timeoutMs: ctx.timeoutMs || config.fetchTimeoutMs,
-    headers: playerHeaders(referer || `${safeOrigin(url)}/`)
+    headers: playerHeaders(ref)
   });
   if (!result.ok) {
     if (config.debug) console.warn(`[player] ${hostOf(url)} → ${result.error || result.status}`);
@@ -189,7 +191,7 @@ export async function fetchPlayer(url, ctx = {}) {
   // cualquier petición con Referer, y otros que exigen el de la web.
   const attempts = typeof ctx.fetchText === 'function'
     ? [first]
-    : (first === own ? [own, ''] : [first, own, '']);
+    : (first === own ? [own, null] : [first, own, null]);
 
   let best = null;
   for (const referer of attempts) {
