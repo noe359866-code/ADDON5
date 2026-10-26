@@ -2,7 +2,7 @@
  * src/utils/text.js — Utilidades de texto compartidas.
  */
 
-const ARTICLES = new Set(['the', 'a', 'an', 'el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'lo']);
+export const ARTICLES = new Set(['the', 'a', 'an', 'el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'lo']);
 
 /** Minúsculas, sin acentos, sin signos, espacios simples. */
 export function normalize(text) {

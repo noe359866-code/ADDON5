@@ -19,6 +19,17 @@ services:
       # always → proxy para todo; never → URL directa + proxyHeaders
       - key: STREAM_PROXY
         value: auto
+      # Solo streams reproducibles: si nada entrega video, lista vacía.
+      - key: ALLOW_EXTERNAL_FALLBACK
+        value: "false"
+      # true → descarta los MP4 y deja solo listas HLS.
+      - key: ONLY_HLS
+        value: "false"
+      # Opcional: con clave, los títulos se buscan también en español (TMDB).
+      - key: TMDB_API_KEY
+        sync: false
+      - key: TMDB_LANGUAGE
+        value: es-MX
       # Stremio abandona las peticiones lentas: presupuesto total y por petición.
       - key: HANDLER_DEADLINE_MS
         value: "15000"

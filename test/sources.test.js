@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { collectStreams, interleaveEmbeds } from '../src/addon.js';
+import { config } from '../src/config.js';
 import { SOURCES, sourceLabel } from '../src/sources.js';
 import { decodeParam } from '../src/streams.js';
 import { pageCache } from '../src/cache.js';
@@ -168,4 +169,24 @@ test('si ninguna fuente tiene ficha, se responde lista vacía', async (t) => {
     baseUrl: 'https://addon.example.com'
   });
   assert.deepEqual(streams, []);
+});
+
+test('con ONLY_HLS solo quedan las listas .m3u8', async (t) => {
+  pageCache.clear();
+  const stub = installFetchStub(routes());
+  t.after(() => stub.restore());
+
+  const previous = config.onlyHls;
+  config.onlyHls = true;
+  t.after(() => { config.onlyHls = previous; });
+
+  const { streams } = await collectStreams({
+    type: 'movie',
+    id: 'tt0816692',
+    baseUrl: 'https://addon.example.com'
+  });
+
+  assert.ok(streams.length >= 3);
+  assert.ok(streams.every((stream) => /\.m3u8(\?|#|$)/i.test(mediaOf(stream.url))), 'solo HLS');
+  assert.equal(streams.some((stream) => mediaOf(stream.url).endsWith('.mp4')), false);
 });

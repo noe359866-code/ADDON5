@@ -23,13 +23,35 @@ título, la otra sigue respondiendo. Cada stream indica de dónde viene
 
 ## Qué hace
 
-1. **IMDb → título.** Stremio solo manda el ID (`tt0111161`,
-   `tt0944947:1:2`); el nombre y el año se resuelven con Cinemeta.
-2. **Búsqueda en las dos webs.** Se busca por título (el de Cinemeta y el
-   original), se puntúan los resultados por parecido —incluidos títulos
-   traducidos, «Interestelar» ↔ «Interstellar»— y año, y se descarta lo que no
-   coincide: nunca se devuelve «otra película» por error. Las series se buscan
-   con temporada y episodio exactos.
+0. **Cero catálogo.** El manifest declara `resources: ["stream"]` y
+   `catalogs: []`: no hay filas en Descubrir, no hay fichas y no hay
+   metadatos. Este addon **solo entrega HLS/MP4 reproducibles**; si un título
+   no da ningún servidor con video, responde `{ streams: [] }` en vez de
+   inventar entradas (`ALLOW_EXTERNAL_FALLBACK=true` recupera las entradas
+   «abrir en el navegador», y `ONLY_HLS=true` deja solo listas `.m3u8`).
+1. **ID → nombre (el resolvedor).** Stremio solo manda el ID
+   (`tt0944947:2:1`, `tmdb:1399:1:3`). Como Gnula y GnulaHD son webs en
+   español que buscan **por nombre**, el ID se traduce a una lista de títulos
+   ordenada para el sitio:
+
+   | Fuente | Qué aporta | Clave |
+   | --- | --- | --- |
+   | **TMDB** `/find` | el título **en español** («Interestelar») | `TMDB_API_KEY` (opcional) |
+   | **Cinemeta** | nombre, título original y año | no |
+   | **IMDb** (sugerencias) | respaldo si Cinemeta no responde | no |
+
+   Se piden Cinemeta y TMDB **a la vez** y el resultado se cachea 24 h. Sin
+   clave de TMDB todo sigue funcionando con Cinemeta; con clave, además se
+   pueden instalar IDs `tmdb:…` (el manifest anuncia `idPrefixes: ["tt",
+   "tmdb"]` solo en ese caso). Si ninguna fuente nombra el ID, el addon
+   responde vacío en vez de buscar a ciegas.
+2. **Búsqueda en las dos webs.** Se prueban como máximo dos consultas por web:
+   los títulos completos (español y original) y, si no hay resultados, variantes
+   (`Spider-Man: No Way Home` → `Spider-Man`, `The Batman` → `Batman`, títulos
+   largos recortados). Los resultados se puntúan por parecido —bigramas, así
+   «Interestelar» gana a «La ciencia de Interstellar»— y por año, y se descarta
+   lo que no coincide: nunca se devuelve «otra película» por error. Las series
+   se buscan con temporada y episodio exactos.
 3. **Lectura de la ficha.** En Gnula, cada pestaña (`#tab1`, `#tab2`…) lleva un
    reproductor y el idioma sale de «opción N, Latino, HD». En GnulaHD, los
    reproductores vienen del JSON cifrado de su API, que ya trae la etiqueta de
@@ -95,6 +117,10 @@ Todo es opcional; los valores por defecto están en `.env.example`.
 | `PUBLIC_BASE_URL` | — | fuerza el dominio de los enlaces `/proxy` |
 | `GNULA_BASE_URL` | `https://www2.gnula.one` | catálogo de Gnula (si rota el dominio) |
 | `SERIES_BASE_URL` | `https://ver.verteleseriesonline.com` | sitio de series de Gnula |
+| `TMDB_API_KEY` | — | opcional: título en español y IDs `tmdb:…` |
+| `TMDB_LANGUAGE` | `es-MX` | idioma en que se piden los títulos a TMDB |
+| `ONLY_HLS` | `false` | `true` descarta los MP4 y deja solo `.m3u8` |
+| `ALLOW_EXTERNAL_FALLBACK` | `false` | `true` añade entradas «abrir en el navegador» |
 | `GNULAHD_BASE_URL` | `https://ww3.gnulahd.nu` | hermano GnulaHD |
 | `THE_TUBE_TOKEN` | (incluido) | token de `the-tube-resolve.php` para los enlaces they.tube |
 | `STREAM_PROXY` | `auto` | `auto` / `always` / `never` |
@@ -114,7 +140,7 @@ index.js                 arranque (listen 0.0.0.0)
 src/server.js            rutas HTTP, CORS, /health, /selftest
 src/manifest.js          manifest de Stremio
 src/addon.js             petición → título → ficha → streams
-src/cinemeta.js          IMDb → título/año
+src/titles.js            ID → títulos con los que buscar (TMDB/Cinemeta/IMDb)
 src/sources.js           las dos webs: Gnula y GnulaHD
 src/gnula.js             búsqueda, fichas, pestañas, idiomas
 src/gnulahd.js           /ver/<slug>/, API gnrd cifrada, episodios, they.tube
@@ -133,7 +159,7 @@ test/                    pruebas con fixtures (sin salir a internet)
 npm test
 ```
 
-65 pruebas con `node:test` y HTML de ejemplo que imita el marcado real de las
+76 pruebas con `node:test` y HTML de ejemplo que imita el marcado real de las
 dos webs, de los reproductores y de las listas HLS (incluido el payload
 cifrado de GnulaHD). Ninguna prueba sale a internet:
 `test/helpers/stub-fetch.js` sustituye `fetch` por fixtures.
@@ -146,9 +172,10 @@ cifrado de GnulaHD). Ninguna prueba sale a internet:
    dice qué ficha encontró cada web y cuántos reproductores tiene, y
    `trace.resolved` muestra, reproductor por reproductor, si entregó video.
 3. `trace.page` presente significa que la ficha existe, pero los reproductores
-   bloquean al servidor (Cloudflare, captcha) o cambiaron su HTML. En ese caso
-   el addon devuelve entradas «abrir reproductor / abrir la ficha en el
-   navegador» para que el título siga siendo accesible.
+   bloquean al servidor (Cloudflare, captcha) o cambiaron su HTML. Con
+   `ALLOW_EXTERNAL_FALLBACK=true` el addon devuelve además entradas «abrir
+   reproductor / abrir la ficha en el navegador». Revisa `trace.meta.titles`:
+   son los nombres que se buscaron, y `trace.meta.sources` de dónde salieron.
 4. Los dominios de Gnula, GnulaHD y de los reproductores cambian a menudo: si
    una búsqueda deja de responder, ajusta `GNULA_BASE_URL`,
    `SERIES_BASE_URL` o `GNULAHD_BASE_URL`; la otra fuente sigue funcionando.

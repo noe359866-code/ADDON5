@@ -19,8 +19,10 @@ import { config } from './config.js';
 import { request, safeDecodeEntities } from './http.js';
 import { pageCache } from './cache.js';
 import {
+  ARTICLES,
   compact,
   extractYear,
+  normalize,
   slugify,
   stripTags,
   titleSimilarity
@@ -503,19 +505,46 @@ export function contentRegion(html) {
   return region;
 }
 
+/**
+ * Búsquedas que se van a lanzar en el sitio, de mejor a peor:
+ * primero los títulos completos (español y original), y solo después las
+ * variantes —sin subtítulo tras «:», sin artículo inicial y en pocas
+ * palabras— para los casos en que el buscador del sitio no encuentra la ficha
+ * con el nombre largo. Nunca devuelve más de 4 para no gastar el presupuesto.
+ */
 export function searchTerms(titles) {
-  const terms = [];
+  const full = [];
+  const variants = [];
   const seen = new Set();
-  const push = (value) => {
+
+  const push = (list, value) => {
     const clean = String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
-    if (!clean) return;
+    if (clean.length < 2) return;
     const key = compact(clean);
     if (!key || seen.has(key)) return;
     seen.add(key);
-    terms.push(clean);
+    list.push(clean);
   };
-  for (const title of titles) push(title);
-  return terms;
+
+  for (const title of titles) push(full, title);
+
+  for (const title of titles) {
+    const value = String(title == null ? '' : title);
+    // «Spider-Man: No Way Home» → «Spider-Man»
+    const beforeColon = value.split(/\s*[:–—]\s+|\s+-\s+/)[0];
+    if (beforeColon && beforeColon.length >= 4) push(variants, beforeColon);
+
+    // «The Batman» → «Batman»
+    const words = value.trim().split(/\s+/);
+    if (words.length > 1 && ARTICLES.has(normalize(words[0]))) {
+      push(variants, words.slice(1).join(' '));
+    }
+
+    // Títulos muy largos: las 4 primeras palabras suelen bastar.
+    if (words.length > 5) push(variants, words.slice(0, 4).join(' '));
+  }
+
+  return [...full, ...variants].slice(0, 4);
 }
 
 async function searchSite(site, term, ctx, section = 'movie') {

@@ -68,6 +68,17 @@ export const config = {
   /** Metadatos IMDb → título/año (público, sin clave). */
   cinemetaBaseUrl: urlEnv('CINEMETA_BASE_URL', 'https://v3-cinemeta.strem.io'),
 
+  /**
+   * TMDB: opcional. Con clave añade el título en español (el que usan las
+   * webs de destino) y permite IDs `tmdb:…`. Sin clave se usa solo Cinemeta.
+   */
+  tmdbApiKey: (process.env.TMDB_API_KEY || '').trim(),
+  tmdbBaseUrl: urlEnv('TMDB_BASE_URL', 'https://api.themoviedb.org/3'),
+  tmdbLanguage: (process.env.TMDB_LANGUAGE || '').trim() || 'es-MX',
+
+  /** Buscador público de IMDb, respaldo si Cinemeta no responde. */
+  imdbSuggestionBaseUrl: urlEnv('IMDB_SUGGESTION_BASE_URL', 'https://v2.sg.media-imdb.com/suggestion/t'),
+
   userAgent: (process.env.USER_AGENT || '').trim() || DEFAULT_USER_AGENT,
 
   /** Presupuesto total de una petición de Stremio. */
@@ -98,6 +109,19 @@ export const config = {
    *   never  → nunca (se devuelve la URL directa + proxyHeaders)
    */
   streamProxy: proxyModeEnv(),
+
+  /**
+   * true: descarta todo lo que no sea HLS (.m3u8). Por defecto se aceptan
+   * también MP4 directos, que Stremio reproduce igual.
+   */
+  onlyHls: boolEnv('ONLY_HLS', false),
+
+  /**
+   * false (defecto): el addon solo devuelve streams reproducibles (HLS/MP4).
+   * Si ningún reproductor entrega video, responde `{ streams: [] }`.
+   * true: añade entradas «abrir en el navegador» cuando no hay video directo.
+   */
+  allowExternalFallback: boolEnv('ALLOW_EXTERNAL_FALLBACK', false),
 
   /** Log detallado por consola. */
   debug: boolEnv('DEBUG', false),

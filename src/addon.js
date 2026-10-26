@@ -15,7 +15,7 @@
 import { config } from './config.js';
 import { Deadline, mapLimit } from './http.js';
 import { mediaCache } from './cache.js';
-import { lookupTitle } from './cinemeta.js';
+import { lookupTitle } from './titles.js';
 import { findEpisode, findMovie, hostLabel, isHttpUrl, selectEmbedsForResolution } from './gnula.js';
 import { resolveEmbed } from './players/index.js';
 import { isMediaUrl } from './players/shared.js';
@@ -25,7 +25,11 @@ import { buildExternalStream, buildStream, dedupeStreams } from './streams.js';
 const SUPPORTED_TYPES = new Set(['movie', 'series']);
 
 export function isSupportedRequest(type, id) {
-  return SUPPORTED_TYPES.has(type) && /^tt\d{5,}(:\d+:\d+)?$/.test(String(id || ''));
+  if (!SUPPORTED_TYPES.has(type)) return false;
+  const value = String(id || '');
+  // Los IDs de TMDB solo se aceptan si hay clave para traducirlos.
+  if (config.tmdbApiKey && /^tmdb:\d+(:\d+:\d+)?$/i.test(value)) return true;
+  return /^tt\d{5,}(:\d+:\d+)?$/.test(value);
 }
 
 async function resolveOneEmbed(embed, deadline, resolve = resolveEmbed) {
@@ -132,7 +136,11 @@ export async function collectStreams({
   }
   trace.meta = info;
 
-  const titles = [...new Set([info.name, info.originalName].filter(Boolean))];
+  // El resolvedor ya devuelve los nombres listos para buscar: el del sitio
+  // (español, si TMDB está configurado) y el original.
+  const titles = [...new Set((info.titles && info.titles.length
+    ? info.titles
+    : [info.name, info.originalName]).filter(Boolean))];
   const wanted = { titles, year: info.year };
 
   // Todas las fuentes a la vez: la más rápida no espera a la más lenta.
@@ -181,6 +189,7 @@ export async function collectStreams({
       embeds: 0
     };
     trace.errors.push('las fichas no expusieron reproductores');
+    if (!config.allowExternalFallback) return { streams: [], trace };
     const fallbacks = pages.map((entry) => buildExternalStream({
       pageUrl: entry.page.pageUrl,
       label: entry.source.label
@@ -266,6 +275,8 @@ export async function collectStreams({
   const built = [];
   for (const { embed, media, referer } of resolved) {
     if (seenMedia.has(media)) continue;
+    // ONLY_HLS=true deja fuera los MP4 directos: solo listas HLS.
+    if (config.onlyHls && !/\.m3u8(\?|#|$)/i.test(media)) continue;
     seenMedia.add(media);
     built.push(buildStream({
       baseUrl,
@@ -281,7 +292,10 @@ export async function collectStreams({
   const streams = dedupeStreams(built);
 
   if (!streams.length) {
-    // Sin video resuelto: al menos se ofrece abrir el reproductor o la ficha.
+    trace.errors.push('ningún reproductor devolvió una URL de video');
+    // Solo stream reproducibles: si nada dio video, se responde vacío.
+    if (!config.allowExternalFallback) return { streams: [], trace };
+
     const fallbacks = all.slice(0, 3)
       .map((embed) => buildExternalStream({
         embedUrl: embed.url,
@@ -295,7 +309,6 @@ export async function collectStreams({
         label: entry.source.label
       })));
     }
-    trace.errors.push('ningún reproductor devolvió una URL de video');
     return { streams: dedupeStreams(fallbacks), trace };
   }
 

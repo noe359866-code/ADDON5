@@ -25,5 +25,13 @@ export const manifest = {
 };
 
 export function getManifest() {
-  return { ...manifest, resources: [...manifest.resources], types: [...manifest.types] };
+  const idPrefixes = [...manifest.idPrefixes];
+  // Sin clave de TMDB no se pueden traducir esos IDs: no se anuncian.
+  if (config.tmdbApiKey && !idPrefixes.includes('tmdb')) idPrefixes.push('tmdb');
+  return {
+    ...manifest,
+    resources: [...manifest.resources],
+    types: [...manifest.types],
+    idPrefixes
+  };
 }

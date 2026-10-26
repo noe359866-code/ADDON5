@@ -11,6 +11,7 @@ import {
   parseSearchResults,
   rankCandidates,
   scoreCandidate,
+  searchTerms,
   selectEmbedsForResolution
 } from '../src/gnula.js';
 
@@ -155,4 +156,25 @@ test('la ficha traducida se elige también por página directa', () => {
   ];
   const ranked = rankCandidates(cards, ['Interstellar'], '2014');
   assert.equal(ranked[0].slug, 'interestelar');
+});
+
+test('searchTerms prueba los títulos completos y luego variantes cortas', () => {
+  // Dos títulos distintos: primero los dos completos.
+  assert.deepEqual(
+    searchTerms(['Interestelar', 'Interstellar']),
+    ['Interestelar', 'Interstellar']
+  );
+
+  // Un subtítulo tras «:» se prueba como variante.
+  assert.deepEqual(
+    searchTerms(['Spider-Man: No Way Home']),
+    ['Spider-Man: No Way Home', 'Spider-Man']
+  );
+
+  // El artículo inicial se puede caer y los títulos largos se acortan.
+  const terms = searchTerms(['The Lord of the Rings: The Fellowship of the Ring']);
+  assert.equal(terms[0], 'The Lord of the Rings: The Fellowship of the Ring');
+  assert.ok(terms.includes('The Lord of the Rings'));
+  assert.ok(terms.includes('Lord of the Rings: The Fellowship of the Ring'));
+  assert.ok(terms.length <= 4);
 });

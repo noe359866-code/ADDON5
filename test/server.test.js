@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createServerInstance } from '../src/server.js';
 import { mediaCache, pageCache } from '../src/cache.js';
+import { config } from '../src/config.js';
 import { decodeParam, encodeParam } from '../src/streams.js';
 import { installFetchStub, jsonRoute } from './helpers/stub-fetch.js';
 
@@ -190,7 +191,7 @@ test('sin resultados de Gnula se responde 200 con streams vacíos', async (t) =>
   });
 });
 
-test('una ficha sin reproductores ofrece abrirla en el navegador', async (t) => {
+test('sin video resuelto se responde vacío: solo se entregan streams', async (t) => {
   pageCache.clear();
   mediaCache.clear();
 
@@ -200,6 +201,31 @@ test('una ficha sin reproductores ofrece abrirla en el navegador', async (t) => 
     'https://www2.gnula.one/movie/interstellar/': '<div id="content"><h1>Interstellar</h1><p>sin reproductores</p></div>'
   });
   t.after(() => stub.restore());
+
+  await withServer(async (base) => {
+    const response = await stub.fetch(`${base}/stream/movie/tt0816692.json`);
+    assert.equal(response.status, 200);
+
+    // Por defecto no se inventan entradas: si no hay HLS/MP4, lista vacía.
+    const { streams } = await response.json();
+    assert.deepEqual(streams, []);
+  });
+});
+
+test('con ALLOW_EXTERNAL_FALLBACK se ofrece abrir la ficha en el navegador', async (t) => {
+  pageCache.clear();
+  mediaCache.clear();
+
+  const stub = installFetchStub({
+    'https://v3-cinemeta.strem.io/meta/movie/tt0816692.json': jsonRoute(JSON.parse(fixture('cinemeta-movie.json'))),
+    'https://www2.gnula.one/?s=': fixture('gnula-search.html'),
+    'https://www2.gnula.one/movie/interstellar/': '<div id="content"><h1>Interstellar</h1><p>sin reproductores</p></div>'
+  });
+  t.after(() => stub.restore());
+
+  const previous = config.allowExternalFallback;
+  config.allowExternalFallback = true;
+  t.after(() => { config.allowExternalFallback = previous; });
 
   await withServer(async (base) => {
     const response = await stub.fetch(`${base}/stream/movie/tt0816692.json`);
