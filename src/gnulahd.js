@@ -318,8 +318,8 @@ export function parseGnrdConfig(html) {
 export function parseResolvers(html) {
   const vidaraPath = firstMatch(html, /VD_RESOLVE\s*=\s*["']([^"']+)/i) || '/panel/vidara-resolve.php';
   const vidaraToken = firstMatch(html, /VD_AUTH\s*=\s*["']&?t=([^"']+)/i);
-  const tubePath = firstMatch(html, /(?<![A-Za-z])RESOLVE\s*=\s*["']([^"']+)/i);
-  const tubeToken = firstMatch(html, /(?<![A-Za-z])AUTH\s*=\s*["']&?t=([^"']+)/i);
+  const tubePath = firstMatch(html, /(?<![A-Za-z_])RESOLVE\s*=\s*["']([^"']+)/i);
+  const tubeToken = firstMatch(html, /(?<![A-Za-z_])AUTH\s*=\s*["']&?t=([^"']+)/i);
 
   return {
     vidara: {
@@ -715,15 +715,30 @@ export async function findEpisode({ titles, year, season, episode }, ctx = {}) {
       continue;
     }
 
-    const episodePage = await fetchPage(wanted.url, { deadline: ctx.deadline });
-    if (!episodePage.ok) continue;
-
-    const embeds = await readPlayers(episodePage.text, episodePage.url || wanted.url, ctx);
+    // La lista de episodios ya trae el id y el token del reproductor: se pide
+    // la API directamente y se ahorra abrir la página del capítulo.
+    const seriesConfig = parsePlayerConfig(seriesPage.text);
+    let episodePage = null;
+    let embeds = [];
+    if (wanted.playerId && wanted.playerToken && seriesConfig) {
+      embeds = await fetchPlayers(
+        { pid: wanted.playerId, tok: wanted.playerToken, key: seriesConfig.key },
+        seriesPage.url || candidate.url,
+        ctx,
+        parseResolvers(seriesPage.text)
+      );
+    }
+    if (!embeds.length) {
+      episodePage = await fetchPage(wanted.url, { deadline: ctx.deadline });
+      if (!episodePage.ok) continue;
+      embeds = await readPlayers(episodePage.text, episodePage.url || wanted.url, ctx);
+    }
+    const episodeUrl = (episodePage && episodePage.url) || wanted.url;
     const result = {
-      pageUrl: episodePage.url || wanted.url,
+      pageUrl: episodeUrl,
       title: `${parseDetailTitle(seriesPage.text) || candidate.title || titles[0]} ${season}x${String(episode).padStart(2, '0')}`,
       year: parseQuickFacts(seriesPage.text).año || candidate.year || year || '',
-      quality: parseQuality(episodePage.text),
+      quality: parseQuality((episodePage && episodePage.text) || seriesPage.text),
       embeds
     };
     if (!embeds.length) {

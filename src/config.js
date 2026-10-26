@@ -106,6 +106,8 @@ export const config = {
    */
   wikipediaTitles: (process.env.WIKIPEDIA_TITLES || 'true').trim().toLowerCase() !== 'false',
   wikipediaBaseUrl: urlEnv('WIKIPEDIA_BASE_URL', 'https://es.wikipedia.org'),
+  /** Wikidata: traduce el ID de IMDb al artículo exacto (sin ambigüedad). */
+  wikidataBaseUrl: urlEnv('WIKIDATA_BASE_URL', 'https://www.wikidata.org'),
 
   /** Buscador público de IMDb, respaldo si Cinemeta no responde. */
   imdbSuggestionBaseUrl: urlEnv('IMDB_SUGGESTION_BASE_URL', 'https://v2.sg.media-imdb.com/suggestion/t'),

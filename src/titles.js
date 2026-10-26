@@ -7,7 +7,7 @@
  *
  *   1. Cinemeta  (IMDb → name / originalName / año)   sin clave
  *   2. TMDB      (→ título en español, vía /find)      con TMDB_API_KEY
- *   3. Wikipedia es (→ «Interestelar» desde Interstellar) sin clave
+ *   3. Wikidata+Wikipedia es (→ «Interestelar» desde Interstellar) sin clave
  *   4. IMDb      (sugerencias, si Cinemeta no responde) sin clave
  *
  * Cuantos más nombres se prueben, más fácil es que el buscador del sitio
@@ -195,29 +195,42 @@ function cutFileValue(value) {
 }
 
 /**
- * Títulos en español que declara la ficha de Wikipedia.
- * Se leen los campos `título`, `nombre` y sus variantes por país, nunca
+ * Títulos en español que declara la ficha de Wikipedia:
+ *
+ *   | título = ''Interestelar'' ([[Hispanoamérica]])
+ *   | título = ''''Cadena perpetua'''' ([[España]])''''Sueño de fuga'''' (resto de [[Hispanoamérica]])
+ *
+ * Cada título va entre comillas simples de Wiki; cuando dos van seguidos las
+ * comillas se pegan, así que se parte por rachas de comillas y se descartan
+ * los trozos que solo eran la aclaración del país. Nunca se lee
  * `título original` (ese es el inglés y ya lo da Cinemeta).
  */
 export function parseSpanishTitlesFromWikitext(wikitext) {
   const text = String(wikitext == null ? '' : wikitext);
   const titles = [];
   const seen = new Set();
+
+  const push = (value) => {
+    const title = cleanWikiName(value);
+    if (!title || title.length > 90) return;
+    const key = compact(title);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    titles.push(title);
+  };
+
   const re = /\|\s*((?:t[ií]tulo|nombre)[^=|\n]{0,32})\s*=\s*([^\n]*)/gi;
   let match;
 
   while ((match = re.exec(text))) {
     if (/original/i.test(match[1])) continue;
     const value = cutFileValue(match[2]);
-    for (const piece of value.split(/<br\s*\/?>|\n/i)) {
-      const quoted = [...piece.matchAll(/''+(.+?)''+/g)].map((item) => item[1]);
-      for (const candidate of (quoted.length ? quoted : [piece])) {
-        const title = cleanWikiName(candidate);
-        if (!title || title.length > 90) continue;
-        const key = compact(title);
-        if (!key || seen.has(key)) continue;
-        seen.add(key);
-        titles.push(title);
+    for (const line of value.split(/<br\s*\/?>|\n/i)) {
+      const pieces = /'{2,}/.test(line) ? line.split(/'{2,}/) : [line];
+      for (const piece of pieces) {
+        // «([[España]])», «(resto de [[Hispanoamérica]])»…: solo el país.
+        if (/^\s*\(/.test(piece)) continue;
+        push(piece);
       }
     }
   }
@@ -236,25 +249,42 @@ async function wikipediaWikitext(page, deadline) {
 }
 
 /**
- * Títulos en español según Wikipedia. Primero se prueba el nombre exacto (la
- * mayoría de películas conservan el título inglés como artículo) y, si no
- * existe, el buscador interno.
+ * Artículo de la Wikipedia en español del título exacto: IMDb → Wikidata
+ * (`haswbstatement:P345`) → enlace `eswiki`. Sin ambigüedad: buscar «Loki» a
+ * secas devuelve el artículo del dios nórdico, no el de la serie.
  */
-async function fromWikipedia(name, deadline) {
-  if (!config.wikipediaTitles || !name) return null;
+async function wikipediaArticleFor(imdbId, deadline) {
+  const base = config.wikidataBaseUrl.replace(/\/+$/, '');
+  const headers = { Accept: 'application/json' };
 
-  let wikitext = await wikipediaWikitext(name, deadline).catch(() => '');
-  if (!wikitext) {
-    const base = config.wikipediaBaseUrl.replace(/\/+$/, '');
-    const url = `${base}/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(name)}`
-      + '&srlimit=1&format=json&formatversion=2';
-    const found = await requestJson(url, { deadline, headers: { Accept: 'application/json' } }).catch(() => null);
-    const hits = found && found.json && found.json.query && found.json.query.search;
-    const title = Array.isArray(hits) && hits[0] ? clean(hits[0].title) : '';
-    if (!title) return null;
-    wikitext = await wikipediaWikitext(title, deadline).catch(() => '');
-  }
+  const searchUrl = `${base}/w/api.php?action=query&list=search`
+    + `&srsearch=${encodeURIComponent(`haswbstatement:P345=${imdbId}`)}`
+    + '&srlimit=1&format=json&formatversion=2';
+  const found = await requestJson(searchUrl, { deadline, headers }).catch(() => null);
+  const hits = found && found.json && found.json.query && found.json.query.search;
+  const qid = Array.isArray(hits) && hits[0] ? clean(hits[0].title) : '';
+  if (!/^Q\d+$/.test(qid)) return null;
 
+  const entityUrl = `${base}/w/api.php?action=wbgetentities&ids=${qid}`
+    + '&props=sitelinks&sitefilter=eswiki&format=json&formatversion=2';
+  const entity = await requestJson(entityUrl, { deadline, headers }).catch(() => null);
+  const links = entity && entity.json && entity.json.entities && entity.json.entities[qid]
+    && entity.json.entities[qid].sitelinks;
+  const title = links && links.eswiki && links.eswiki.title;
+  return typeof title === 'string' && title ? title : null;
+}
+
+/**
+ * Títulos en español según Wikipedia. Solo se usa con el artículo que
+ * corresponde al ID de IMDb pedido, así que nunca cae en un homónimo.
+ */
+async function fromWikipedia(imdbId, deadline) {
+  if (!config.wikipediaTitles || !imdbId) return null;
+
+  const article = await wikipediaArticleFor(imdbId, deadline).catch(() => null);
+  if (!article) return null;
+
+  const wikitext = await wikipediaWikitext(article, deadline).catch(() => '');
   const titles = parseSpanishTitlesFromWikitext(wikitext);
   return titles.length ? titles : null;
 }
@@ -318,7 +348,7 @@ export async function lookupTitle(type, rawId, { deadline } = {}) {
 
     // Wikipedia traduce «Interstellar» → «Interestelar», que es el nombre con
     // el que las webs tienen la ficha. Necesita el nombre, así que va después.
-    wikipedia = await fromWikipedia(imdb && imdb.name, deadline).catch(() => null);
+    wikipedia = await fromWikipedia(parsed.imdbId, deadline).catch(() => null);
     if (wikipedia) sources.push('wikipedia');
 
     if (!imdb) {
