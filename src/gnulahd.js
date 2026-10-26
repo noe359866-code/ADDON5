@@ -573,7 +573,10 @@ export function cardsFromRest(list, { site = BASE() } = {}) {
 }
 
 async function search(term, ctx) {
-  const api = `${BASE()}/wp-json/wp/v2/search?search=${encodeURIComponent(term)}&per_page=20`;
+  // El buscador del sitio se cuelga con mayúsculas (`?s=Interstellar` no
+  // responde en 60 s) y contesta en segundos en minúsculas.
+  const query = String(term || '').toLowerCase();
+  const api = `${BASE()}/wp-json/wp/v2/search?search=${encodeURIComponent(query)}&per_page=20`;
   const result = await request(api, {
     deadline: ctx.deadline,
     headers: { Referer: `${BASE()}/`, Accept: 'application/json' }
@@ -588,7 +591,7 @@ async function search(term, ctx) {
     }
   }
 
-  const html = await request(`${BASE()}/?s=${encodeURIComponent(term)}`, {
+  const html = await request(`${BASE()}/?s=${encodeURIComponent(query)}`, {
     deadline: ctx.deadline,
     headers: { Referer: `${BASE()}/` }
   });
@@ -599,7 +602,7 @@ async function candidatesFor(titles, year, ctx) {
   // Dos caminos a la vez y gana el primero que sirva:
   //  · slug directo, /ver/<título>/ — 1-2 s cuando el slug coincide;
   //  · búsqueda REST — ~12 s, pero resuelve los títulos que no son el slug.
-  const searchable = searchTerms(titles).slice(0, 2);
+  const searchable = searchTerms(titles).slice(0, 3);
   const cardsPromise = (async () => {
     const cards = [];
     const seen = new Set();

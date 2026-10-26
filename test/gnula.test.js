@@ -177,12 +177,17 @@ test('un título traducido gana a uno que solo lo contiene', () => {
 test('searchTerms prueba los títulos completos y luego variantes cortas', () => {
   assert.deepEqual(
     searchTerms(['Interestelar', 'Interstellar']),
-    ['Interestelar', 'Interstellar']
+    ['Interestelar', 'Interstellar', 'intere', 'inters']
   );
+
+  // El buscador de las webs va por LIKE: «Interstellar» no encuentra
+  // «Interestelar», pero el principio de la palabra sí. Va al final.
+  assert.deepEqual(searchTerms(['Interstellar']), ['Interstellar', 'inters']);
+  assert.deepEqual(searchTerms(['Loki']), ['Loki']);
 
   assert.deepEqual(
     searchTerms(['Spider-Man: No Way Home']),
-    ['Spider-Man: No Way Home', 'Spider-Man']
+    ['Spider-Man: No Way Home', 'Spider-Man', 'spider']
   );
 
   const terms = searchTerms(['The Lord of the Rings: The Fellowship of the Ring']);

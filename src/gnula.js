@@ -670,6 +670,16 @@ export function searchTerms(titles) {
     if (words.length > 5) push(variants, words.slice(0, 4).join(' '));
   }
 
+  // Último recurso: el principio de la palabra en minúsculas. El buscador de
+  // las webs es un LIKE por título («Interstellar» no encuentra
+  // «Interestelar», pero «inters» sí). El parecido se comprueba después, así
+  // que una búsqueda ancha no puede colar una película que no es.
+  for (const title of titles) {
+    const word = String(title == null ? '' : title).trim();
+    if (word.length < 7) continue;
+    push(variants, word.slice(0, 6).toLowerCase());
+  }
+
   return [...full, ...variants].slice(0, 4);
 }
 
@@ -700,7 +710,7 @@ async function fetchPage(url, ctx) {
  */
 export async function findMovie({ titles, year }, ctx = {}) {
   const deadline = ctx.deadline;
-  const terms = searchTerms(titles).slice(0, 2);
+  const terms = searchTerms(titles).slice(0, 3);
   const cacheKey = `gnula:movie:${compact(titles[0] || '')}:${year || ''}`;
 
   const cached = pageCache.get(cacheKey);
@@ -781,7 +791,7 @@ export async function findEpisode({ titles, year, season, episode }, ctx = {}) {
   if (cached) return cached;
 
   const site = config.seriesBaseUrl;
-  const terms = searchTerms(titles).slice(0, 2);
+  const terms = searchTerms(titles).slice(0, 3);
   const candidates = [];
   const seen = new Set();
   const add = (list) => {

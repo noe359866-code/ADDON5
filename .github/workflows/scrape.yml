@@ -82,7 +82,7 @@ jobs:
 
       - name: Sondeo de reproductores
         run: |
-          node _scrape/probe3.mjs 2>&1 | tee -a _scrape/index.txt
+          true
 
       - name: Selftest real del addon
         run: |
