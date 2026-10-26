@@ -24,14 +24,24 @@ título, la otra sigue respondiendo. Cada stream indica de dónde viene
 ### Cómo se leen las webs (comprobado en octubre de 2026)
 
 - **Gnula (películas)** — la ficha trae `<div id="tab1">…` y un iframe por
-  pestaña; el idioma está en el texto `opción 1, Latino, HD`. Los servidores
-  reales hoy son `uqload.com`, `viewsb.com` y `jawcloud.co`.
+  pestaña; el idioma está en el texto `opción 1, Latino, HD`. El buscador sí
+  encuentra los títulos **en español** (`?s=Interestelar`), pero devuelve el
+  listado del tema si se le pasa el título inglés. Los servidores que anuncia
+  hoy son `uqload.com`, `viewsb.com` y `jawcloud.co`: en la auditoría de
+  octubre de 2026 **solo uqload sigue vivo**, y contesta una página de 38
+  bytes a cualquier cliente que no sea un navegador de verdad (`viewsb.com` no
+  resuelve y `jawcloud.co` da 404). Por eso esta fuente a veces no aporta
+  ningún stream y GnulaHD es la que sostiene la respuesta.
 - **Gnula (series)** — la plantilla cambió: ya no hay iframes. Cada idioma es
   un `<div class="servers" data-lang="lat|cas|sub">` lleno de
   `<button class="server js-server" data-src="…">`. El buscador del sitio
   contesta **403 con un desafío de Cloudflare**, así que se va directo a
   `/serie/<slug>/` y de ahí a la URL del episodio.
-- **GnulaHD** — la ficha declara `_gnrdPid` y `_gnrdTok` y llama a
+- **GnulaHD** — su buscador `/?s=` **se cuelga** (más de 60 s medidos), así que
+  no se usa: primero se prueba el slug directo `/ver/<título>/` (1-2 s, y
+  acierta casi siempre porque el slug es el título en español) y, si falla, la
+  API REST de WordPress `/wp-json/wp/v2/search?search=…` (~12 s). La ficha
+  declara `_gnrdPid` y `_gnrdTok` y llama a
   `/wp-json/gnrd/v1/player?id=…&t=…`. La respuesta es `{p:"<base64>"}`
   cifrada con XOR contra una clave de 4 bytes que está en la propia página,
   dentro de `gnrdUnpack` (`k=[103,78,55,100]` = `"gN7d"`). Se descifra en
@@ -59,15 +69,20 @@ título, la otra sigue respondiendo. Cada stream indica de dónde viene
 
    | Fuente | Qué aporta | Clave |
    | --- | --- | --- |
-   | **TMDB** `/find` | el título **en español** («Interestelar») | `TMDB_API_KEY` (opcional) |
+   | **Wikidata + Wikipedia** | artículo exacto desde el ID de IMDb y de su ficha el título **latino** («Interestelar») | no |
+   | **TMDB** `/find` | el título en español según TMDB | `TMDB_API_KEY` (opcional) |
    | **Cinemeta** | nombre, título original y año | no |
    | **IMDb** (sugerencias) | respaldo si Cinemeta no responde | no |
 
-   Se piden Cinemeta y TMDB **a la vez** y el resultado se cachea 24 h. Sin
-   clave de TMDB todo sigue funcionando con Cinemeta; con clave, además se
-   pueden instalar IDs `tmdb:…` (el manifest anuncia `idPrefixes: ["tt",
-   "tmdb"]` solo en ese caso). Si ninguna fuente nombra el ID, el addon
-   responde vacío en vez de buscar a ciegas.
+   Wikidata se consulta con `haswbstatement:P345=<imdb>` —así se llega al
+   artículo correcto y no a un homónimo: buscar «Loki» a secas devuelve el
+   dios nórdico— y de la ficha de Wikipedia se leen todas las variantes por
+   país (`Cadena perpetua` / `Sueños de libertad` / `Sueño de fuga`). Cinemeta
+   y TMDB se piden **a la vez**; Wikimedia solo si hay ID de IMDb. Todo se
+   cachea 24 h. Sin clave de TMDB el addon sigue dando el título en español
+   gracias a Wikipedia; con clave, además se pueden instalar IDs `tmdb:…` (el
+   manifest anuncia `idPrefixes: ["tt", "tmdb"]` solo en ese caso). Si ninguna
+   fuente nombra el ID, el addon responde vacío en vez de buscar a ciegas.
 2. **Búsqueda en las dos webs.** Se prueban como máximo dos consultas por web:
    los títulos completos (español y original) y, si no hay resultados, variantes
    (`Spider-Man: No Way Home` → `Spider-Man`, `The Batman` → `Batman`, títulos
@@ -156,6 +171,9 @@ Todo es opcional; los valores por defecto están en `.env.example`.
 | `PUBLIC_BASE_URL` | — | fuerza el dominio de los enlaces `/proxy` |
 | `GNULA_BASE_URL` | `https://www2.gnula.one` | catálogo de Gnula (si rota el dominio) |
 | `SERIES_BASE_URL` | `https://ver.verteleseriesonline.com` | sitio de series de Gnula |
+| `WIKIPEDIA_TITLES` | `true` | título latino vía Wikidata + Wikipedia (sin clave) |
+| `WIKIPEDIA_BASE_URL` | `https://es.wikipedia.org` | Wikipedia que se consulta |
+| `WIKIDATA_BASE_URL` | `https://www.wikidata.org` | Wikidata (IMDb → artículo) |
 | `TMDB_API_KEY` | — | opcional: título en español y IDs `tmdb:…` |
 | `TMDB_LANGUAGE` | `es-MX` | idioma en que se piden los títulos a TMDB |
 | `STREMIO_FORMATS` | `hls,mp4` | formatos que se entregan (`mkv`, `dash` son opt-in) |
