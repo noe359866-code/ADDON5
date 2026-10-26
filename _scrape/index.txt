@@ -141,3 +141,21 @@ selftest tt9140554 200
 stream mando 200
 stream loki 200
 stream interestelar 200
+200  259318  https://ww3.gnulahd.nu/ver/interestelar/
+https://uqload.com/embed-fqhl3m5h3zcn.html
+   fetch: undefined 38 B 1170 ms | resolve: 364 ms → NULL
+https://viewsb.com/e/beypa68rqj3t.html
+   fetch: null 0 B 305 ms | resolve: 265 ms → NULL
+https://jawcloud.co/embed-lww3ummjhnxl.html
+   fetch: null 0 B 347 ms | resolve: 235 ms → NULL
+https://voe.sx/e/rvnyarijf6gm
+   fetch: undefined 743 B 846 ms | resolve: 982 ms → NULL
+https://byse.sx/e/ltd6r245u81w
+   fetch: undefined 1605 B 1095 ms | resolve: 990 ms → NULL
+https://savefiles.com/e/j1zo9m2tgvcs
+   fetch: null 0 B 104 ms | resolve: 58 ms → NULL
+selftest tt0816692 200
+selftest tt9140554 200
+stream mando 200
+stream loki 200
+stream interestelar 200
