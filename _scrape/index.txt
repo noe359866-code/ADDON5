@@ -43,3 +43,16 @@ selftest tt0816692 200
 selftest tt9140554 200
 stream loki 200
 stream interestelar 200
+200  259318  https://ww3.gnulahd.nu/ver/interestelar/
+200  293289  https://ww3.gnulahd.nu/ver/el-encargado/
+200  251328  https://ww3.gnulahd.nu/el-encargado-4x07/
+200   46233 https://www2.gnula.one/?s=Interstellar |  | <!doctype html> <html lang="es"> <head> <meta charset="UTF-8"> <meta charset="UTF-8" /> <link rel="preconnect" href="htt
+200   46233 https://www2.gnula.one/?s=interstellar |  | <!doctype html> <html lang="es"> <head> <meta charset="UTF-8"> <meta charset="UTF-8" /> <link rel="preconnect" href="htt
+0       0 https://ww3.gnulahd.nu/?s=Interstellar | timeout tras 20000 ms | 
+200   94345 https://ww3.gnulahd.nu/?s=interstellar |  | <!DOCTYPE html> <html lang="es"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initia
+200   65924 https://www2.gnula.one/movie/interestelar/ |  | <!doctype html> <html lang="es"> <head> <meta charset="UTF-8"> <meta charset="UTF-8" /> <link rel="preconnect" href="htt
+200  258591 https://ww3.gnulahd.nu/ver/interestelar/ |  | <!DOCTYPE html> <html lang="es"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initia
+selftest tt0816692 200
+selftest tt9140554 200
+stream loki 200
+stream interestelar 200
