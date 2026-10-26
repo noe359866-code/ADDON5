@@ -1,4 +1,4 @@
-# nombre  url   — una por línea; al cambiar este archivo se relanza el scraping
+# nombre  url   (una por línea; al cambiar este archivo se relanza el scraping)
 gnula-home            https://www2.gnula.one/
 gnula-search          https://www2.gnula.one/?s=interestelar
 gnula-search-jk       https://www2.gnula.one/?s=jay+kelly
