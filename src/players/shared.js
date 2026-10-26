@@ -182,22 +182,26 @@ export async function fetchText(url, ctx = {}, referer = '') {
 /** Petición a la página de un reproductor. */
 export async function fetchPlayer(url, ctx = {}) {
   const own = `${safeOrigin(url)}/`;
-  const referer = ctx.referer || own;
-  const text = await fetchText(url, ctx, referer);
+  const first = ctx.referer || own;
 
-  // Algunos hosts (uqload) tienen protección anti-hotlink: con el Referer de
-  // la web de origen contestan una página de 38 bytes. Se reintenta como si el
-  // enlace se abriera a mano (Referer del propio host).
-  const short = !text || text.length < 512;
-  if (short && referer !== own && (!ctx.deadline || ctx.deadline.remaining() > 1500)) {
-    const retry = await fetchText(url, ctx, own);
-    if (retry && retry.length > (text ? text.length : 0)) {
-      return { text: retry, url, referer: own };
+  // Se prueba de más a menos: el Referer de la web de origen, el del propio
+  // host y ninguno. Hay hosts (uqload) que contestan una página de 38 bytes a
+  // cualquier petición con Referer, y otros que exigen el de la web.
+  const attempts = typeof ctx.fetchText === 'function'
+    ? [first]
+    : (first === own ? [own, ''] : [first, own, '']);
+
+  let best = null;
+  for (const referer of attempts) {
+    if (ctx.deadline && ctx.deadline.remaining() < 1200) break;
+    const text = await fetchText(url, ctx, referer);
+    if (text && (!best || text.length > best.text.length)) {
+      best = { text, url, referer: referer || own };
     }
+    if (best && best.text.length >= 512) break;
   }
 
-  if (!text) return null;
-  return { text, url, referer };
+  return best;
 }
 
 export function safeOrigin(url) {
