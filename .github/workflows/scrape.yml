@@ -80,6 +80,22 @@ jobs:
             done
           done
 
+      - name: Selftest real del addon
+        run: |
+          set -u
+          PORT=7311 node index.js > _scrape/server.log 2>&1 &
+          sleep 3
+          for id in 'tt0816692&type=movie' 'tt9140554&type=series'; do
+            name=$(echo "$id" | cut -d'&' -f1)
+            curl -s --max-time 90 "http://127.0.0.1:7311/selftest?id=$id" \
+              -o "_scrape/selftest-$name.json" -w "selftest $name %{http_code}\n" >> _scrape/index.txt
+          done
+          curl -s --max-time 120 'http://127.0.0.1:7311/stream/series/tt9140554:2:1.json' \
+            -o _scrape/stream-loki.json -w 'stream loki %{http_code}\n' >> _scrape/index.txt
+          curl -s --max-time 90 'http://127.0.0.1:7311/stream/movie/tt0816692.json' \
+            -o _scrape/stream-interestelar.json -w 'stream interestelar %{http_code}\n' >> _scrape/index.txt
+          kill %1 2>/dev/null || true
+
       - name: Publicar
         run: |
           git config user.name  'scrape-bot'

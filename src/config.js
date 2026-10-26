@@ -88,9 +88,6 @@ export const config = {
   /** Hermano de Gnula con otra plantilla: /ver/<slug>/ + API gnrd de reproductores. */
   gnulahdBaseUrl: urlEnv('GNULAHD_BASE_URL', 'https://ww3.gnulahd.nu'),
 
-  /** Token que pide /panel/the-tube-resolve.php para los enlaces they.tube. */
-  theTubeToken: (process.env.THE_TUBE_TOKEN || '').trim() || 'eece56848d3929ee78f5fe8e3a62de2d',
-
   /** Metadatos IMDb → título/año (público, sin clave). */
   cinemetaBaseUrl: urlEnv('CINEMETA_BASE_URL', 'https://v3-cinemeta.strem.io'),
 

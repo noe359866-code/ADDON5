@@ -21,7 +21,7 @@ import { Deadline, mapLimit } from './http.js';
 import { mediaCache } from './cache.js';
 import { lookupTitle } from './titles.js';
 import { findEpisode, findMovie, hostLabel, isHttpUrl, selectEmbedsForResolution } from './gnula.js';
-import { classifyMedia, formatLabel } from './formats.js';
+import { classifyMedia, formatLabel, isAllowedFormat } from './formats.js';
 import { resolveEmbed } from './players/index.js';
 import { isMediaUrl } from './players/shared.js';
 import { SOURCES } from './sources.js';
@@ -56,7 +56,17 @@ async function resolveOneEmbed(embed, deadline, resolve = resolveEmbed) {
 
   const referer = resolved.referer || embed.pageUrl;
   // ¿Lo puede abrir Stremio? Si no, es como si no se hubiera resuelto.
-  const verdict = await classifyMedia(resolved.media, { deadline: subDeadline, referer });
+  // El extractor puede saberlo antes que la URL (p. ej. un playlist servido
+  // por el propio sitio, sin extensión): en ese caso manda su veredicto.
+  const verdict = resolved.format
+    ? {
+      format: resolved.format,
+      compatible: isAllowedFormat(resolved.format),
+      reason: isAllowedFormat(resolved.format)
+        ? ''
+        : `formato ${resolved.format} no soportado por Stremio`
+    }
+    : await classifyMedia(resolved.media, { deadline: subDeadline, referer });
 
   const value = {
     media: resolved.media,
@@ -301,7 +311,7 @@ export async function collectStreams({
       media,
       referer,
       language: embed.language,
-      label: embed.kind === 'direct' ? 'Enlace directo' : hostLabel(embed.url),
+      label: embed.kind === 'direct' ? 'Enlace directo' : (embed.label || hostLabel(embed.url)),
       quality: embed.quality || '',
       source: embed.sourceLabel,
       format: formatLabel(format)

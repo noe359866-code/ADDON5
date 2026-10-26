@@ -3,15 +3,17 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { config } from '../src/config.js';
 import {
+  decodePlayerPayload,
   findEpisode,
   findMovie,
   parseCards,
   parseEpisodes,
-  parseGnrdConfig,
-  parseInlinePlayers,
+  parsePlayerConfig,
   parseQuickFacts,
+  parseResolvers,
   playersFromJson,
   readPlayers,
+  vidaraResolveUrl,
   xorDecrypt,
   xorEncrypt
 } from '../src/gnulahd.js';
@@ -19,29 +21,23 @@ import { Deadline } from '../src/http.js';
 import { pageCache } from '../src/cache.js';
 import { installFetchStub, jsonRoute } from './helpers/stub-fetch.js';
 
+/**
+ * Fixtures recortados del HTML real de ww3.gnulahd.nu (octubre de 2026):
+ * la ficha trae `_gnrdPid`/`_gnrdTok` y el desempaquetador con su clave, no
+ * el `window.GNRD` de las versiones anteriores.
+ */
 const fixture = (name) => readFileSync(new URL(`./fixtures/${name}`, import.meta.url), 'utf8');
 const SITE = 'https://ww3.gnulahd.nu';
-const KEY = 'Z251bGFmaWxtZXMxMjM0'; // "gnulafilms1234"
-
-function playerPayload() {
-  const json = JSON.stringify({
-    langs: [
-      { label: 'Latino', servers: [{ src: 'https://filemoon.sx/e/gn1' }, { src: '//streamtape.com/e/gn2' }] },
-      { label: 'Subtitulado', servers: [{ src: 'https://they.tube/e/abc123' }, { src: 'https://x.tv/aviso.mp4' }] }
-    ]
-  });
-  return { p: xorEncrypt(json, KEY) };
-}
+const KEY = Buffer.from([103, 78, 55, 100]); // "gN7d", la de gnrdUnpack
 
 function routes() {
   return {
     [`${SITE}/?s=`]: fixture('gnulahd-search.html'),
     [`${SITE}/ver/interestelar/`]: fixture('gnulahd-movie.html'),
-    [`${SITE}/ver/los-simpson/`]: fixture('gnulahd-series.html'),
-    [`${SITE}/ver/los-simpson/2x01/`]: fixture('gnulahd-episode.html'),
-    [`${SITE}/wp-json/gnrd/v1/player?id=48213`]: jsonRoute(playerPayload()),
-    [`${SITE}/wp-json/gnrd/v1/player?id=9001`]: jsonRoute(playerPayload()),
-    [`${SITE}/panel/the-tube-resolve.php?code=abc123`]: jsonRoute({ master: 'https://cdn.thetube.tv/hls/master.m3u8' })
+    [`${SITE}/ver/el-encargado/`]: fixture('gnulahd-series.html'),
+    [`${SITE}/el-encargado-4x07/`]: fixture('gnulahd-episode.html'),
+    [`${SITE}/wp-json/gnrd/v1/player?id=206802`]: jsonRoute(JSON.parse(fixture('gnulahd-player-encrypted.json'))),
+    [`${SITE}/wp-json/gnrd/v1/player?id=513823`]: jsonRoute(JSON.parse(fixture('gnulahd-player-encrypted.json')))
   };
 }
 
@@ -54,131 +50,159 @@ test('las tarjetas de búsqueda se leen con su año real (no el del póster)', (
   assert.equal(cards[2].year, '2026');
 });
 
-test('las filas de la ficha dan año y calidad', () => {
+test('las filas de la ficha dan año y calidad (clases qf-*, no gnrd-qf-*)', () => {
   const facts = parseQuickFacts(fixture('gnulahd-movie.html'));
   assert.equal(facts['año'], '2014');
   assert.equal(facts.calidad, 'HD');
   assert.equal(facts.audio, 'Latino · Subtitulado');
 });
 
-test('window.GNRD se lee con su clave', () => {
-  const gnrd = parseGnrdConfig(fixture('gnulahd-movie.html'));
-  assert.deepEqual(gnrd, { pid: '48213', tok: 'a1b2c3d4', key: KEY });
-  assert.equal(parseGnrdConfig('<html></html>'), null);
+test('la configuración del reproductor sale de _gnrdPid/_gnrdTok y de gnrdUnpack', () => {
+  const player = parsePlayerConfig(fixture('gnulahd-movie.html'));
+  assert.equal(player.pid, '206802');
+  assert.equal(player.tok, 'd234878290579f4c1b79aaf5605e3f12');
+  assert.deepEqual(player.key, KEY);
+
+  assert.equal(parsePlayerConfig('<html></html>'), null);
 });
 
-test('el payload cifrado se descifra y se convierte en reproductores', () => {
-  const encrypted = playerPayload().p;
-  const decrypted = xorDecrypt(encrypted, KEY);
-  assert.match(decrypted, /"langs"/);
+test('el payload cifrado real se descifra con la clave de la página', () => {
+  const encrypted = JSON.parse(fixture('gnulahd-player-encrypted.json')).p;
+  const key = parsePlayerConfig(fixture('gnulahd-movie.html')).key;
+  const data = decodePlayerPayload(encrypted, key);
 
-  const embeds = playersFromJson(JSON.parse(decrypted));
-  assert.deepEqual(embeds.map((embed) => embed.url), [
-    'https://filemoon.sx/e/gn1',
-    'https://streamtape.com/e/gn2',
-    'https://they.tube/e/abc123'
-  ]);
-  assert.deepEqual(embeds.map((embed) => embed.language), ['Latino', 'Latino', 'Subtitulado']);
-  // El relleno publicitario del sitio nunca se devuelve.
-  assert.equal(embeds.some((embed) => embed.url.endsWith('aviso.mp4')), false);
+  assert.equal(data.t, 'Interestelar');
+  assert.deepEqual(data.langs.map((lang) => lang.label), ['Latino', 'Subtitulado']);
+  assert.equal(data.langs[0].servers.length, 4);
+  assert.equal(data.langs[0].servers[0].src, 'https://vidaraa.cc/e/3RSpbzKZgfoy8');
 
-  // Con basura o sin clave no hay JSON válido: readPlayers lo trata como fallo.
-  assert.throws(() => JSON.parse(xorDecrypt('no-es-base64', KEY)));
-  assert.equal(xorDecrypt(encrypted, ''), '');
+  // Con la clave equivocada no se inventa nada.
+  assert.equal(decodePlayerPayload(encrypted, Buffer.from('nada')), null);
+  assert.equal(decodePlayerPayload('', key), null);
 });
 
-test('la variante antigua con _gnpv_ep_langs también se lee', () => {
-  const inline = parseInlinePlayers(fixture('gnulahd-inline.html'));
-  assert.ok(Array.isArray(inline));
-
-  const embeds = playersFromJson(inline);
-  assert.deepEqual(embeds.map((embed) => embed.url), [
-    'https://voe.sx/e/gnlegacy',
-    'https://streamtape.com/e/gnlegacy2'
-  ]);
-  assert.deepEqual(embeds.map((embed) => embed.language), ['Latino', 'Castellano']);
-  assert.equal(embeds.some((embed) => /youtube/.test(embed.url)), false);
+test('xorEncrypt/xorDecrypt son simétricos con clave de texto y de bytes', () => {
+  const plain = JSON.stringify({ langs: [{ label: 'Latino', servers: [{ src: 'https://voe.sx/e/x' }] }] });
+  assert.equal(xorDecrypt(xorEncrypt(plain, 'gN7d'), 'gN7d'), plain);
+  assert.equal(xorDecrypt(xorEncrypt(plain, KEY), KEY), plain);
 });
 
-test('los episodios se leen con temporada y número', () => {
+test('los resolvedores del sitio se leen con el token de la ficha', () => {
+  const resolvers = parseResolvers(fixture('gnulahd-movie.html'));
+  assert.equal(resolvers.vidara.path, '/panel/vidara-resolve.php');
+  assert.equal(resolvers.vidara.token, '0acdc764c75b0f86e4c78b8cd8a4d11f');
+  assert.equal(resolvers.vidara.on, true);
+  assert.equal(resolvers.theTube.path, '/panel/the-tube-resolve.php?code=');
+  assert.equal(resolvers.theTube.token, '21899757d131f11b0525bb26cd3f88a3');
+
+  // Cada ficha trae su propio token: el del episodio no es el de la película.
+  const episode = parseResolvers(fixture('gnulahd-episode.html'));
+  assert.notEqual(episode.vidara.token, resolvers.vidara.token);
+});
+
+test('los enlaces de vidara se piden al resolvedor del sitio, no a vidara', () => {
+  const resolvers = parseResolvers(fixture('gnulahd-movie.html'));
+  const url = vidaraResolveUrl('https://vidaraa.cc/e/3RSpbzKZgfoy8', { resolvers });
+
+  assert.equal(
+    url,
+    `${SITE}/panel/vidara-resolve.php?pl=1&code=3RSpbzKZgfoy8&host=vidaraa.cc&t=0acdc764c75b0f86e4c78b8cd8a4d11f`
+  );
+  assert.equal(vidaraResolveUrl('https://voe.sx/e/abc', { resolvers }), '');
+  assert.equal(vidaraResolveUrl('https://vidaraa.cc/e/abc', { resolvers: null }), '');
+});
+
+test('el payload real se convierte en reproductores con su idioma', () => {
+  const resolvers = parseResolvers(fixture('gnulahd-movie.html'));
+  const data = JSON.parse(fixture('gnulahd-player.json'));
+  const embeds = playersFromJson(data, { resolvers });
+
+  assert.equal(embeds.length, 8);
+  assert.equal(embeds[0].language, 'Latino');
+  assert.match(embeds[0].url, /\/panel\/vidara-resolve\.php\?pl=1&code=3RSpbzKZgfoy8&host=vidaraa\.cc&t=/);
+  assert.equal(embeds[1].url, 'https://byse.sx/e/ltd6r245u81w');
+  assert.equal(embeds[2].url, 'https://voe.sx/e/rvnyarijf6gm');
+  assert.equal(embeds[3].url, 'https://savefiles.com/e/j1zo9m2tgvcs');
+  assert.equal(embeds[4].language, 'Subtitulado');
+  assert.match(embeds[4].url, /code=dbSrlVQkCYGa6&host=vidara\.to/);
+
+  // Los enlaces de descarga (dl) no son streams: no entran.
+  assert.equal(embeds.some((embed) => /1fichier|megaup|gofile|multiup/i.test(embed.url)), false);
+});
+
+test('los episodios se leen con su temporada, su capítulo y su token', () => {
   const episodes = parseEpisodes(fixture('gnulahd-series.html'));
-  assert.deepEqual(episodes.map((episode) => `${episode.season}x${episode.episode}`), ['1x1', '1x2', '2x1']);
-  assert.equal(episodes[2].url, `${SITE}/ver/los-simpson/2x01/`);
+  const first = episodes[0];
+
+  assert.equal(first.season, 4);
+  assert.equal(first.episode, 7);
+  assert.equal(first.url, `${SITE}/el-encargado-4x07/`);
+  assert.equal(first.label, '4x07');
+  assert.equal(first.playerId, '513823');
+  assert.equal(first.playerToken, 'c7215f939c3e1b643a73942d296ce518');
 });
 
-test('readPlayers resuelve la API cifrada y los enlaces they.tube', async (t) => {
+test('readPlayers llama a la API gnrd y devuelve los embeds', async (t) => {
   const stub = installFetchStub(routes());
   t.after(() => stub.restore());
 
-  const embeds = await readPlayers(
-    fixture('gnulahd-movie.html'),
-    `${SITE}/ver/interestelar/`,
-    { deadline: new Deadline(5000) }
-  );
+  const ctx = { deadline: new Deadline(5000) };
+  const html = fixture('gnulahd-movie.html');
+  const embeds = await readPlayers(html, `${SITE}/ver/interestelar/`, ctx);
 
-  assert.deepEqual(embeds.map((embed) => embed.url), [
-    'https://filemoon.sx/e/gn1',
-    'https://streamtape.com/e/gn2',
-    'https://cdn.thetube.tv/hls/master.m3u8'
-  ]);
-  assert.equal(embeds[2].kind, 'direct');
-  assert.equal(embeds[1].language, 'Latino');
-  assert.equal(embeds[2].language, 'Subtitulado');
-
-  // La API se pidió con el Referer de la ficha y la cabecera del sitio.
-  const api = stub.calls.find((call) => call.url.includes('/wp-json/gnrd/v1/player'));
+  assert.equal(embeds.length, 8);
+  assert.ok(embeds.every((embed) => embed.url.startsWith('http')));
+  const api = stub.calls.find((call) => call.url.includes('/wp-json/gnrd/v1/player?id=206802'));
+  assert.ok(api, 'se pidió la API con el id de la ficha');
   assert.equal(api.headers.Referer, `${SITE}/ver/interestelar/`);
-  assert.equal(api.headers['X-Requested-With'], 'gnrd');
-
-  const panel = stub.calls.find((call) => call.url.includes('the-tube-resolve.php'));
-  assert.match(panel.url, /t=eece56848d3929ee78f5fe8e3a62de2d/);
 });
 
-test('findMovie devuelve la ficha de GnulaHD con sus reproductores', async (t) => {
+test('findMovie resuelve la película completa desde la búsqueda', async (t) => {
   pageCache.clear();
   const stub = installFetchStub(routes());
   t.after(() => stub.restore());
 
   const page = await findMovie(
-    { titles: ['Interstellar', 'Interestelar'], year: '2014' },
-    { deadline: new Deadline(5000) }
+    { titles: ['Interestelar', 'Interstellar'], year: '2014' },
+    { deadline: new Deadline(8000) }
   );
 
   assert.equal(page.pageUrl, `${SITE}/ver/interestelar/`);
   assert.equal(page.title, 'Interestelar');
   assert.equal(page.year, '2014');
   assert.equal(page.quality, 'HD');
-  assert.equal(page.embeds.length, 3);
+  assert.equal(page.embeds.length, 8);
 });
 
-test('findEpisode busca la serie y abre el capítulo exacto', async (t) => {
+test('findEpisode baja la ficha de la serie y el capítulo pedido', async (t) => {
   pageCache.clear();
   const stub = installFetchStub(routes());
   t.after(() => stub.restore());
 
   const page = await findEpisode(
-    { titles: ['Los Simpson', 'The Simpsons'], year: '1989', season: 2, episode: 1 },
-    { deadline: new Deadline(5000) }
+    { titles: ['El encargado'], year: '', season: 4, episode: 7 },
+    { deadline: new Deadline(8000) }
   );
 
-  assert.equal(page.pageUrl, `${SITE}/ver/los-simpson/2x01/`);
-  assert.match(page.title, /^Los Simpson 2x01$/);
-  assert.equal(page.quality, 'HD');
-  assert.equal(page.embeds.length, 3);
+  assert.equal(page.pageUrl, `${SITE}/el-encargado-4x07/`);
+  assert.match(page.title, /4x07/);
+  assert.ok(page.embeds.length > 0);
+  assert.ok(stub.calls.some((call) => call.url === `${SITE}/el-encargado-4x07/`));
 });
 
-test('sin coincidencias devuelve null', async (t) => {
+test('sin la API el scraper no inventa reproductores', async (t) => {
   pageCache.clear();
-  const stub = installFetchStub({ [`${SITE}/?s=`]: '<div class="gnrd-grid"></div>' });
+  const stub = installFetchStub({
+    [`${SITE}/?s=`]: fixture('gnulahd-search.html'),
+    [`${SITE}/ver/interestelar/`]: '<div class="gnrd-fi-body"><h1 class="gnrd-fi-title">Interestelar</h1></div>'
+  });
   t.after(() => stub.restore());
 
   const page = await findMovie(
-    { titles: ['No Existe Esta Pelicula'], year: '1999' },
+    { titles: ['Interestelar'], year: '2014' },
     { deadline: new Deadline(5000) }
   );
-  assert.equal(page, null);
-});
-
-test('la base de GnulaHD es configurable', () => {
-  assert.equal(config.gnulahdBaseUrl, 'https://ww3.gnulahd.nu');
+  // Devuelve la ficha (para el diagnóstico) pero sin ningún reproductor.
+  assert.equal(page.embeds.length, 0);
+  assert.equal(config.gnulahdBaseUrl, SITE);
 });

@@ -11,46 +11,30 @@ import { installFetchStub, jsonRoute } from './helpers/stub-fetch.js';
 
 const fixture = (name) => readFileSync(new URL(`./fixtures/${name}`, import.meta.url), 'utf8');
 const SITE = 'https://ww3.gnulahd.nu';
-const KEY = 'Z251bGFmaWxtZXMxMjM0';
 
-function gnulahdPayload() {
-  return {
-    p: xorEncrypt(JSON.stringify({
-      langs: [
-        { label: 'Latino', servers: [{ src: 'https://filemoon.sx/e/gnhd1' }, { src: '//streamtape.com/e/gnhd2' }] },
-        { label: 'Subtitulado', servers: [{ src: 'https://they.tube/e/abc123' }] }
-      ]
-    }), KEY)
-  };
-}
-
+/**
+ * Fixtures reales (octubre de 2026). Gnula entrega uqload/viewsb/jawcloud y
+ * GnulaHD entrega vidara/byse/voe/savefiles a través de su API cifrada.
+ */
 function routes() {
+  const m3u8 = '#EXTM3U\n#EXT-X-VERSION:3\n#EXTINF:5.0,\nseg_000.ts\n';
+
   return {
-    // --- Gnula (wordpress de pestañas) ---
+    // --- Gnula (WordPress de pestañas) ---
     'https://v3-cinemeta.strem.io/meta/movie/tt0816692.json': jsonRoute(JSON.parse(fixture('cinemeta-movie.json'))),
     'https://www2.gnula.one/?s=': fixture('gnula-search.html'),
-    'https://www2.gnula.one/movie/interstellar/': fixture('gnula-movie.html'),
-    'https://filemoon.sx/e/abc123': fixture('filemoon-packed.html'),
-    'https://voe.sx/e/def456': fixture('voe-redirect.html'),
-    'https://voe.sx/e/xyz789': fixture('voe-player.html'),
-    'https://streamtape.com/e/ghi789': fixture('streamtape.html'),
-    'https://doodstream.com/e/jkl012': fixture('doodstream.html'),
-    'https://doodstream.com/pass_md5/': 'https://dood.pm/landing123',
-    'https://player.cuevana.ac/e/pqr345': fixture('cuevana-links.html'),
-    'https://voe.sx/e/chain789': fixture('voe-player.html'),
-    'https://streamtape.com/e/chain456': fixture('streamtape.html'),
+    'https://www2.gnula.one/movie/interestelar/': fixture('gnula-movie.html'),
+    'https://uqload.com/embed-fqhl3m5h3zcn.html': fixture('uqload.html'),
+    'https://viewsb.com/e/beypa68rqj3t.html': '<video><source src="https://cdn.example.org/interstellar-2014.mp4" type="video/mp4"></video>',
+    'https://cdn.example.org/interstellar-2014.mp4': { body: '', headers: { 'content-type': 'video/mp4' } },
+    // jawcloud está caído (404 en la web real): no se stubea y se descarta.
 
-    // --- GnulaHD (API gnrd cifrada) ---
+    // --- GnulaHD (API gnrd cifrada + resolvedor de vidara) ---
     [`${SITE}/?s=`]: fixture('gnulahd-search.html'),
     [`${SITE}/ver/interestelar/`]: fixture('gnulahd-movie.html'),
-    [`${SITE}/wp-json/gnrd/v1/player?id=48213`]: jsonRoute(gnulahdPayload()),
-    [`${SITE}/panel/the-tube-resolve.php?code=abc123`]: jsonRoute({ master: 'https://cdn.thetube.tv/hls/master.m3u8' }),
-    'https://filemoon.sx/e/gnhd1': fixture('filemoon-packed-hd.html'),
-    'https://streamtape.com/e/gnhd2': '<div id="robotlink">//streamtape.com/get_video?id=gnhd2&expires=1&ip=2&token=</div><script>document.getElementById("robotlink").innerHTML += "AA";</script>',
-
-    // Los CDN sin extensión se identifican por Content-Type al clasificarlos.
-    'https://streamtape.com/get_video': { body: '', headers: { 'content-type': 'video/mp4' } },
-    'https://dood.pm/landing123': { body: '', headers: { 'content-type': 'video/mp4' } }
+    [`${SITE}/wp-json/gnrd/v1/player?id=206802`]: jsonRoute(JSON.parse(fixture('gnulahd-player-encrypted.json'))),
+    [`${SITE}/panel/vidara-resolve.php`]: { body: m3u8, headers: { 'content-type': 'application/vnd.apple.mpegurl' } },
+    'https://voe.sx/e/': (url) => `<script>jwplayer("v").setup({sources:[{file:"https://cdn.voe.sx/hls/${url.split('/').pop()}/master.m3u8"}]});</script>`
   };
 }
 
@@ -84,32 +68,31 @@ test('los streams de Gnula y GnulaHD se mezclan en la misma respuesta', async (t
     baseUrl: 'https://addon.example.com'
   });
 
-  // Las dos fuentes aparecen en el diagnóstico...
   const ids = trace.sources.map((source) => source.id);
   assert.deepEqual(ids, ['gnula', 'gnulahd']);
+
+  const gnula = trace.sources.find((source) => source.id === 'gnula');
+  assert.equal(gnula.embeds, 3, 'uqload + viewsb + jawcloud');
   const hd = trace.sources.find((source) => source.id === 'gnulahd');
   assert.match(hd.page, /\/ver\/interestelar\/$/);
-  assert.equal(hd.embeds, 3);
+  assert.equal(hd.embeds, 8, '4 servidores × 2 idiomas');
 
-  // ...y en la lista de streams.
   const names = new Set(streams.map((stream) => stream.name));
-  assert.ok([...names].some((name) => name.startsWith('Gnula ·')), `nombres: ${[...names]}`);
-  assert.ok([...names].some((name) => name.startsWith('GnulaHD ·')), `nombres: ${[...names]}`);
+  assert.ok(names.has('Gnula · Latino'), `nombres: ${[...names]}`);
+  assert.ok(names.has('GnulaHD · Latino'), `nombres: ${[...names]}`);
+  assert.ok(names.has('GnulaHD · Subtitulado'), `nombres: ${[...names]}`);
 
   const media = streams.map((stream) => mediaOf(stream.url));
-  assert.ok(media.includes('https://cdn.example.net/v/master.m3u8'), 'filemoon de GnulaHD');
-  assert.ok(media.includes('https://cdn.thetube.tv/hls/master.m3u8'), 'they.tube resuelto por GnulaHD');
-  assert.ok(media.includes('https://cdn.example.com/master.m3u8'), 'filemoon de Gnula');
-  assert.ok(media.includes('https://cdn.voe.sx/hls/abc123/master.m3u8'), 'voe de Gnula');
+  assert.ok(media.some((url) => url.includes('strm7.uqload.vc') && url.includes('.m3u8')), 'uqload de Gnula');
+  assert.ok(media.includes('https://cdn.example.org/interstellar-2014.mp4'), 'viewsb de Gnula');
+  assert.ok(media.some((url) => url.includes('/panel/vidara-resolve.php?pl=1&code=3RSpbzKZgfoy8')), 'vidara de GnulaHD');
+  assert.ok(media.includes('https://cdn.voe.sx/hls/rvnyarijf6gm/master.m3u8'), 'voe latino de GnulaHD');
 
-  const fromHd = streams.find((stream) => mediaOf(stream.url) === 'https://cdn.example.net/v/master.m3u8');
-  assert.equal(fromHd.name, 'GnulaHD · Latino');
-  assert.equal(fromHd.title, 'Filemoon · HLS · HD');
+  // El nombre visible del resolvedor es el del servidor, no el de la web.
+  const vidara = streams.find((stream) => mediaOf(stream.url).includes('/panel/vidara-resolve.php'));
+  assert.equal(vidara.name, 'GnulaHD · Latino');
+  assert.equal(vidara.title, 'Vidara · HLS · HD');
 
-  const theTube = streams.find((stream) => mediaOf(stream.url) === 'https://cdn.thetube.tv/hls/master.m3u8');
-  assert.equal(theTube.name, 'GnulaHD · Subtitulado');
-
-  // Cada reproductor que se abrió queda registrado con su fuente.
   const resolvedSources = new Set(trace.resolved.map((item) => item.source));
   assert.deepEqual([...resolvedSources].sort(), ['gnula', 'gnulahd']);
 });
@@ -129,7 +112,7 @@ test('si GnulaHD no responde, Gnula sigue sirviendo streams', async (t) => {
     baseUrl: 'https://addon.example.com'
   });
 
-  assert.ok(streams.length >= 4);
+  assert.equal(streams.length, 2, 'uqload (HLS) + viewsb (MP4)');
   assert.ok(streams.every((stream) => stream.name.startsWith('Gnula')));
   assert.ok(trace.errors.some((error) => error.startsWith('GnulaHD:')));
 });
@@ -151,7 +134,7 @@ test('si Gnula no responde, GnulaHD sigue sirviendo streams', async (t) => {
     baseUrl: 'https://addon.example.com'
   });
 
-  assert.ok(streams.length >= 2);
+  assert.equal(streams.length, 4, 'vidara y voe, en los dos idiomas');
   assert.ok(streams.every((stream) => stream.name.startsWith('GnulaHD')));
   assert.ok(trace.errors.some((error) => error.startsWith('Gnula:')));
 });
@@ -175,7 +158,7 @@ test('si ninguna fuente tiene ficha, se responde lista vacía', async (t) => {
   assert.deepEqual(streams, []);
 });
 
-test('STREMIO_FORMATS decide qué se entrega: m3u8 deja fuera los MP4', async (t) => {
+test('STREMIO_FORMATS decide qué se entrega: sin mp4 el MP4 se descarta', async (t) => {
   pageCache.clear();
   mediaCache.clear();
   const stub = installFetchStub(routes());
@@ -191,8 +174,7 @@ test('STREMIO_FORMATS decide qué se entrega: m3u8 deja fuera los MP4', async (t
     baseUrl: 'https://addon.example.com'
   });
 
-  assert.ok(streams.length >= 2);
-  assert.ok(streams.every((stream) => /\.m3u8(\?|#|$)/i.test(mediaOf(stream.url))), 'solo HLS');
+  assert.equal(streams.length, 4, 'uqload + 2 vidara + 1 voe');
   assert.equal(streams.some((stream) => mediaOf(stream.url).endsWith('.mp4')), false);
 
   // El MP4 directo sí se resolvió, pero se descarta por formato.

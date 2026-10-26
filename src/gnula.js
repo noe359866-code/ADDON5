@@ -300,7 +300,10 @@ function directVideoIn(html) {
 }
 
 const PLAYER_PRIORITY = [
+  'uqload.com',
+  'uqload.to',
   'voe.sx',
+  'ashleyhardat.com',
   'filemoon.sx',
   'filemoon.to',
   'filemoon.in',
@@ -314,10 +317,18 @@ const PLAYER_PRIORITY = [
   'upstream.to',
   'streamhub.to',
   'player.cuevana.ac',
-  'links.cuevana.ac'
+  'links.cuevana.ac',
+  'viewsb.com',
+  'jawcloud.co',
+  'vidaraa.cc',
+  'vidara.to',
+  'byse.sx',
+  'savefiles.com'
 ];
 
 export function embedPriority(url) {
+  // El resolvedor del propio sitio va primero: es el que mejor responde.
+  if (/\/panel\/(?:vidara|the-tube)-resolve\.php/i.test(url)) return 0;
   const host = hostOf(url);
   const index = PLAYER_PRIORITY.indexOf(host);
   if (index >= 0) return index;
@@ -342,7 +353,16 @@ const HOST_LABELS = {
   'streamhub.to': 'StreamHub',
   'player.cuevana.ac': 'Cuevana',
   'links.cuevana.ac': 'Cuevana',
-  'goodstream.one': 'GoodStream'
+  'goodstream.one': 'GoodStream',
+  'uqload.com': 'Uqload',
+  'uqload.to': 'Uqload',
+  'viewsb.com': 'ViewSB',
+  'jawcloud.co': 'Jawcloud',
+  'vidaraa.cc': 'Vidara',
+  'vidara.to': 'Vidara',
+  'byse.sx': 'Byse',
+  'savefiles.com': 'SaveFiles',
+  'ashleyhardat.com': 'Voe'
 };
 
 export function hostLabel(url) {
@@ -371,8 +391,78 @@ function groupByLabelRestart(tabs, labels) {
   return groups;
 }
 
+/* ------------------------------------------------------------------ *
+ *  Plantilla de series: botones `js-server`
+ * ------------------------------------------------------------------ */
+
+/** `lat` / `cas` / `sub` → nombre visible. */
+const SHORT_LANGUAGES = {
+  lat: 'Latino',
+  latino: 'Latino',
+  cas: 'Castellano',
+  castellano: 'Castellano',
+  esp: 'Español',
+  es: 'Español',
+  sub: 'Sub Español',
+  subtitulado: 'Subtitulado',
+  subespanol: 'Sub Español'
+};
+
+export function shortLanguage(code, fallbackText = '') {
+  const value = String(code == null ? '' : code).trim().toLowerCase();
+  if (SHORT_LANGUAGES[value]) return SHORT_LANGUAGES[value];
+  return canonicalLanguage(fallbackText) || (fallbackText ? fallbackText.slice(0, 24) : '');
+}
+
+/**
+ * Nombres de idioma de la barra `.seg`: `<button class="… js-lang" data-lang="lat">Latino <span>8</span></button>`.
+ * @returns {Map<string,string>} data-lang → «Latino»
+ */
+function languageTabs(html) {
+  const labels = new Map();
+  const re = /<button\b([^>]*\bclass\s*=\s*["'][^"']*\bjs-lang\b[^"']*["'][^>]*)>([\s\S]{0,160}?)<\/button>/gi;
+  let match;
+  while ((match = re.exec(html))) {
+    const code = attrValue(match[1], 'data-lang');
+    if (!code || labels.has(code)) continue;
+    const text = stripTags(match[2]).replace(/\s*\d+\s*$/, '').trim();
+    labels.set(code, shortLanguage(code, text));
+  }
+  return labels;
+}
+
+/**
+ * Reproductores de la plantilla de series: cada idioma es un `<div class="servers"
+ * data-lang="lat">` lleno de `<button class="server js-server" data-src="…">`.
+ * @returns {{url:string, language:string, kind:string}[]}
+ */
+export function parseServerButtons(html) {
+  const labels = languageTabs(html);
+  const embeds = [];
+  const re = /<div\b([^>]*\bclass\s*=\s*["'][^"']*\bservers\b[^"']*["'][^>]*)>([\s\S]{0,40000}?)<\/div>/gi;
+  let match;
+
+  while ((match = re.exec(html))) {
+    const groupAttrs = match[1];
+    const code = attrValue(groupAttrs, 'data-lang');
+    const language = shortLanguage(code, labels.get(code) || '');
+    const inner = match[2];
+
+    const buttonRe = /<button\b([^>]*\bclass\s*=\s*["'][^"']*\bjs-server\b[^"']*["'][^>]*)>/gi;
+    let button;
+    while ((button = buttonRe.exec(inner))) {
+      const url = attrValue(button[1], 'data-src');
+      if (isHttpUrl(url)) embeds.push({ url: safeDecodeEntities(url), language, kind: 'iframe' });
+    }
+  }
+
+  return embeds;
+}
+
 /**
  * Reproductores de una ficha, con su idioma cuando se puede deducir.
+ * Dos plantillas del grupo: películas con pestañas e iframes (`div#tabN`) y
+ * series con botones `js-server` cuyo `data-src` es el embed.
  * @returns {{url:string, language:string, kind:string}[]}
  */
 export function parsePlayerEmbeds(html) {
@@ -421,6 +511,20 @@ export function parsePlayerEmbeds(html) {
         if (embed) push(embed.url, language, embed.kind);
       }
     });
+  }
+
+  // Plantilla de series (o ficha sin pestañas): botones con `data-src`.
+  if (!embeds.length) {
+    for (const embed of parseServerButtons(html)) {
+      let language = embed.language;
+      if (!language) {
+        for (const marker of markers) {
+          if (marker.pos <= html.indexOf(embed.url)) language = marker.language;
+          else break;
+        }
+      }
+      push(embed.url, language, embed.kind);
+    }
   }
 
   // Plantilla desconocida o ficha sin pestañas: se leen todos los iframes.
@@ -476,6 +580,7 @@ export function selectEmbedsForResolution(embeds, limit) {
 export function hasPlayers(html) {
   if (/<div\b[^>]*\bid\s*=\s*["']?tab\d+/i.test(html)) return true;
   if (/go_to_player\(/i.test(html)) return true;
+  if (/class\s*=\s*["'][^"']*\bjs-server\b/i.test(html)) return true;
   return /\bopci[oó]n\s*\d+/i.test(html) && /<iframe\b/i.test(html);
 }
 
@@ -484,7 +589,12 @@ export function parseQuality(html) {
   const text = stripTags(html);
   const match = /Ver\s+pel[ií]cula\s+online\s*\[([^\]]+)\]/i.exec(text)
     || /Ver\s+serie\s+online\s*\[([^\]]+)\]/i.exec(text);
-  if (!match) return '';
+  if (!match) {
+    // Plantilla de series: la calidad solo aparece en el título («Loki 2×01 HD Online»).
+    const heading = /<title>([\s\S]{0,200}?)<\/title>/i.exec(html);
+    const found = heading && /\b(4k|uhd|1080p|720p|hd)\b/i.exec(heading[1]);
+    return found ? found[1].toUpperCase() : '';
+  }
   const parts = match[1].split(',').map((part) => part.trim());
   const quality = parts.find((part) => /\b(4k|uhd|1080p|720p|hd|dvdrip|hdtv|brrip)\b/i.test(part));
   return quality ? quality.toUpperCase().slice(0, 10) : '';

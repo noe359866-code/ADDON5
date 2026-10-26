@@ -167,10 +167,47 @@ export async function extractGeneric(url, ctx) {
   return null;
 }
 
+/* ------------------- Resolvedores del propio sitio ---------------------- */
+
+/**
+ * GnulaHD resuelve algunos servidores en su propio dominio:
+ *   /panel/vidara-resolve.php?pl=1&code=&host=&t=  → devuelve el HLS
+ *   /panel/the-tube-resolve.php?code=&t=           → JSON { master }
+ * La respuesta de vidara ya ES el playlist, así que la URL sirve tal cual.
+ */
+export async function extractSiteResolver(url, ctx) {
+  const page = await fetchPlayer(url, ctx);
+  if (!page) return null;
+
+  const body = String(page.text || '').trimStart();
+  if (body.startsWith('#EXTM3U')) {
+    return { media: url, referer: page.url, format: 'hls' };
+  }
+
+  try {
+    const payload = JSON.parse(body);
+    const master = payload && typeof payload.master === 'string' ? payload.master : '';
+    if (master && /^https?:\/\//i.test(master)) {
+      return {
+        media: master,
+        referer: page.url,
+        format: /\.m3u8/i.test(master) ? 'hls' : ''
+      };
+    }
+  } catch {
+    // no era JSON: se sigue con la búsqueda normal
+  }
+
+  const media = findMedia(page.text, page.url);
+  if (media) return { media, referer: page.url };
+  return null;
+}
+
 /* ------------------------------ Dispatcher ------------------------------ */
 
 export function extractorFor(url) {
   const host = hostOf(url);
+  if (/\/(?:vidara|the-tube)-resolve\.php/i.test(url)) return extractSiteResolver;
   if (/streamtape|stape\./i.test(host)) return extractStreamtape;
   if (/dood|ds2play|dsvplay|d000d/i.test(host)) return extractDoodstream;
   if (/voe\.(sx|to|st|eu|so|re)/i.test(host)) return extractVoe;
@@ -211,7 +248,12 @@ export async function resolveEmbed(embedUrl, ctx = {}) {
     }
 
     if (outcome && outcome.media) {
-      return { media: outcome.media, referer: outcome.referer || node.url, via: hostOf(node.url) };
+      return {
+        media: outcome.media,
+        referer: outcome.referer || node.url,
+        via: hostOf(node.url),
+        format: outcome.format || ''
+      };
     }
 
     if (outcome && Array.isArray(outcome.next) && node.depth < config.maxResolveHops) {

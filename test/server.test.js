@@ -23,18 +23,11 @@ function gnulaRoutes() {
   return {
     'https://v3-cinemeta.strem.io/meta/movie/tt0816692.json': jsonRoute(JSON.parse(fixture('cinemeta-movie.json'))),
     'https://www2.gnula.one/?s=': fixture('gnula-search.html'),
-    'https://www2.gnula.one/movie/interstellar/': fixture('gnula-movie.html'),
-    'https://filemoon.sx/e/abc123': fixture('filemoon-packed.html'),
-    'https://voe.sx/e/def456': fixture('voe-redirect.html'),
-    'https://voe.sx/e/xyz789': fixture('voe-player.html'),
-    'https://streamtape.com/e/ghi789': fixture('streamtape.html'),
-    'https://doodstream.com/e/jkl012': fixture('doodstream.html'),
-    'https://doodstream.com/pass_md5/': 'https://dood.pm/landing123',
-    'https://player.cuevana.ac/e/pqr345': fixture('cuevana-links.html'),
-    'https://voe.sx/e/chain789': fixture('voe-player.html'),
-    'https://streamtape.com/e/chain456': fixture('streamtape.html'),
-    'https://streamtape.com/get_video': { body: '', headers: { 'content-type': 'video/mp4' } },
-    'https://dood.pm/landing123': { body: '', headers: { 'content-type': 'video/mp4' } },
+    'https://www2.gnula.one/movie/interestelar/': fixture('gnula-movie.html'),
+    // uqload esconde el master en un JS empaquetado; viewsb, un MP4 directo.
+    'https://uqload.com/embed-fqhl3m5h3zcn.html': fixture('uqload.html'),
+    'https://viewsb.com/e/beypa68rqj3t.html': '<video><source src="https://cdn.example.org/interstellar-2014.mp4" type="video/mp4"></video>',
+    'https://cdn.example.org/interstellar-2014.mp4': { body: '', headers: { 'content-type': 'video/mp4' } },
     'https://cdn.example.org/hls/master.m3u8': {
       body: fixture('hls-playlist.m3u8'),
       headers: { 'content-type': 'application/vnd.apple.mpegurl' }
@@ -95,30 +88,20 @@ test('GET /stream/movie/{id}.json devuelve los streams de Gnula', async (t) => {
 
     const { streams } = await response.json();
     assert.ok(Array.isArray(streams));
-    assert.ok(streams.length >= 5, `se esperaban al menos 5 streams, llegaron ${streams.length}`);
+    assert.equal(streams.length, 2, 'uqload (HLS) y viewsb (MP4)');
 
     const byMedia = new Map(streams.map((stream) => [proxyParams(stream.url).media, stream]));
+    const uqload = [...byMedia.keys()].find((media) => media.includes('strm7.uqload.vc'));
+    assert.ok(uqload, 'el master de uqload sale del JS empaquetado');
+    assert.match(uqload, /\.m3u8\?/);
 
-    assert.ok(byMedia.has('https://cdn.voe.sx/hls/abc123/master.m3u8'));
-    assert.ok(byMedia.has('https://cdn.example.com/master.m3u8'));
-    assert.ok(byMedia.has('https://cdn.example.org/interstellar-2014.mp4'));
-    assert.ok(byMedia.has('https://streamtape.com/get_video?id=ghi789abc&expires=1767225600&ip=203.0.113.9&token=Zz9Qq'));
-    assert.ok([...byMedia.keys()].some((media) => media.startsWith('https://dood.pm/landing123')));
-
-    const filemoon = byMedia.get('https://cdn.example.com/master.m3u8');
-    assert.equal(filemoon.name, 'Gnula · Latino');
-    assert.equal(filemoon.title, 'Filemoon · HLS · HD');
-    assert.equal(proxyParams(filemoon.url).referer, 'https://filemoon.sx/e/abc123');
-
-    // El agregador de Cuevana revela el mismo Voe de la ficha: no se duplica.
-    const voe = byMedia.get('https://cdn.voe.sx/hls/abc123/master.m3u8');
-    assert.equal(voe.name, 'Gnula · Latino');
-    assert.equal(proxyParams(voe.url).referer, 'https://voe.sx/e/xyz789');
-    assert.equal(streams.filter((stream) => proxyParams(stream.url).media === 'https://cdn.voe.sx/hls/abc123/master.m3u8').length, 1);
+    const hls = byMedia.get(uqload);
+    assert.equal(hls.name, 'Gnula · Latino');
+    assert.equal(hls.title, 'Uqload · HLS · HD');
+    assert.equal(proxyParams(hls.url).referer, 'https://uqload.com/embed-fqhl3m5h3zcn.html');
 
     const direct = byMedia.get('https://cdn.example.org/interstellar-2014.mp4');
-    assert.equal(direct.title, 'Enlace directo · MP4 · HD');
-    assert.equal(streams.length, 5);
+    assert.equal(direct.title, 'ViewSB · MP4 · HD');
 
     // Todos los streams apuntan al proxy del addon (el CDN exige Referer).
     for (const stream of streams) {
@@ -199,7 +182,7 @@ test('sin video reproducible se responde vacío', async (t) => {
   const stub = installFetchStub({
     'https://v3-cinemeta.strem.io/meta/movie/tt0816692.json': jsonRoute(JSON.parse(fixture('cinemeta-movie.json'))),
     'https://www2.gnula.one/?s=': fixture('gnula-search.html'),
-    'https://www2.gnula.one/movie/interstellar/': '<div id="content"><h1>Interstellar</h1><p>sin reproductores</p></div>'
+    'https://www2.gnula.one/movie/interestelar/': '<div id="content"><h1>Interestelar</h1><p>sin reproductores</p></div>'
   });
   t.after(() => stub.restore());
 
@@ -224,9 +207,9 @@ test('/selftest explica qué pasó paso a paso', async (t) => {
 
     assert.equal(payload.ok, true);
     assert.equal(payload.trace.meta.name, 'Interstellar');
-    assert.match(payload.trace.page.url, /\/movie\/interstellar\/$/);
-    assert.equal(payload.trace.page.embeds, 6);
+    assert.match(payload.trace.page.url, /\/movie\/interestelar\/$/);
+    assert.equal(payload.trace.page.embeds, 3);
     assert.ok(payload.trace.resolved.some((item) => item.media.includes('master.m3u8')));
-    assert.ok(payload.streams.length >= 5);
+    assert.equal(payload.streams.length, 2);
   });
 });

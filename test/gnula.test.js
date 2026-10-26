@@ -3,18 +3,24 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { diceSimilarity, titleSimilarity } from '../src/utils/text.js';
 import {
-  contentRegion,
   hostLabel,
   parseCardTitle,
   parsePlayerEmbeds,
   parseQuality,
   parseSearchResults,
+  parseServerButtons,
   rankCandidates,
   scoreCandidate,
   searchTerms,
-  selectEmbedsForResolution
+  selectEmbedsForResolution,
+  shortLanguage
 } from '../src/gnula.js';
 
+/**
+ * Los fixtures son copias recortadas del HTML real de octubre de 2026
+ * (www2.gnula.one y ver.verteleseriesonline.com), no maquetas inventadas:
+ * si la web cambia, estas pruebas fallan igual que el addon.
+ */
 const fixture = (name) => readFileSync(new URL(`./fixtures/${name}`, import.meta.url), 'utf8');
 
 test('parseCardTitle limpia el texto de la tarjeta y saca el año', () => {
@@ -33,57 +39,46 @@ test('parseCardTitle limpia el texto de la tarjeta y saca el año', () => {
   assert.deepEqual(parseCardTitle(''), { title: '', year: '' });
 });
 
-test('los resultados de búsqueda ignoran portada y comentarios', () => {
-  const html = fixture('gnula-search.html');
-  const region = contentRegion(html);
-  const results = parseSearchResults(region);
+test('la búsqueda real se lee entera y trae el título con su año', () => {
+  const results = parseSearchResults(fixture('gnula-search.html'));
 
-  assert.deepEqual(results.map((item) => item.slug), [
-    'interstellar',
-    'interstellar-el-otro',
-    'interestelar-2'
-  ]);
-  assert.equal(results[0].title, 'Interstellar');
-  assert.equal(results[0].year, '2014');
-  assert.equal(results[0].url, 'https://www2.gnula.one/movie/interstellar/');
-  // La portada sigue en el HTML completo, pero no en la región de resultados.
-  assert.equal(parseSearchResults(html).some((item) => item.slug === 'jay-kelly'), true);
-  assert.equal(results.some((item) => item.slug === 'jay-kelly'), false);
+  // El buscador devuelve el resultado y, alrededor, el listado del tema.
+  assert.equal(results.length, 45);
+  const interestelar = results.find((item) => item.slug === 'interestelar');
+  assert.ok(interestelar, 'la ficha de Interestelar está en los resultados');
+  assert.equal(interestelar.title, 'Interestelar');
+  assert.equal(interestelar.year, '2014');
+  assert.equal(interestelar.url, 'https://www2.gnula.one/movie/interestelar/');
 });
 
-test('rankCandidates elige la ficha correcta y descarta parecidos', () => {
-  const results = parseSearchResults(contentRegion(fixture('gnula-search.html')));
-  const ranked = rankCandidates(results, ['Interstellar'], '2014');
+test('rankCandidates elige la ficha correcta entre el ruido del listado', () => {
+  const results = parseSearchResults(fixture('gnula-search.html'));
+  const ranked = rankCandidates(results, ['Interestelar', 'Interstellar'], '2014');
 
-  assert.equal(ranked[0].slug, 'interstellar');
-  assert.ok(ranked[0].score > 0.9);
-  assert.ok(scoreCandidate(results[1], ['Interstellar'], '2014') < scoreCandidate(results[0], ['Interstellar'], '2014'));
+  assert.equal(ranked[0].slug, 'interestelar');
+  assert.ok(ranked[0].score > 0.9, `score: ${ranked[0].score}`);
+  // «Batman vs Superman» o «La batalla de los mundos» no pasan el corte.
+  assert.equal(ranked.some((item) => item.slug === 'batman-vs-superman-el-origen-de-la-justicia'), false);
+  const ruido = results.find((item) => item.slug === 'la-batalla-de-los-mundos');
+  assert.ok(ruido, 'el listado lateral está en el fixture');
+  assert.ok(scoreCandidate(ruido, ['Interestelar'], '2014') < 0.9);
 });
 
-test('la ficha de película da reproductores con su idioma', () => {
-  const html = fixture('gnula-movie.html');
-  const embeds = parsePlayerEmbeds(html);
-
-  const byHost = new Map(embeds.map((embed) => [new URL(embed.url).hostname + new URL(embed.url).pathname, embed]));
-
-  assert.equal(embeds.length, 6);
-  assert.equal(byHost.get('filemoon.sx/e/abc123').language, 'Latino');
-  assert.equal(byHost.get('voe.sx/e/def456').language, 'Latino');
-  assert.equal(byHost.get('cdn.example.org/interstellar-2014.mp4').language, 'Latino');
-  assert.equal(byHost.get('streamtape.com/e/ghi789').language, 'Subtitulado');
-  assert.equal(byHost.get('doodstream.com/e/jkl012').language, 'Subtitulado');
-  assert.equal(byHost.get('player.cuevana.ac/e/pqr345').language, 'Castellano');
-
-  // El tráiler de YouTube y los banners de publicidad nunca son opciones.
-  assert.equal(embeds.some((embed) => /youtube/i.test(embed.url)), false);
-  assert.equal(embeds.some((embed) => /ads\.example\.net/.test(embed.url)), false);
-});
-
-test('los reproductores directos van antes que los agregadores', () => {
+test('la ficha de película da los tres reproductores reales con su idioma', () => {
   const embeds = parsePlayerEmbeds(fixture('gnula-movie.html'));
-  const cuevanaIndex = embeds.findIndex((embed) => embed.url.includes('cuevana'));
-  const voeIndex = embeds.findIndex((embed) => embed.url.includes('voe.sx'));
-  assert.ok(voeIndex < cuevanaIndex);
+  const hosts = embeds.map((embed) => new URL(embed.url).hostname);
+
+  assert.deepEqual(hosts, ['uqload.com', 'viewsb.com', 'jawcloud.co']);
+  assert.ok(embeds.every((embed) => embed.language === 'Latino'));
+  assert.ok(embeds.every((embed) => embed.url.startsWith('https://')));
+
+  // El botón de Facebook y el póster nunca cuentan como reproductor.
+  assert.equal(embeds.some((embed) => /facebook/i.test(embed.url)), false);
+});
+
+test('los reproductores salen ordenados: primero los que se resuelven solos', () => {
+  const embeds = parsePlayerEmbeds(fixture('gnula-movie.html'));
+  assert.equal(embeds[0].url.includes('uqload'), true, 'uqload va antes que el resto');
 });
 
 test('calidad de la ficha', () => {
@@ -91,19 +86,50 @@ test('calidad de la ficha', () => {
   assert.equal(parseQuality('<p>sin calidad</p>'), '');
 });
 
-test('el episodio de serie asigna los idiomas por orden de grupo', () => {
-  const embeds = parsePlayerEmbeds(fixture('series-episode.html'));
-  assert.equal(embeds.length, 4);
-  const languageOf = (path) => embeds.find((embed) => embed.url.includes(path))?.language;
-  assert.equal(languageOf('links.cuevana.ac/e/cue1'), 'Latino');
-  assert.equal(languageOf('streamtape.com/e/st2'), 'Latino');
-  assert.equal(languageOf('voe.sx/e/voe3'), 'Castellano');
-  assert.equal(languageOf('filemoon.sx/e/fm4'), 'Sub Español');
+test('la ficha de serie usa botones js-server, no iframes', () => {
+  const html = fixture('series-episode.html');
+  assert.equal(html.includes('<iframe'), false, 'la plantilla nueva no usa iframes');
+
+  const embeds = parsePlayerEmbeds(html);
+  assert.equal(embeds.length, 34);
+  assert.deepEqual([...new Set(embeds.map((embed) => embed.language))], ['Latino', 'Castellano', 'Sub Español']);
+
+  const languages = new Map(embeds.map((embed) => [embed.url, embed.language]));
+  assert.equal(languages.get('https://streamtape.com/e/3obMlx69KkuXqx'), 'Latino');
+  assert.equal(languages.get('https://mixdrop.ch/e/kn4868p8c31zvmw'), 'Castellano');
+  assert.equal(languages.get('https://doodstream.com/e/sw7vtde38zqn'), 'Sub Español');
+  assert.equal(languages.get('https://links.cuevana.ac/play/L0ZTVGJ2YVo0STBEYkYyaC9LY3FPZz09.html'), 'Latino');
 });
 
-test('hostLabel da un nombre legible al servidor', () => {
+test('parseServerButtons entiende los códigos de idioma de la barra', () => {
+  const embeds = parseServerButtons(`
+    <div class="seg">
+      <button class="seg-btn js-lang" data-lang="lat">Latino <span class="seg-count">8</span></button>
+      <button class="seg-btn js-lang" data-lang="cas">Castellano <span class="seg-count">18</span></button>
+      <button class="seg-btn js-lang" data-lang="sub">Sub Español <span class="seg-count">8</span></button>
+    </div>
+    <div class="servers" data-lang="cas">
+      <button class="server js-server" data-src="https://streamtape.com/e/uno"><span class="server-name">streamtape.com</span></button>
+    </div>
+    <div class="servers" data-lang="sub">
+      <button class="server js-server" data-src="https://voe.sx/e/dos"><span class="server-name">voe.sx</span></button>
+    </div>
+  `);
+
+  assert.deepEqual(embeds, [
+    { url: 'https://streamtape.com/e/uno', language: 'Castellano', kind: 'iframe' },
+    { url: 'https://voe.sx/e/dos', language: 'Sub Español', kind: 'iframe' }
+  ]);
+  assert.equal(shortLanguage('lat'), 'Latino');
+  assert.equal(shortLanguage('desconocido', 'Latino'), 'Latino');
+});
+
+test('hostLabel da un nombre legible a los servidores reales', () => {
   assert.equal(hostLabel('https://voe.sx/e/abc'), 'Voe');
-  assert.equal(hostLabel('https://player.cuevana.ac/e/abc'), 'Cuevana');
+  assert.equal(hostLabel('https://uqload.com/embed-abc.html'), 'Uqload');
+  assert.equal(hostLabel('https://viewsb.com/e/abc.html'), 'ViewSB');
+  assert.equal(hostLabel('https://jawcloud.co/embed-abc.html'), 'Jawcloud');
+  assert.equal(hostLabel('https://vidaraa.cc/e/abc'), 'Vidara');
   assert.equal(hostLabel('https://cdn.raro.tv/x.m3u8'), 'Cdn');
 });
 
@@ -137,7 +163,6 @@ test('la cola de resolución prueba servidores distintos antes de repetir host',
 });
 
 test('un título traducido gana a uno que solo lo contiene', () => {
-  // GnulaHD publica el título en español: Interstellar → «Interestelar».
   const interestelar = titleSimilarity('Interstellar', 'Interestelar');
   const documental = titleSimilarity('Interstellar', 'La ciencia de Interstellar');
   const otra = titleSimilarity('Interstellar', 'Mi perro y yo');
@@ -149,29 +174,17 @@ test('un título traducido gana a uno que solo lo contiene', () => {
   assert.equal(titleSimilarity('Interstellar', 'Interstellar'), 1);
 });
 
-test('la ficha traducida se elige también por página directa', () => {
-  const cards = [
-    { slug: 'la-ciencia-de-interstellar', url: 'x', title: 'La ciencia de Interstellar', year: '2014' },
-    { slug: 'interestelar', url: 'y', title: 'Interestelar', year: '2014' }
-  ];
-  const ranked = rankCandidates(cards, ['Interstellar'], '2014');
-  assert.equal(ranked[0].slug, 'interestelar');
-});
-
 test('searchTerms prueba los títulos completos y luego variantes cortas', () => {
-  // Dos títulos distintos: primero los dos completos.
   assert.deepEqual(
     searchTerms(['Interestelar', 'Interstellar']),
     ['Interestelar', 'Interstellar']
   );
 
-  // Un subtítulo tras «:» se prueba como variante.
   assert.deepEqual(
     searchTerms(['Spider-Man: No Way Home']),
     ['Spider-Man: No Way Home', 'Spider-Man']
   );
 
-  // El artículo inicial se puede caer y los títulos largos se acortan.
   const terms = searchTerms(['The Lord of the Rings: The Fellowship of the Ring']);
   assert.equal(terms[0], 'The Lord of the Rings: The Fellowship of the Ring');
   assert.ok(terms.includes('The Lord of the Rings'));

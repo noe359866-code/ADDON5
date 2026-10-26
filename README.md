@@ -14,12 +14,34 @@ Stremio → /stream/{type}/{id}.json┤                                         
 | Fuente | Plantilla | Búsqueda | Reproductores |
 | --- | --- | --- | --- |
 | **Gnula** | WordPress de pestañas | `/?s=` | `<div id="tabN">` con iframe y el idioma en «opción N» |
-| **GnulaHD** | SPA con datos por API | `/?s=` | `window.GNRD` → `/wp-json/gnrd/v1/player` (payload base64 + XOR) |
-| **Sitio de series** | igual que Gnula | `/?s=` | episodios `…-T xE…-hd-online-temporada-…` |
+| **GnulaHD** | WordPress propio (tema `gnrd-*`) | `/?s=` | `_gnrdPid` + `_gnrdTok` → `/wp-json/gnrd/v1/player` (base64 + XOR) |
+| **Sitio de series** | botones `js-server` | `/?s=` (Cloudflare lo bloquea) | `<button class="js-server" data-src="…">` agrupados por `data-lang` |
 
 Las dos webs se consultan **en paralelo**: si una está caída o no tiene el
 título, la otra sigue respondiendo. Cada stream indica de dónde viene
 (`Gnula · Latino`, `GnulaHD · Castellano`).
+
+### Cómo se leen las webs (comprobado en octubre de 2026)
+
+- **Gnula (películas)** — la ficha trae `<div id="tab1">…` y un iframe por
+  pestaña; el idioma está en el texto `opción 1, Latino, HD`. Los servidores
+  reales hoy son `uqload.com`, `viewsb.com` y `jawcloud.co`.
+- **Gnula (series)** — la plantilla cambió: ya no hay iframes. Cada idioma es
+  un `<div class="servers" data-lang="lat|cas|sub">` lleno de
+  `<button class="server js-server" data-src="…">`. El buscador del sitio
+  contesta **403 con un desafío de Cloudflare**, así que se va directo a
+  `/serie/<slug>/` y de ahí a la URL del episodio.
+- **GnulaHD** — la ficha declara `_gnrdPid` y `_gnrdTok` y llama a
+  `/wp-json/gnrd/v1/player?id=…&t=…`. La respuesta es `{p:"<base64>"}`
+  cifrada con XOR contra una clave de 4 bytes que está en la propia página,
+  dentro de `gnrdUnpack` (`k=[103,78,55,100]` = `"gN7d"`). Se descifra en
+  memoria, sin ejecutar nada del sitio.
+- **vidara** (`vidaraa.cc` / `vidara.to`) no se rastrea: el propio GnulaHD lo
+  convierte en HLS con `/panel/vidara-resolve.php?pl=1&code=…&host=…&t=…`.
+  Ese `t` es **distinto en cada ficha**, por eso se lee de la página en el
+  momento y no se guarda en la configuración.
+- Los enlaces de **descarga** que publica la ficha (`dl`, `.zip`, 1fichier,
+  megaup…) no son streams: se ignoran.
 
 ## Qué hace
 
@@ -138,7 +160,6 @@ Todo es opcional; los valores por defecto están en `.env.example`.
 | `TMDB_LANGUAGE` | `es-MX` | idioma en que se piden los títulos a TMDB |
 | `STREMIO_FORMATS` | `hls,mp4` | formatos que se entregan (`mkv`, `dash` son opt-in) |
 | `GNULAHD_BASE_URL` | `https://ww3.gnulahd.nu` | hermano GnulaHD |
-| `THE_TUBE_TOKEN` | (incluido) | token de `the-tube-resolve.php` para los enlaces they.tube |
 | `STREAM_PROXY` | `auto` | `auto` / `always` / `never` |
 | `HANDLER_DEADLINE_MS` | `15000` | presupuesto total de una petición |
 | `FETCH_TIMEOUT_MS` | `7000` | timeout de cada petición HTTP |
@@ -160,7 +181,7 @@ src/titles.js            ID → títulos con los que buscar (TMDB/Cinemeta/IMDb)
 src/formats.js           qué puede reproducir Stremio (HLS/MP4) y sondeo HEAD
 src/sources.js           las dos webs: Gnula y GnulaHD
 src/gnula.js             búsqueda, fichas, pestañas, idiomas
-src/gnulahd.js           /ver/<slug>/, API gnrd cifrada, episodios, they.tube
+src/gnulahd.js           /ver/<slug>/, API gnrd cifrada, resolvedor de vidara, episodios
 src/players/index.js     extractores por reproductor + encadenado
 src/players/shared.js    buscar la URL de video en el HTML/JS
 src/players/packer.js    desempaquetado del JS "packed" (Dean Edwards)

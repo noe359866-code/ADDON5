@@ -1,18 +1,28 @@
 /**
  * src/gnulahd.js — Hermano de Gnula: https://ww3.gnulahd.nu
  *
- * Es otra plantilla (no la de pestañas de gnula.one):
+ * Es otra plantilla (no la de pestañas de gnula.one). Comprobado contra la web
+ * real en octubre de 2026:
  *
  *   Búsqueda  /?s=<término>            tarjetas <a class="gnrd-card">
- *   Ficha     /ver/<slug>/             h1.gnrd-fi-title, div.gnrd-qf (Año/Calidad)
- *   Series    a.gnrd-epc               episodios «1x01» con su propio /ver/…
- *   Jugadores window.GNRD={pid,tok,k}  → /wp-json/gnrd/v1/player?id=&t=
- *                                       → {p:"<base64 XOR>"} → {langs:[{label,servers}]}
+ *   Ficha     /ver/<slug>/             h1.gnrd-fi-title, filas .qf-l / .qf-v
+ *   Series    a.gnrd-epc               «4x07» con data-s/data-e y su propia URL
+ *   Jugadores <script>                 _gnrdPid=…, _gnrdTok="…"
+ *                                      → /wp-json/gnrd/v1/player?id=&t=
+ *                                      → {p:"<base64>"} cifrado XOR
+ *   Resolvedores del sitio             /panel/vidara-resolve.php  (devuelve HLS)
+ *                                      /panel/the-tube-resolve.php (JSON {master})
  *
- * El payload del reproductor viene en base64 y cifrado con XOR contra una
- * clave que también viaja en base64 en la página. Se descifra aquí, sin
- * ejecutar nada del sitio. Si la página es la variante antigua (variables
- * `_gnpv_ep_langs` / `_gd` en línea) también se leen.
+ * El payload NO viene en claro: es base64 y va cifrado con XOR byte a byte
+ * contra una clave de 4 bytes que está en la propia página, dentro de
+ * `gnrdUnpack` (`k=[103,78,55,100]` = "gN7d"). Aquí se descifra sin ejecutar
+ * nada del sitio; la clave se lee de la página y solo se usa la conocida si
+ * no aparece.
+ *
+ * Los enlaces de vidara (vidaraa.cc / vidara.to) no se rastrean en su web: el
+ * propio sitio los convierte en un HLS con `/panel/vidara-resolve.php?pl=1`.
+ * Ese token es distinto en cada ficha, así que se lee de la página en el
+ * momento y nunca se guarda en la configuración.
  */
 
 import { config } from './config.js';
@@ -21,6 +31,7 @@ import { pageCache } from './cache.js';
 import {
   canonicalLanguage,
   embedPriority,
+  hostOf,
   isHttpUrl,
   isSkippedEmbed,
   rankCandidates,
@@ -29,6 +40,9 @@ import {
 import { compact, slugify } from './utils/text.js';
 
 const BASE = () => config.gnulahdBaseUrl;
+
+/** Clave de `gnrdUnpack` en la web actual: [103,78,55,100] → "gN7d". */
+const DEFAULT_PLAYER_KEY = Buffer.from([103, 78, 55, 100]);
 
 /* ------------------------------------------------------------------ *
  *  Base64 / XOR
@@ -48,27 +62,67 @@ function decodeBase64(value) {
   }
 }
 
-/** Descifra el payload del reproductor: XOR byte a byte contra la clave. */
-export function xorDecrypt(encoded, keyBase64) {
-  const key = decodeBase64(keyBase64);
-  const raw = decodeBase64(encoded);
-  if (!key.length || !raw.length) return '';
+const CONTROL_CHARS = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\ufffd]/;
+
+/** Bytes de la clave: Buffer, [103,78,…] o el texto tal cual. */
+export function keyBytes(key) {
+  if (Buffer.isBuffer(key)) return key;
+  if (Array.isArray(key)) return Buffer.from(key.map((value) => Number(value) & 0xff));
+  return Buffer.from(String(key == null ? '' : key), 'utf8');
+}
+
+/** Variantes a probar: el texto tal cual y, si parece base64, su decodificado. */
+function keyCandidates(key) {
+  const list = [keyBytes(key)];
+  if (typeof key === 'string' && key.trim()) {
+    const decoded = decodeBase64(key);
+    if (decoded.length) list.push(decoded);
+  }
+  return list.filter((buffer) => buffer.length);
+}
+
+function xorBytes(raw, key) {
   const out = Buffer.alloc(raw.length);
   for (let i = 0; i < raw.length; i += 1) {
     out[i] = raw[i] ^ key[i % key.length];
   }
-  return out.toString('utf8');
+  return out;
+}
+
+/**
+ * Descifra el payload del reproductor: XOR byte a byte contra la clave.
+ * Se queda con la primera lectura que sea texto limpio (la clave puede venir
+ * como texto —"gN7d"— o en base64, según la versión de la web).
+ */
+export function xorDecrypt(encoded, key) {
+  const raw = decodeBase64(encoded);
+  if (!raw.length) return '';
+  let fallback = '';
+  for (const candidate of keyCandidates(key)) {
+    const text = xorBytes(raw, candidate).toString('utf8');
+    if (!fallback) fallback = text;
+    if (!CONTROL_CHARS.test(text)) return text;
+  }
+  return fallback;
 }
 
 /** Cifra al revés; solo lo usan las pruebas para fabricar un payload válido. */
-export function xorEncrypt(plain, keyBase64) {
-  const key = decodeBase64(keyBase64);
+export function xorEncrypt(plain, key) {
   const raw = Buffer.from(String(plain), 'utf8');
-  const out = Buffer.alloc(raw.length);
-  for (let i = 0; i < raw.length; i += 1) {
-    out[i] = raw[i] ^ key[i % key.length];
+  return xorBytes(raw, keyBytes(key)).toString('base64');
+}
+
+/** Descifra y valida que sea JSON; `null` si la clave no era la correcta. */
+export function decodePlayerPayload(encoded, key) {
+  if (!encoded) return null;
+  for (const candidate of keyCandidates(key)) {
+    try {
+      return JSON.parse(xorBytes(decodeBase64(encoded), candidate).toString('utf8'));
+    } catch {
+      // se prueba la siguiente variante de la clave
+    }
   }
-  return out.toString('base64');
+  return null;
 }
 
 /* ------------------------------------------------------------------ *
@@ -134,10 +188,14 @@ export function parseCards(html, { site = BASE() } = {}) {
  *  Ficha
  * ------------------------------------------------------------------ */
 
-/** Filas «Año / Calidad / Audio» de la ficha. */
+/**
+ * Filas «Año / Calidad / Audio» de la ficha. La plantilla actual usa
+ * `<span class="qf-l">Año</span><span class="qf-v">2014</span>`; versiones
+ * anteriores las llamaban `gnrd-qf-…` y también se aceptan.
+ */
 export function parseQuickFacts(html) {
   const facts = {};
-  const re = /<span[^>]*class\s*=\s*["'][^"']*gnrd-qf-l[^"']*["'][^>]*>([\s\S]*?)<\/span>[\s\S]{0,200}?<span[^>]*class\s*=\s*["'][^"']*gnrd-qf-v[^"']*["'][^>]*>([\s\S]*?)<\/span>/gi;
+  const re = /<span[^>]*class\s*=\s*["'][^"']*(?:gnrd-qf|qf)-l[^"']*["'][^>]*>([\s\S]*?)<\/span>[\s\S]{0,200}?<span[^>]*class\s*=\s*["'][^"']*(?:gnrd-qf|qf)-v[^"']*["'][^>]*>([\s\S]*?)<\/span>/gi;
   let match;
   while ((match = re.exec(html))) {
     const label = match[1].replace(/<[^>]+>/g, '').trim().toLowerCase();
@@ -158,7 +216,10 @@ export function parseQuality(html) {
   return quality ? quality.toUpperCase().slice(0, 10) : '';
 }
 
-/** Episodios `<a class="gnrd-epc" href="…"><span class="gnrd-epc-n">1x01</span>…`. */
+/**
+ * Episodios `<a class="gnrd-epc" href="…" data-id data-t data-s data-e>`.
+ * `data-id`/`data-t` son el id y el token del reproductor de ese capítulo.
+ */
 export function parseEpisodes(html, { site = BASE() } = {}) {
   const re = /<a\b([^>]*\bclass\s*=\s*["'][^"']*\bgnrd-epc\b[^"']*["'][^>]*)>([\s\S]{0,3000}?)<\/a>/gi;
   const episodes = [];
@@ -188,7 +249,14 @@ export function parseEpisodes(html, { site = BASE() } = {}) {
     if (!Number.isInteger(season) || !Number.isInteger(episode)) continue;
 
     seen.add(url);
-    episodes.push({ url, season, episode, label });
+    episodes.push({
+      url,
+      season,
+      episode,
+      label,
+      playerId: firstMatch(attrs, /data-id\s*=\s*["'](\d+)["']/i),
+      playerToken: firstMatch(attrs, /data-t\s*=\s*["']([^"']+)["']/i)
+    });
   }
 
   return episodes;
@@ -198,7 +266,35 @@ export function parseEpisodes(html, { site = BASE() } = {}) {
  *  Reproductores
  * ------------------------------------------------------------------ */
 
-/** `window.GNRD={pid:123,tok:"…",k:"…"}` */
+/**
+ * Configuración del reproductor en la página actual:
+ *   var _gnrdPid=206802,_gnrdTok="…";
+ *   function gnrdUnpack(s){ … k=[103,78,55,100] … }
+ * @returns {{pid:string, tok:string, key:Buffer}|null}
+ */
+export function parsePlayerConfig(html) {
+  const pid = firstMatch(html, /_gnrdPid\s*=\s*["']?(\d+)/i);
+  const tok = firstMatch(html, /_gnrdTok\s*=\s*["']([^"']+)/i);
+  if (!pid || !tok) return null;
+
+  // La clave del XOR viaja en la propia función que desempaqueta el payload.
+  const keyBytesMatch = /gnrdUnpack[\s\S]{0,600}?\bk\s*=\s*\[([0-9,\s]+)\]/i.exec(html);
+  let key = DEFAULT_PLAYER_KEY;
+  if (keyBytesMatch) {
+    const bytes = keyBytesMatch[1]
+      .split(',')
+      .map((value) => Number.parseInt(value, 10))
+      .filter((value) => Number.isInteger(value) && value >= 0 && value <= 255);
+    if (bytes.length) key = Buffer.from(bytes);
+  }
+
+  return { pid, tok, key };
+}
+
+/**
+ * Variante antigua: `window.GNRD={pid:123,tok:"…",k:"…"}`. Ya no se sirve,
+ * pero si una página llega desde una caché intermedia se sigue entendiendo.
+ */
 export function parseGnrdConfig(html) {
   const block = /window\.GNRD\s*=\s*\{([\s\S]{0,2000}?)\}\s*;?/.exec(html);
   if (!block) return null;
@@ -210,8 +306,54 @@ export function parseGnrdConfig(html) {
   return { pid, tok, key };
 }
 
+/**
+ * Resolvedores propios del sitio, con su token (cambia en cada ficha):
+ *   RESOLVE='/panel/the-tube-resolve.php?code=', AUTH='&t=…'
+ *   VD_RESOLVE='/panel/vidara-resolve.php',    VD_AUTH='&t=…'
+ */
+export function parseResolvers(html) {
+  const vidaraPath = firstMatch(html, /VD_RESOLVE\s*=\s*["']([^"']+)/i) || '/panel/vidara-resolve.php';
+  const vidaraToken = firstMatch(html, /VD_AUTH\s*=\s*["']&?t=([^"']+)/i);
+  const tubePath = firstMatch(html, /(?<![A-Za-z])RESOLVE\s*=\s*["']([^"']+)/i);
+  const tubeToken = firstMatch(html, /(?<![A-Za-z])AUTH\s*=\s*["']&?t=([^"']+)/i);
+
+  return {
+    vidara: {
+      path: vidaraPath,
+      token: vidaraToken,
+      on: !/VD_ON\s*=\s*false/i.test(html)
+    },
+    theTube: {
+      path: tubePath,
+      token: tubeToken,
+      on: !/TT_ON\s*=\s*false/i.test(html)
+    }
+  };
+}
+
+/** URL del HLS que sirve el propio sitio para un enlace de vidara. */
+export function vidaraResolveUrl(embedUrl, { site = BASE(), resolvers = null } = {}) {
+  if (!resolvers || !resolvers.vidara || !resolvers.vidara.on) return '';
+  if (!resolvers.vidara.token) return '';
+  const host = hostOf(embedUrl);
+  if (!/^vidaraa?\.(?:cc|to)$/i.test(host)) return '';
+
+  let code = '';
+  try {
+    const segments = new URL(embedUrl).pathname.split('/').filter(Boolean);
+    code = segments[segments.length - 1] || '';
+  } catch {
+    return '';
+  }
+  code = code.replace(/\.html?$/i, '');
+  if (!code) return '';
+
+  const path = resolvers.vidara.path.startsWith('/') ? resolvers.vidara.path : `/${resolvers.vidara.path}`;
+  return `${site}${path}?pl=1&code=${encodeURIComponent(code)}&host=${encodeURIComponent(host)}&t=${encodeURIComponent(resolvers.vidara.token)}`;
+}
+
 /** Convierte {langs:[{label,servers:[{src}]}]} en embeds normalizados. */
-export function playersFromJson(data, { site = BASE() } = {}) {
+export function playersFromJson(data, { site = BASE(), resolvers = null } = {}) {
   const langs = Array.isArray(data) ? data : (data && Array.isArray(data.langs) ? data.langs : []);
   const embeds = [];
 
@@ -234,6 +376,16 @@ export function playersFromJson(data, { site = BASE() } = {}) {
       if (!isHttpUrl(url)) continue;
       if (/aviso\.mp4/i.test(url)) continue; // relleno publicitario del sitio
       if (isSkippedEmbed(url)) continue;
+
+      // vidara se ve a través del resolvedor del propio sitio (devuelve HLS).
+      // El nombre visible es el del servidor original, no el del dominio del
+      // resolvedor.
+      const resolved = vidaraResolveUrl(url, { site, resolvers });
+      if (resolved) {
+        embeds.push({ url: resolved, language, kind: 'iframe', label: 'Vidara' });
+        continue;
+      }
+
       embeds.push({ url, language, kind: /\.(m3u8|mp4|mpd)(\?|#|$)/i.test(url) ? 'direct' : 'iframe' });
     }
   }
@@ -253,53 +405,56 @@ export function parseInlinePlayers(html) {
   }
 }
 
+/** Llama a la API del reproductor y devuelve los embeds ya normalizados. */
+async function fetchPlayers({ pid, tok, key }, pageUrl, ctx, resolvers) {
+  const apiUrl = `${BASE()}/wp-json/gnrd/v1/player?id=${encodeURIComponent(pid)}&t=${encodeURIComponent(tok)}`;
+  const response = await request(apiUrl, {
+    deadline: ctx.deadline,
+    headers: {
+      Referer: pageUrl,
+      'X-Requested-With': 'gnrd',
+      Accept: 'application/json'
+    }
+  });
+  if (!response.ok || !response.text) return [];
+
+  let payload = null;
+  try {
+    payload = JSON.parse(response.text);
+  } catch {
+    return [];
+  }
+
+  // Lo normal: `{p:"<base64 cifrado>"}`. Si algún día llega en claro, vale igual.
+  let data = decodePlayerPayload(payload && payload.p, key);
+  if (!data) {
+    data = payload && (Array.isArray(payload.langs) || Array.isArray(payload)) ? payload : null;
+  }
+  if (!data) return [];
+
+  return playersFromJson(data, { site: BASE(), resolvers });
+}
+
 /**
- * Reproductores de una página de GnulaHD: API GNRD (payload cifrado),
+ * Reproductores de una página de GnulaHD: API con el payload cifrado,
  * variables en línea de la versión anterior o, como último recurso, iframes.
  */
 export async function readPlayers(html, pageUrl, ctx = {}) {
-  const gnrd = parseGnrdConfig(html);
-  let embeded = [];
+  const resolvers = parseResolvers(html);
+  const current = parsePlayerConfig(html);
+  const legacy = current ? null : parseGnrdConfig(html);
 
-  if (gnrd) {
-    const apiUrl = `${BASE()}/wp-json/gnrd/v1/player?id=${encodeURIComponent(gnrd.pid)}&t=${encodeURIComponent(gnrd.tok)}`;
-    const response = await request(apiUrl, {
-      deadline: ctx.deadline,
-      headers: {
-        Referer: pageUrl,
-        'X-Requested-With': 'gnrd',
-        Accept: 'application/json'
-      }
-    });
-
-    if (response.ok && response.text) {
-      let payload = null;
-      try {
-        payload = JSON.parse(response.text);
-      } catch {
-        payload = null;
-      }
-      const encoded = payload && typeof payload.p === 'string' ? payload.p : '';
-      if (encoded) {
-        try {
-          const decrypted = xorDecrypt(encoded, gnrd.key);
-          embeded = playersFromJson(JSON.parse(decrypted));
-        } catch {
-          embeded = [];
-        }
-      }
-      if (!embeded.length && payload && Array.isArray(payload.langs)) {
-        embeded = playersFromJson(payload);
-      }
-    }
+  let embeds = [];
+  if (current || legacy) {
+    embeds = await fetchPlayers(current || legacy, pageUrl, ctx, resolvers);
   }
 
-  if (!embeded.length) {
+  if (!embeds.length) {
     const inline = parseInlinePlayers(html);
-    if (inline) embeded = playersFromJson(inline);
+    if (inline) embeds = playersFromJson(inline, { site: BASE(), resolvers });
   }
 
-  if (!embeded.length) {
+  if (!embeds.length) {
     // Último recurso: iframes sueltos en la página.
     const re = /<iframe\b([^>]*)>/gi;
     let match;
@@ -310,18 +465,18 @@ export async function readPlayers(html, pageUrl, ctx = {}) {
         let url = attr[1].replace(/\\\//g, '/');
         if (url.startsWith('//')) url = `https:${url}`;
         if (isHttpUrl(url) && !isSkippedEmbed(url)) {
-          embeded.push({ url, language: '', kind: 'iframe' });
+          embeds.push({ url, language: '', kind: 'iframe' });
         }
         break;
       }
     }
   }
 
-  embeded = await resolveTheTube(embeded, ctx);
+  embeds = await resolveTheTube(embeds, ctx, resolvers);
 
   // Deduplicado por URL conservando el orden de prioridad del sitio.
   const seen = new Set();
-  return embeded
+  return embeds
     .filter((embed) => {
       if (seen.has(embed.url)) return false;
       seen.add(embed.url);
@@ -332,9 +487,12 @@ export async function readPlayers(html, pageUrl, ctx = {}) {
 
 /**
  * they.tube se resuelve en el propio sitio: /panel/the-tube-resolve.php
- * devuelve el master .m3u8. Si no responde, el enlace se deja como está.
+ * devuelve el master .m3u8. El token es el de la ficha abierta.
  */
-async function resolveTheTube(embeds, ctx) {
+async function resolveTheTube(embeds, ctx, resolvers) {
+  const resolver = resolvers && resolvers.theTube;
+  if (!resolver || !resolver.on || !resolver.path) return embeds;
+
   const out = [];
   for (const embed of embeds) {
     if (!/the(?:y)?\.tube/i.test(embed.url)) {
@@ -346,7 +504,10 @@ async function resolveTheTube(embeds, ctx) {
       out.push(embed);
       continue;
     }
-    const url = `${BASE()}/panel/the-tube-resolve.php?code=${encodeURIComponent(code[1])}&t=${encodeURIComponent(config.theTubeToken)}`;
+    const token = resolver.token;
+    const base = `${BASE()}${resolver.path}`;
+    const separator = base.includes('?') ? '' : '?code=';
+    const url = `${base}${separator}${encodeURIComponent(code[1])}${token ? `&t=${encodeURIComponent(token)}` : ''}`;
     const response = await request(url, {
       deadline: ctx.deadline,
       headers: { Referer: BASE(), Accept: 'application/json' }
@@ -411,7 +572,7 @@ async function candidatesFor(titles, year, ctx) {
     if (!slug) continue;
     const url = `${BASE()}/ver/${slug}/`;
     const page = await fetchPage(url, { deadline: ctx.deadline });
-    if (page.ok && /gnrd-fi-title|gnrd-epc|GNRD|_gnpv_ep_langs/i.test(page.text)) {
+    if (page.ok && /gnrd-fi-title|gnrd-epc|_gnrdTok/i.test(page.text)) {
       return [{ slug, url: page.url || url, title, year: year || '', score: 0.7, preloaded: page.text }];
     }
   }
