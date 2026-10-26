@@ -24,6 +24,13 @@ for (const url of embeds) {
     status = `exc ${error.message}`;
   }
 
+  try {
+    const own = await fetchPlayer(url, { deadline: new Deadline(15000) });
+    console.log(`   sin referer ajeno: ${own ? own.text.length + ' B' : 'null'}`);
+  } catch (error) {
+    console.log('   sin referer ajeno: exc', error.message);
+  }
+
   const t1 = Date.now();
   let out = null;
   try {

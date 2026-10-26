@@ -185,8 +185,21 @@ export async function fetchText(url, ctx = {}, referer = '') {
 
 /** Petición a la página de un reproductor. */
 export async function fetchPlayer(url, ctx = {}) {
-  const referer = ctx.referer || `${safeOrigin(url)}/`;
+  const own = `${safeOrigin(url)}/`;
+  const referer = ctx.referer || own;
   const text = await fetchText(url, ctx, referer);
+
+  // Algunos hosts (uqload) tienen protección anti-hotlink: con el Referer de
+  // la web de origen contestan una página de 38 bytes. Se reintenta como si el
+  // enlace se abriera a mano (Referer del propio host).
+  const short = !text || text.length < 512;
+  if (short && referer !== own && (!ctx.deadline || ctx.deadline.remaining() > 1500)) {
+    const retry = await fetchText(url, ctx, own);
+    if (retry && retry.length > (text ? text.length : 0)) {
+      return { text: retry, url, referer: own };
+    }
+  }
+
   if (!text) return null;
   return { text, url, referer };
 }
