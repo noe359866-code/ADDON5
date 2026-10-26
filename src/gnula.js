@@ -76,7 +76,17 @@ const SKIPPED_HOST_PATTERNS = [
   /(^|\.)t\.me$/i,
   /(^|\.)stremio\.com$/i,
   /(^|\.)tmdb\.org$/i,
-  /(^|\.)imdb\.com$/i
+  /(^|\.)imdb\.com$/i,
+  // Alojamientos de descarga: la ficha de un .mp4 ahí es una página web, no
+  // un video (links.cuevana.ac enlaza a katfile «loki.2x01.lat.mp4»).
+  /(^|\.)katfile\.com$/i,
+  /(^|\.)1fichier\.com$/i,
+  /(^|\.)megaup\.net$/i,
+  /(^|\.)rapidgator\.net$/i,
+  /(^|\.)nitroflare\.com$/i,
+  /(^|\.)turbobit\.net$/i,
+  /(^|\.)uploadhaven\.com$/i,
+  /(^|\.)ddownload\.com$/i
 ];
 
 export function isSkippedEmbed(url) {

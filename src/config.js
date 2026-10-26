@@ -124,8 +124,11 @@ export const config = {
   /** Timeout de cada petición HTTP individual. */
   fetchTimeoutMs: intEnv('FETCH_TIMEOUT_MS', 12000, { min: 1000, max: 60000 }),
 
-  /** Embed que se intentan resolver por petición (los mejores primero). */
-  maxResolvePerRequest: intEnv('MAX_RESOLVE_PER_REQUEST', 8, { min: 1, max: 24 }),
+  /**
+   * Embed que se intentan resolver por petición (los mejores primero).
+   * Con 8 se quedaban fuera los agregadores (Cuevana), que sí devuelven HLS.
+   */
+  maxResolvePerRequest: intEnv('MAX_RESOLVE_PER_REQUEST', 12, { min: 1, max: 24 }),
 
   /** Peticiones simultáneas a reproductores externos. */
   resolveConcurrency: intEnv('RESOLVE_CONCURRENCY', 3, { min: 1, max: 8 }),

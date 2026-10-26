@@ -174,7 +174,12 @@ test('STREMIO_FORMATS decide qué se entrega: sin mp4 el MP4 se descarta', async
     baseUrl: 'https://addon.example.com'
   });
 
-  assert.equal(streams.length, 4, 'uqload + 2 vidara + 1 voe');
+  // Con el tope de 12 reproductores también entra el agregador de Cuevana.
+  assert.equal(streams.length, 5, 'uqload + 2 vidara + 1 voe + 1 cuevana');
+  assert.deepEqual(
+    [...new Set(streams.map((stream) => stream.name))].sort(),
+    ['Gnula · Latino', 'GnulaHD · Latino', 'GnulaHD · Subtitulado']
+  );
   assert.equal(streams.some((stream) => mediaOf(stream.url).endsWith('.mp4')), false);
 
   // El MP4 directo sí se resolvió, pero se descarta por formato.
