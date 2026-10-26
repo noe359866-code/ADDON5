@@ -267,3 +267,39 @@ selftest tt9140554 200
 stream mando 200
 stream loki 200
 stream interestelar 200
+200  259317  https://ww3.gnulahd.nu/ver/interestelar/
+
+https://doodstream.com/e/5om8hen4mx5z#yep=1
+   page: null | media: —
+   resolve 654 ms → NULL
+
+https://mixdrop.ch/e/kn4868p8c31zvmw
+   page: null | media: —
+   resolve 1195 ms → NULL
+
+https://streamhub.to/e/hp3t8oth58kc
+   page: null | media: —
+   resolve 461 ms → NULL
+
+https://links.cuevana.ac/play/L0ZTVGJ2YVo0STBEYkYyaC9LY3FPZz09.html#lang=lat
+   page: 5770 B | media: https://katfile.com/f9msolbfrwio/loki.2x01.1080p.lat.mp4
+   next: https://player.cuevana.ac/f/48SWxyACcoWr , https://player.cuevana.ac/f/KmpNHXNln3SB
+   title: Loki - 2x01 - LAT
+   resolve 78 ms → https://katfile.com/f9msolbfrwio/loki.2x01.1080p.lat.mp4 (links.cuevana.ac)
+
+https://player.cuevana.ac/f/7Rkx7iWUYWWW
+   page: 13879 B | media: —
+   next: https://player.cuevana.ac/e/7Rkx7iWUYWWW?http_referer=https%3A%2F%2Fver.verteleseriesonline.com%2Floki-2x01-hd-online-temporada-2-episodio-1%2F&autoplay=no&embed_from=embed_from
+   title: Video player
+   resolve 1257 ms → https://4fw4gd.cfglobalcdn.com/secip/1/861rQM940fF8R1fZDCdglg/OTQuMjUuMTcwLjI2/1606597200/hls-vod-s03/flv/api/files/vide (player.cuevana.ac)
+
+https://player.cuevana.ac/f/tHTI18pdRZ3Z
+   page: 13928 B | media: —
+   next: https://player.cuevana.ac/e/tHTI18pdRZ3Z?http_referer=https%3A%2F%2Fver.verteleseriesonline.com%2Floki-2x01-hd-online-temporada-2-episodio-1%2F&autoplay=no&embed_from=embed_from
+   title: Video player
+   resolve 2110 ms → https://4fw4gd.cfglobalcdn.com/secip/1/861rQM940fF8R1fZDCdglg/OTQuMjUuMTcwLjI2/1606597200/hls-vod-s03/flv/api/files/vide (player.cuevana.ac)
+selftest tt0816692 200
+selftest tt9140554 200
+stream mando 200
+stream loki 200
+stream interestelar 200

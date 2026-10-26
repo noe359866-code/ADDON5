@@ -19,12 +19,12 @@ Manifest: http://localhost:7311/manifest.json
 [player] viewsb.com → fetch failed
 [http] GET https://viewsb.com/e/oenpw8kx4v99.html → fetch failed
 [player] viewsb.com → fetch failed
+[player] voe.sx → HTTP 404
 [http] GET https://viewsb.com/e/oenpw8kx4v99.html → fetch failed
 [player] viewsb.com → fetch failed
 [player] voe.sx → HTTP 404
 [player] voe.sx → HTTP 404
-[player] voe.sx → HTTP 404
-[stream] series/tt8111088:1:1 → 0 en 8566 ms
+[stream] series/tt8111088:1:1 → 0 en 9778 ms
 [player] streamtape.com → HTTP 404
 [player] streamtape.com → HTTP 404
 [player] streamtape.com → HTTP 404
@@ -40,20 +40,19 @@ Manifest: http://localhost:7311/manifest.json
 [player] upstream.to → fetch failed
 [http] GET https://upstream.to/embed-zby84wzdqoqh.html → fetch failed
 [player] upstream.to → fetch failed
-[player] mixdrop.ch → HTTP 436
-[player] mixdrop.ch → HTTP 436
-[player] mixdrop.ch → HTTP 436
-[stream] series/tt9140554:2:1 → 1 en 7256 ms
+[http] GET https://mixdrop.ch/e/kn4868p8c31zvmw → timeout tras 10000 ms
+[player] mixdrop.ch → timeout tras 10000 ms
+[stream] series/tt9140554:2:1 → 1 en 16658 ms
+[http] GET https://viewsb.com/e/beypa68rqj3t.html → fetch failed
+[player] viewsb.com → fetch failed
+[player] jawcloud.co → HTTP 404
 [http] GET https://viewsb.com/e/beypa68rqj3t.html → fetch failed
 [player] viewsb.com → fetch failed
 [http] GET https://viewsb.com/e/beypa68rqj3t.html → fetch failed
 [player] viewsb.com → fetch failed
 [player] jawcloud.co → HTTP 404
-[player] jawcloud.co → HTTP 404
-[http] GET https://viewsb.com/e/beypa68rqj3t.html → fetch failed
-[player] viewsb.com → fetch failed
+[player] savefiles.com → HTTP 403
 [player] jawcloud.co → HTTP 404
 [player] savefiles.com → HTTP 403
 [player] savefiles.com → HTTP 403
-[player] savefiles.com → HTTP 403
-[stream] movie/tt0816692 → 3 en 303 ms
+[stream] movie/tt0816692 → 3 en 1086 ms
