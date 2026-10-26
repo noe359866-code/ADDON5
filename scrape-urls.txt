@@ -1,10 +1,6 @@
 # nombre  url   (una por línea; al cambiar este archivo se relanza el scraping)
-gnulahd-movie         https://ww3.gnulahd.nu/ver/interestelar/
-gnulahd-serie         https://ww3.gnulahd.nu/ver/el-encargado/
-gnulahd-episode       https://ww3.gnulahd.nu/el-encargado-4x07/
-vidaraa-embed         https://vidaraa.cc/e/3RSpbzKZgfoy8
-byse-embed            https://byse.sx/e/ltd6r245u81w
-voe-embed             https://voe.sx/e/rvnyarijf6gm
-savefiles-embed       https://savefiles.com/e/j1zo9m2tgvcs
-series-detail         https://ver.verteleseriesonline.com/serie/loki/
-gnula-movie-int       https://www2.gnula.one/movie/interestelar/
+vidara-resolve   https://ww3.gnulahd.nu/panel/vidara-resolve.php?pl=1&code=3RSpbzKZgfoy8&host=vidaraa.cc&t=0acdc764c75b0f86e4c78b8cd8a4d11f
+vidara-sub       https://ww3.gnulahd.nu/panel/vidara-resolve.php?pl=1&code=dbSrlVQkCYGa6&host=vidara.to&t=0acdc764c75b0f86e4c78b8cd8a4d11f
+voe-mirror       https://ashleyhardat.com/e/rvnyarijf6gm
+series-episode   https://ver.verteleseriesonline.com/loki-2x01-hd-online-temporada-2-episodio-1/
+byse-js          https://byse.sx/assets/index-DocunfmE.js
