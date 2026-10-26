@@ -13,7 +13,7 @@ export const manifest = {
   version: config.addonVersion,
   name: config.addonName,
   description:
-    'Streams en español de Gnula para películas y series. Elige un servidor y reproduce dentro de Stremio.',
+    'Streams en español de Gnula y GnulaHD para películas y series. Elige un servidor y reproduce dentro de Stremio.',
   resources: ['stream'],
   types: ['movie', 'series'],
   idPrefixes: ['tt'],

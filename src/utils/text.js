@@ -40,6 +40,29 @@ export function slugify(text) {
     .replace(/^-+|-+$/g, '');
 }
 
+/**
+ * Bigramas de caracteres. Compara títulos que se escriben distinto pero
+ * suenan igual en pantalla: «Interestelar» / «Interstellar» comparten 8 de 10
+ * bigramas, mientras que un documental que solo contiene el título en medio
+ * («La ciencia de Interstellar») queda muy por debajo.
+ */
+export function bigrams(text) {
+  const value = compact(text);
+  const out = new Set();
+  for (let i = 0; i < value.length - 1; i += 1) out.add(value.slice(i, i + 2));
+  return out;
+}
+
+/** Coeficiente de Dice sobre bigramas (0..1). */
+export function diceSimilarity(a, b) {
+  const left = bigrams(a);
+  const right = bigrams(b);
+  if (!left.size || !right.size) return 0;
+  let shared = 0;
+  for (const gram of left) if (right.has(gram)) shared += 1;
+  return (2 * shared) / (left.size + right.size);
+}
+
 /** Similitud por tokens (Jaccard) entre dos títulos normalizados. */
 export function tokenSimilarity(a, b) {
   const left = new Set(withoutArticles(a).split(' ').filter(Boolean));
@@ -60,13 +83,13 @@ export function titleSimilarity(wanted, candidate) {
   const b = compact(candidate);
   if (!a || !b) return 0;
   if (a === b) return 1;
-  if (a.startsWith(b) || b.startsWith(a)) {
-    return 0.82 + 0.15 * (Math.min(a.length, b.length) / Math.max(a.length, b.length));
-  }
-  if (a.includes(b) || b.includes(a)) {
-    return 0.7 + 0.15 * (Math.min(a.length, b.length) / Math.max(a.length, b.length));
-  }
-  return tokenSimilarity(wanted, candidate);
+
+  const dice = diceSimilarity(a, b);
+  const ratio = Math.min(a.length, b.length) / Math.max(a.length, b.length);
+
+  if (a.startsWith(b) || b.startsWith(a)) return Math.max(dice, 0.82 + 0.15 * ratio);
+  if (a.includes(b) || b.includes(a)) return Math.max(dice, 0.62 + 0.12 * ratio);
+  return Math.max(dice, tokenSimilarity(wanted, candidate) * 0.95);
 }
 
 /** Extrae el año de "(2025)" o de un campo suelto. */

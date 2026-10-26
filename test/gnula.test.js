@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { diceSimilarity, titleSimilarity } from '../src/utils/text.js';
 import {
   contentRegion,
   hostLabel,
@@ -132,4 +133,26 @@ test('la cola de resolución prueba servidores distintos antes de repetir host',
   const all = selectEmbedsForResolution(embeds, 10);
   assert.equal(all.length, 5);
   assert.deepEqual(all.slice(0, 3).map((embed) => embed.url), selected.map((embed) => embed.url));
+});
+
+test('un título traducido gana a uno que solo lo contiene', () => {
+  // GnulaHD publica el título en español: Interstellar → «Interestelar».
+  const interestelar = titleSimilarity('Interstellar', 'Interestelar');
+  const documental = titleSimilarity('Interstellar', 'La ciencia de Interstellar');
+  const otra = titleSimilarity('Interstellar', 'Mi perro y yo');
+
+  assert.ok(interestelar > 0.75, `Interestelar: ${interestelar}`);
+  assert.ok(interestelar > documental, `${interestelar} > ${documental}`);
+  assert.ok(documental > otra);
+  assert.ok(diceSimilarity('Interestelar', 'Interstellar') > 0.7);
+  assert.equal(titleSimilarity('Interstellar', 'Interstellar'), 1);
+});
+
+test('la ficha traducida se elige también por página directa', () => {
+  const cards = [
+    { slug: 'la-ciencia-de-interstellar', url: 'x', title: 'La ciencia de Interstellar', year: '2014' },
+    { slug: 'interestelar', url: 'y', title: 'Interestelar', year: '2014' }
+  ];
+  const ranked = rankCandidates(cards, ['Interstellar'], '2014');
+  assert.equal(ranked[0].slug, 'interestelar');
 });

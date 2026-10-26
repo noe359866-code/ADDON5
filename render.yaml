@@ -1,6 +1,7 @@
 services:
-  # Addon de streams de Gnula. Sin dependencias: `npm ci` solo valida el
-  # lockfile y el arranque es inmediato (Render Free duerme el servicio).
+  # Addon de streams de Gnula + GnulaHD. Sin dependencias: `npm ci` solo
+  # valida el lockfile y el arranque es inmediato (Render Free duerme el
+  # servicio).
   - type: web
     name: addon5-gnula
     runtime: node

@@ -67,8 +67,9 @@ export function renderLanding(baseUrl) {
   <span class="badge">● addon de streams · Stremio</span>
   <h1>${escapeHtml(manifest.name)}</h1>
   <p class="lead">
-    Películas y series en español desde Gnula, listas para reproducir dentro del
-    reproductor de Stremio. Sin catálogos: este addon solo entrega las fuentes de video.
+    Películas y series en español desde <strong>Gnula</strong> y su hermano
+    <strong>GnulaHD</strong>, listas para reproducir dentro del reproductor de
+    Stremio. Sin catálogos: este addon solo entrega las fuentes de video.
   </p>
 
   <div class="actions">
@@ -80,7 +81,8 @@ export function renderLanding(baseUrl) {
     <h2>Cómo se usa</h2>
     <ol>
       <li>Abre una <strong>película</strong> o un <strong>episodio</strong> en Stremio.</li>
-      <li>Pulsa el botón de fuentes y busca las entradas <strong>Gnula</strong>.</li>
+      <li>Pulsa el botón de fuentes y busca las entradas <strong>Gnula</strong> y
+      <strong>GnulaHD</strong>: se consultan las dos webs a la vez.</li>
       <li>Cada entrada indica el idioma (Latino, Castellano, Subtitulado) y el servidor.</li>
     </ol>
   </section>
@@ -95,6 +97,7 @@ export function renderLanding(baseUrl) {
     <div class="grid">
       <span>Versión</span><span>${escapeHtml(manifest.version)}</span>
       <span>Recurso</span><span>stream (películas y series)</span>
+      <span>Fuentes</span><span>Gnula · GnulaHD</span>
       <span>Proxy de video</span><span>${escapeHtml(proxyLabel)}</span>
       <span>Diagnóstico</span><span><a class="ok" href="/selftest?id=tt0111161&amp;type=movie">/selftest?id=tt0111161&amp;type=movie</a></span>
       <span>Salud</span><span><a class="ok" href="/health">/health</a></span>

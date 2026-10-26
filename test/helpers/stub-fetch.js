@@ -14,7 +14,10 @@ export function installFetchStub(routes) {
     const url = typeof input === 'string' ? input : String(input && input.url);
     calls.push({ url, method: init.method || 'GET', headers: init.headers || {} });
 
-    const key = Object.keys(routes).find((prefix) => url.startsWith(prefix));
+    // Gana el prefijo MÁS LARGO: /ver/serie/ no debe tapar a /ver/serie/2x01/.
+    const key = Object.keys(routes)
+      .filter((prefix) => url.startsWith(prefix))
+      .sort((a, b) => b.length - a.length)[0];
     if (!key) return new Response('no encontrado en el stub', { status: 404 });
 
     const route = routes[key];

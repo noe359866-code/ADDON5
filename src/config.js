@@ -59,6 +59,12 @@ export const config = {
   /** Sitio hermano de Gnula para series (misma plantilla de reproductores). */
   seriesBaseUrl: urlEnv('SERIES_BASE_URL', 'https://ver.verteleseriesonline.com'),
 
+  /** Hermano de Gnula con otra plantilla: /ver/<slug>/ + API gnrd de reproductores. */
+  gnulahdBaseUrl: urlEnv('GNULAHD_BASE_URL', 'https://ww3.gnulahd.nu'),
+
+  /** Token que pide /panel/the-tube-resolve.php para los enlaces they.tube. */
+  theTubeToken: (process.env.THE_TUBE_TOKEN || '').trim() || 'eece56848d3929ee78f5fe8e3a62de2d',
+
   /** Metadatos IMDb → título/año (público, sin clave). */
   cinemetaBaseUrl: urlEnv('CINEMETA_BASE_URL', 'https://v3-cinemeta.strem.io'),
 
@@ -71,7 +77,7 @@ export const config = {
   fetchTimeoutMs: intEnv('FETCH_TIMEOUT_MS', 7000, { min: 1000, max: 60000 }),
 
   /** Embed que se intentan resolver por petición (los mejores primero). */
-  maxResolvePerRequest: intEnv('MAX_RESOLVE_PER_REQUEST', 6, { min: 1, max: 24 }),
+  maxResolvePerRequest: intEnv('MAX_RESOLVE_PER_REQUEST', 8, { min: 1, max: 24 }),
 
   /** Peticiones simultáneas a reproductores externos. */
   resolveConcurrency: intEnv('RESOLVE_CONCURRENCY', 3, { min: 1, max: 8 }),
