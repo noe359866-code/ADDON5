@@ -1,4 +1,5 @@
 Gnula Streams v1.0.0 escuchando en 0.0.0.0:7311
 Manifest: http://localhost:7311/manifest.json
+[stream] series/tt8111088:1:1 → 0 en 16674 ms
 [stream] series/tt9140554:2:1 → 0 en 20002 ms
-[stream] movie/tt0816692 → 0 en 12389 ms
+[stream] movie/tt0816692 → 2 en 1169 ms
