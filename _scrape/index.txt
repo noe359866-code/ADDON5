@@ -246,3 +246,24 @@ selftest tt9140554 200
 stream mando 200
 stream loki 200
 stream interestelar 200
+200  259317  https://ww3.gnulahd.nu/ver/interestelar/
+   UA navegador: 200 29404 B "<HTML>\n<HEAD>\n<link rel=\"stylesheet\" href=\"/css/main.css\">\n<script src=\"/js/jquery.min.js\"></script>"
+   UA curl: 200 29404 B "<HTML>\n<HEAD>\n<link rel=\"stylesheet\" href=\"/css/main.css\">\n<script src=\"/js/jquery.min.js\"></script>"
+   sin UA: 200 29404 B "<HTML>\n<HEAD>\n<link rel=\"stylesheet\" href=\"/css/main.css\">\n<script src=\"/js/jquery.min.js\"></script>"
+https://uqload.com/embed-fqhl3m5h3zcn.html
+   fetch: undefined 29407 B 2330 ms | resolve: 878 ms → https://strm7.uqload.vc/hls2/02/01153/fqhl3m5h3zcn_n/master.m3u8?t=Z16cs3xt-IlwQs6l6FhtAQDehLR4ZWf7WU1HKI9S3Qg (uqload.com, s/formato)
+https://viewsb.com/e/beypa68rqj3t.html
+   fetch: null 0 B 287 ms | resolve: 265 ms → NULL
+https://jawcloud.co/embed-lww3ummjhnxl.html
+   fetch: null 0 B 701 ms | resolve: 192 ms → NULL
+https://voe.sx/e/rvnyarijf6gm
+   fetch: undefined 743 B 386 ms | resolve: 693 ms → NULL
+https://byse.sx/e/ltd6r245u81w
+   fetch: undefined 1605 B 585 ms | resolve: 833 ms → NULL
+https://savefiles.com/e/j1zo9m2tgvcs
+   fetch: null 0 B 204 ms | resolve: 181 ms → NULL
+selftest tt0816692 200
+selftest tt9140554 200
+stream mando 200
+stream loki 200
+stream interestelar 200
