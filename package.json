@@ -1,15 +1,23 @@
 {
-  "name": "addon5-subtitles-service",
+  "name": "addon5-gnula-streams",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Stremio subtitles-only addon for movies, series and anime",
+  "description": "Addon de Stremio con streams de Gnula para películas y series (sin catálogos ni subtítulos)",
+  "main": "index.js",
   "engines": {
     "node": ">=22"
   },
   "scripts": {
-    "postinstall": "npm ci --prefix subtitles-addon --omit=dev",
-    "start": "node subtitles-addon/index.js",
-    "test": "node --test test/*.test.js && npm test --prefix subtitles-addon"
-  }
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "test": "node --test"
+  },
+  "keywords": [
+    "stremio",
+    "addon",
+    "streams",
+    "gnula"
+  ],
+  "license": "MIT"
 }

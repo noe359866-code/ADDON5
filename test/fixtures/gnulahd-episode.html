@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>El encargado 4x07 | Gnula</title></head>
+<body>
+<script>
+line) =====
+   Datos del episodio ACTUAL vía el helper compartido gnrd_ep_player_data() (serializado abajo).
+   Se poblan menús Audio/Servidor/Descargar en DOMContentLoaded (sin abrir modal, sin autoplay).
+   El iframe se inyecta en #gnpv-embed-div IGUAL que la ficha -> el player limpio the.tube (hook wp_footer)
+   lo detecta y lo reemplaza por Plyr. El placeholder carga el servidor 1 al hacer clic. */
+/* Desempaqueta los enlaces ofuscados (anti-scraper, ver gnrd_pack en el helper). */
+function gnrdUnpack(s){try{var b=atob(s),k=[103,78,55,100],a=new Uint8Array(b.length),i;for(i=0;i<b.length;i++)a[i]=b.charCodeAt(i)^k[i&3];return JSON.parse(new TextDecoder('utf-8').decode(a));}catch(e){return [];}}
+var _gd=[],_gl=0,_gs=0,_gp=false,_gnrdDl=[];
+var _gdReady=false,_gdWantPlay=false;
+var _gnrdPid=513823,_gnrdTok="c7215f939c3e1b643a73942d296ce518";
+function _gdLoad(){
+  fetch('/wp-json/gnrd/v1/player?id='+_gnrdPid+'&t='+encodeURIComponent(_gnrdTok), (window.gnScrOpt?window.gnScrOpt():undefined))
+    .then(function(r){return r.json();})
+    .then(function(raw){ var d=gnrdUnpack(raw&&raw.p?raw.p:''); _gdReady=true; if(typeof gnrdOpenEpisode==='function'&&d&&d.langs&&d.langs.length){ gnrdOpenEpisode(d); }
+      /* Precalentar vidara (ver _gdApply de la ficha de película): resuelve el playlist al
+         abrir el episodio en vez de al dar play. La guarda anti-bot vive en gnrdVdWarm. */
+      try{ if(window.gnrdVdWarm&&d&&d.langs&&d.langs[0]&&d.langs[0].servers&&d.langs[0].servers[0]) window.gnrdVdWarm(d.langs[0].servers[0].src); }catch(e){}
+      if(_gdWantPlay){_gdWantPlay=false;gnpvLoad();} })
+    .catch(function(){ _gdReady=true; });
+}
+function _esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function _gInject(src){
+  var d=document.getElementById('gnpv-embed-div');
+  var rp=src.indexOf('ok.ru')!==-1?'no-referrer':'strict-origin-when-cross-origin';
+  src=String(src||'');if(!/^https?:\/\//i.test(src)||/["'<>`\s\\]/.test(src))src='about:blank'; // 21-oct-2026 T1: solo http(s), si
+</script>
+<script>
+(function(){
+function(){
+        var RESOLVE='/panel/the-tube-resolve.php?code=', AUTH='&t=f2e513789d2253fbe785cb7b7d74893d';
+        var VD_RESOLVE='/panel/vidara-resolve.php', VD_AUTH='&t=693cd3a51584aeb5661f09aa161e5991';
+        var TT_ON=true, VD_ON=true;
+        var WD_ON=true; // watchdog recuperación VOD
+        var RPM_ON=false, RPM_DBG=false;
+        var HLS='https://cdn.jsdelivr.net/npm/hls.js@1.5.15/dist/hls.min.js';
+        var PLYRJS='https://cdn.plyr.io/3.7.8/plyr.js', PLYRCSS='https://cdn.plyr.io/3.7.8/plyr.css';
+        var loaded={};
+        var IS_APPLE=/iPad|iPhone|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+        var NATIVE_HLS=document.createElemen
+})();
+</script>
+</body>
+</html>

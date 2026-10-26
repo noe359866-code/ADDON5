@@ -1,49 +1,60 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
 
-const root = new URL('../', import.meta.url);
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-test('npm start serves the subtitles-only addon from the repository root', async (t) => {
-  const child = spawn('npm', ['start'], {
+function startServer(t) {
+  const child = spawn(process.execPath, ['index.js'], {
     cwd: root,
-    env: { ...process.env, PORT: '0', ANIME_MAPPING_ENABLED: 'false' },
-    stdio: ['ignore', 'pipe', 'pipe'],
-    detached: true
+    env: { ...process.env, PORT: '0' },
+    stdio: ['ignore', 'pipe', 'pipe']
   });
-  t.after(() => { if (child.exitCode === null) process.kill(-child.pid, 'SIGTERM'); });
-  // The entrypoint uses port 7000 when PORT=0. Read its actual startup message.
-  const port = await new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('Startup timed out')), 10000);
-    child.once('exit', (code) => { clearTimeout(timer); reject(new Error(`Server exited: ${code}`)); });
-    child.stdout.on('data', (data) => {
-      const match = String(data).match(/escuchando en 0\.0\.0\.0:(\d+)/);
-      if (match) { clearTimeout(timer); resolve(match[1]); }
+  t.after(() => {
+    if (child.exitCode === null) child.kill('SIGTERM');
+  });
+
+  return new Promise((resolvePort, reject) => {
+    const timer = setTimeout(() => reject(new Error('el servidor no arrancó a tiempo')), 15000);
+    let output = '';
+    const onData = (data) => {
+      output += String(data);
+      const match = /escuchando en 0\.0\.0\.0:(\d+)/.exec(output);
+      if (match) {
+        clearTimeout(timer);
+        resolvePort(Number.parseInt(match[1], 10));
+      }
+    };
+    child.stdout.on('data', onData);
+    child.stderr.on('data', (data) => {
+      output += String(data);
+    });
+    child.once('exit', (code) => {
+      clearTimeout(timer);
+      reject(new Error(`el proceso terminó con código ${code}: ${output}`));
     });
   });
-  const response = await fetch(`http://127.0.0.1:${port}/manifest.json`);
-  assert.equal(response.status, 200);
-  const manifest = await response.json();
-  assert.equal(manifest.id, 'org.addon5.subtitles');
-  assert.equal(manifest.name, 'Subtítulos Plus');
-  assert.equal(manifest.version, '1.2.0');
-  assert.equal(manifest.logo, `http://127.0.0.1:${port}/assets/logo.png`);
-  const logo = await fetch(manifest.logo);
-  assert.equal(logo.status, 200);
-  assert.match(logo.headers.get('content-type'), /image\/png/);
-  const landing = await fetch(`http://127.0.0.1:${port}/`);
-  assert.match(await landing.text(), /Tus historias, en tus palabras/);
+}
 
-  assert.deepEqual(manifest.resources, ['subtitles']);
+test('node index.js arranca y publica el manifest de streams', async (t) => {
+  const port = await startServer(t);
+  assert.ok(port > 0);
+
+  const manifestResponse = await fetch(`http://127.0.0.1:${port}/manifest.json`);
+  assert.equal(manifestResponse.status, 200);
+  const manifest = await manifestResponse.json();
+  assert.equal(manifest.id, 'org.addon5.gnula');
+  assert.equal(manifest.name, 'Gnula Streams');
+  assert.deepEqual(manifest.resources, ['stream']);
   assert.deepEqual(manifest.catalogs, []);
-  assert.deepEqual(manifest.types, ['movie', 'series']);
-  assert.ok(manifest.idPrefixes.includes('kitsu'));
-});
 
-test('Render blueprint deploys only the subtitles service', () => {
-  const blueprint = readFileSync(new URL('render.yaml', root), 'utf8');
-  assert.match(blueprint, /name: addon5-subtitles/);
-  assert.equal((blueprint.match(/type: web/g) || []).length, 1);
-  assert.match(blueprint, /rootDir: subtitles-addon/);
+  const health = await fetch(`http://127.0.0.1:${port}/health`);
+  assert.equal(health.status, 200);
+  assert.equal((await health.json()).status, 'ok');
+
+  const landing = await fetch(`http://127.0.0.1:${port}/`);
+  assert.equal(landing.status, 200);
+  assert.match(await landing.text(), /Instalar en Stremio/);
 });

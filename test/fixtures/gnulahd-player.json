@@ -1,0 +1,147 @@
+{
+  "t": "Interestelar",
+  "langs": [
+    {
+      "label": "Latino",
+      "flag": "MX",
+      "servers": [
+        {
+          "title": "Servidor 1",
+          "src": "https://vidaraa.cc/e/3RSpbzKZgfoy8"
+        },
+        {
+          "title": "Servidor 2",
+          "src": "https://byse.sx/e/ltd6r245u81w"
+        },
+        {
+          "title": "Servidor 3",
+          "src": "https://voe.sx/e/rvnyarijf6gm"
+        },
+        {
+          "title": "Servidor 4",
+          "src": "https://savefiles.com/e/j1zo9m2tgvcs"
+        }
+      ]
+    },
+    {
+      "label": "Subtitulado",
+      "flag": "US",
+      "servers": [
+        {
+          "title": "Servidor 1",
+          "src": "https://vidara.to/e/dbSrlVQkCYGa6"
+        },
+        {
+          "title": "Servidor 2",
+          "src": "https://byse.sx/e/nln842dgpdrt"
+        },
+        {
+          "title": "Servidor 3",
+          "src": "https://voe.sx/e/zwmtz7n9jmjg"
+        },
+        {
+          "title": "Servidor 4",
+          "src": "https://savefiles.com/e/vum5kiniaiaa"
+        }
+      ]
+    }
+  ],
+  "dl": [
+    {
+      "name": "transfer.it",
+      "lang": "latino",
+      "qual": "hd-r",
+      "url": "https://transfer.it/t/nOaf4mIRQLrS"
+    },
+    {
+      "name": "1cloudfile.com",
+      "lang": "latino",
+      "qual": "hd-r",
+      "url": "https://1cloudfile.com/3yg4i"
+    },
+    {
+      "name": "1fichier.com",
+      "lang": "latino",
+      "qual": "hd-r",
+      "url": "https://1fichier.com/?sjywwl09v4gbnlbzcevi"
+    },
+    {
+      "name": "gofile.io",
+      "lang": "latino",
+      "qual": "hd-r",
+      "url": "https://gofile.io/d/aHM8CsOz"
+    },
+    {
+      "name": "buzzheavier.com",
+      "lang": "latino",
+      "qual": "hd-r",
+      "url": "https://buzzheavier.com/cg9qpwfqk2b6"
+    },
+    {
+      "name": "powvideo.org",
+      "lang": "latino",
+      "qual": "hd-r",
+      "url": "https://powvideo.org/k2z9bge6uiom"
+    },
+    {
+      "name": "multiup.io",
+      "lang": "latino",
+      "qual": "hd-r",
+      "url": "https://multiup.io/download/0bf2d9759ff6a24b0dc9183e91c000fc/SW50ZXJzdGVsbGFyLjIwMTQ_.LAT.mp4"
+    },
+    {
+      "name": "megaup.net",
+      "lang": "latino",
+      "qual": "hd-r",
+      "url": "https://megaup.net/148c087e826da4cc0917876d3784be49/SW50ZXJzdGVsbGFyLjIwMTQ=.LAT.mp4"
+    },
+    {
+      "name": "transfer.it",
+      "lang": "subtitulado",
+      "qual": "hd-r",
+      "url": "https://transfer.it/t/KkmXP6hzyLQb"
+    },
+    {
+      "name": "1cloudfile.com",
+      "lang": "subtitulado",
+      "qual": "hd-r",
+      "url": "https://1cloudfile.com/3yg4C"
+    },
+    {
+      "name": "1fichier.com",
+      "lang": "subtitulado",
+      "qual": "hd-r",
+      "url": "https://1fichier.com/?3l39duhnqxikctfpicqq"
+    },
+    {
+      "name": "gofile.io",
+      "lang": "subtitulado",
+      "qual": "hd-r",
+      "url": "https://gofile.io/d/ShnRJrVE"
+    },
+    {
+      "name": "buzzheavier.com",
+      "lang": "subtitulado",
+      "qual": "hd-r",
+      "url": "https://buzzheavier.com/bsylhn3v8j3e"
+    },
+    {
+      "name": "powvideo.org",
+      "lang": "subtitulado",
+      "qual": "hd-r",
+      "url": "https://powvideo.org/ycw7g7ebwdyn"
+    },
+    {
+      "name": "multiup.io",
+      "lang": "subtitulado",
+      "qual": "hd-r",
+      "url": "https://multiup.io/download/4c28ebef82887bce410cc8c834114c48/SW50ZXJzdGVsbGFyLjIwMTQ_.VOSE.mp4"
+    },
+    {
+      "name": "megaup.net",
+      "lang": "subtitulado",
+      "qual": "hd-r",
+      "url": "https://megaup.net/396fd4d2f58c72da1a07a0db934a83e4/SW50ZXJzdGVsbGFyLjIwMTQ=.VOSE.mp4"
+    }
+  ]
+}

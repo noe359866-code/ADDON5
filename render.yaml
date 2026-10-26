@@ -1,13 +1,12 @@
 services:
-  # Addon de subtítulos (subproyecto en subtitles-addon/).
-  # Si creas el Web Service manualmente en el dashboard, estos son los
-  # mismos valores que debes introducir (Root Directory, build y start).
-  # OJO: no declares PORT aquí; Render lo inyecta automáticamente.
+  # Addon de streams de Gnula + GnulaHD. Sin dependencias: `npm ci` solo
+  # valida el lockfile y el arranque es inmediato (Render Free duerme el
+  # servicio).
   - type: web
-    name: addon5-subtitles
+    name: addon5-gnula
     runtime: node
     plan: free
-    rootDir: subtitles-addon
+    rootDir: .
     buildCommand: npm ci --omit=dev
     startCommand: npm start
     healthCheckPath: /health
@@ -16,22 +15,28 @@ services:
         value: production
       - key: NODE_VERSION
         value: "22"
-      - key: SUBTITLE_LANGUAGES
-        value: ES,EN
-      - key: SUBTITLE_LANGUAGES_ONLY
-        value: "false"
-      # Firma ESTABLE de los enlaces de descarga /sub/{token}.srt.
-      # Sin esto se genera una nueva en cada arranque y los subtítulos que
-      # Stremio tenía cargados dejan de funcionar tras un reinicio.
-      - key: SUBTITLE_TOKEN_SECRET
-        generateValue: true
-      # Presupuesto de respuesta: Stremio abandona las peticiones lentas.
+      # auto  → el proxy solo se usa cuando el CDN exige Referer (lo normal)
+      # always → proxy para todo; never → URL directa + proxyHeaders
+      - key: STREAM_PROXY
+        value: auto
+      # Solo se entregan enlaces que Stremio reproduce (HLS y MP4).
+      # Añade mkv si lo vas a ver en escritorio/TV.
+      - key: STREMIO_FORMATS
+        value: hls,mp4
+      # Opcional pero recomendado: con clave, el título en español (es-MX) lo
+      # pone TMDB y se aceptan IDs `tmdb:…`. Sin clave se usa Wikidata +
+      # Wikipedia, que también dan el título latino.
+      - key: TMDB_API_KEY
+        sync: false
+      - key: TMDB_LANGUAGE
+        value: es-MX
+      # Stremio abandona las peticiones lentas: presupuesto total y por petición.
+      # Las webs tardan: GnulaHD ha llegado a responder en 12-25 s. Con un
+      # presupuesto corto la respuesta sale vacía.
       - key: HANDLER_DEADLINE_MS
-        value: "9000"
-      - key: PROVIDER_TIMEOUT_MS
-        value: "5000"
-      # Opcionales: solo como respaldo si el scraping web no devuelve nada.
-      - key: SUBDL_API_KEY
-        sync: false
-      - key: SUBSOURCE_API_KEY
-        sync: false
+        value: "20000"
+      - key: FETCH_TIMEOUT_MS
+        value: "12000"
+      # Opcional: dominio público si no se detecta solo (RENDER_EXTERNAL_URL).
+      # - key: PUBLIC_BASE_URL
+      #   sync: false
