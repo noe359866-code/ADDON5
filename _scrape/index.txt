@@ -77,3 +77,18 @@ selftest tt0816692 200
 selftest tt9140554 200
 stream loki 200
 stream interestelar 200
+200  259318  https://ww3.gnulahd.nu/ver/interestelar/
+200  293289  https://ww3.gnulahd.nu/ver/el-encargado/
+200  251328  https://ww3.gnulahd.nu/el-encargado-4x07/
+[gnulahd] 0 0 https://ww3.gnulahd.nu/?s=Interstellar | error: timeout tras 25000 ms
+   tarjetas: 0 
+[gnulahd] 0 0 https://ww3.gnulahd.nu/?s=interestelar | error: timeout tras 25000 ms
+   tarjetas: 0 
+[cinemeta] {} -> 200 Interstellar
+[cinemeta] {"Accept-Language":"es-ES,es;q=0.9"} -> 200 Interstellar
+[cinemeta] {"Accept-Language":"es-MX"} -> 200 Interstellar
+[cinemeta ?lang=es] 200 Interstellar
+selftest tt0816692 200
+selftest tt9140554 200
+stream loki 200
+stream interestelar 200
