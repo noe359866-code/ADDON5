@@ -92,3 +92,16 @@ selftest tt0816692 200
 selftest tt9140554 200
 stream loki 200
 stream interestelar 200
+200  259318  https://ww3.gnulahd.nu/ver/interestelar/
+200  293289  https://ww3.gnulahd.nu/ver/el-encargado/
+200  251328  https://ww3.gnulahd.nu/el-encargado-4x07/
+[imdb-search] 200 46228 1697ms https://www2.gnula.one/?s=tt0816692 | coincidencias: 60
+   resultados: guardianes-de-la-noche-kimetsu-no-yaiba-la-fortaleza-infinita-2, batman-vs-superman-el-origen-de-la-justicia, %d0%b4%d0%b5%d0%bd%d0%be%d1%82-%d0%bd%d0%b0-%d0%b6%d0%b5%d0%bd%d0%b0%d1%82%d0%b0, %d0%b4%d0%be%d0%bc%d0%b0%d1%9c%d0%b8%d0%bd%d1%81%d1%82%d0%b2%d0%be-%d0%b7%d0%b0-%d0%bf%d0%be%d1%87%d0%b5%d1%82%d0%bd%d0%b8%d1%86%d0%b8, padre-no-hay-mas-que-uno-2-la-llegada-de-la-suegra
+[imdb-search] 0 0 60002ms https://ww3.gnulahd.nu/?s=tt0816692 | coincidencias: 0
+   tarjetas: 
+[gnulahd-timing] 0 0 60001ms | error: timeout tras 60000 ms
+   tarjetas: 
+selftest tt0816692 200
+selftest tt9140554 200
+stream loki 200
+stream interestelar 200

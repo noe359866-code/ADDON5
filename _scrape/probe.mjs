@@ -1,28 +1,28 @@
 import { request } from '../src/http.js';
 import { parseCards } from '../src/gnulahd.js';
+import { parseSearchResults } from '../src/gnula.js';
 
-async function hd(url) {
-  const r = await request(url, { timeoutMs: 25000 });
-  const cards = parseCards(r.text);
-  console.log('[gnulahd]', r.status, r.text.length, url, '| error:', r.error || '-');
-  console.log('   tarjetas:', cards.length, cards.slice(0, 4).map((c) => `${c.slug}:${c.year}`).join(', '));
+async function time(url, ms = 60000) {
+  const t0 = Date.now();
+  const r = await request(url, { timeoutMs: ms });
+  const ms2 = Date.now() - t0;
+  return { r, ms: ms2 };
 }
 
-await hd('https://ww3.gnulahd.nu/?s=Interstellar');
-await new Promise((r) => setTimeout(r, 2000));
-await hd('https://ww3.gnulahd.nu/?s=interestelar');
-await new Promise((r) => setTimeout(r, 2000));
-
-// ¿Cinemeta devuelve el título localizado?
-for (const extra of [{}, { 'Accept-Language': 'es-ES,es;q=0.9' }, { 'Accept-Language': 'es-MX' }]) {
-  const r = await request('https://v3-cinemeta.strem.io/meta/movie/tt0816692.json', {
-    timeoutMs: 15000, headers: extra
-  });
-  let name = '';
-  try { name = JSON.parse(r.text).meta.name; } catch {}
-  console.log('[cinemeta]', JSON.stringify(extra), '->', r.status, name);
+// ¿Se puede buscar por IMDb?
+for (const url of ['https://www2.gnula.one/?s=tt0816692', 'https://ww3.gnulahd.nu/?s=tt0816692']) {
+  const { r, ms } = await time(url);
+  const n = (r.text.match(/\/movie\/|gnrd-card/g) || []).length;
+  console.log('[imdb-search]', r.status, r.text.length, ms + 'ms', url, '| coincidencias:', n);
+  if (url.includes('gnulahd')) {
+    console.log('   tarjetas:', parseCards(r.text).map((c) => c.slug).slice(0, 5).join(', '));
+  } else {
+    console.log('   resultados:', parseSearchResults(r.text).map((c) => c.slug).slice(0, 5).join(', '));
+  }
+  await new Promise((res) => setTimeout(res, 1500));
 }
-const lang = await request('https://v3-cinemeta.strem.io/meta/movie/tt0816692.json?lang=es', { timeoutMs: 15000 });
-let langName = '';
-try { langName = JSON.parse(lang.text).meta.name; } catch {}
-console.log('[cinemeta ?lang=es]', lang.status, langName);
+
+// Cuánto tarda de verdad la búsqueda de GnulaHD.
+const hd = await time('https://ww3.gnulahd.nu/?s=interestelar');
+console.log('[gnulahd-timing]', hd.r.status, hd.r.text.length, hd.ms + 'ms', '| error:', hd.r.error || '-');
+console.log('   tarjetas:', parseCards(hd.r.text).map((c) => `${c.slug}:${c.year}`).join(', '));
