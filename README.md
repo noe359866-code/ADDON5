@@ -115,7 +115,7 @@ test/                    pruebas con fixtures (sin salir a internet)
 npm test
 ```
 
-44 pruebas con `node:test` y HTML de ejemplo que imita el marcado real de
+46 pruebas con `node:test` y HTML de ejemplo que imita el marcado real de
 Gnula, de los reproductores y de las listas HLS. Ninguna prueba sale a
 internet: `test/helpers/stub-fetch.js` sustituye `fetch` por fixtures.
 

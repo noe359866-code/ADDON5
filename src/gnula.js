@@ -472,7 +472,9 @@ export function selectEmbedsForResolution(embeds, limit) {
 
 /** ¿La página tiene pinta de ficha con reproductores? */
 export function hasPlayers(html) {
-  return /<div\b[^>]*\bid\s*=\s*["']?tab\d+/i.test(html) || /<iframe\b/i.test(html);
+  if (/<div\b[^>]*\bid\s*=\s*["']?tab\d+/i.test(html)) return true;
+  if (/go_to_player\(/i.test(html)) return true;
+  return /\bopci[oó]n\s*\d+/i.test(html) && /<iframe\b/i.test(html);
 }
 
 /** «Ver película online [2025, Latino, Subtitulado, Castellano, HD]» → "HD" */
