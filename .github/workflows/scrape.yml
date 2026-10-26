@@ -80,10 +80,14 @@ jobs:
             done
           done
 
+      - name: Sondeo de reproductores
+        run: |
+          node _scrape/probe.mjs 2>&1 | tee -a _scrape/index.txt
+
       - name: Selftest real del addon
         run: |
           set -u
-          PORT=7311 node index.js > _scrape/server.log 2>&1 &
+          DEBUG=1 PORT=7311 node index.js > _scrape/server.log 2>&1 &
           sleep 3
           for id in 'tt0816692&type=movie' 'tt9140554&type=series'; do
             name=$(echo "$id" | cut -d'&' -f1)

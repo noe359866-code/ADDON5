@@ -219,7 +219,9 @@ export function parseSpanishTitlesFromWikitext(wikitext) {
     titles.push(title);
   };
 
-  const re = /\|\s*((?:t[ií]tulo|nombre)[^=|\n]{0,32})\s*=\s*([^\n]*)/gi;
+  // Solo los campos de la ficha, que empiezan la línea (`| título = …`). Las
+  // plantillas de citas de dentro llevan `|título=` y colarían aquí.
+  const re = /^\s*\|\s*((?:t[ií]tulo|nombre)[^=|\n]{0,32})\s*=\s*([^\n]*)/gim;
   let match;
 
   while ((match = re.exec(text))) {
@@ -233,6 +235,23 @@ export function parseSpanishTitlesFromWikitext(wikitext) {
         push(piece);
       }
     }
+  }
+
+  if (titles.length) return titles.slice(0, 4);
+
+  // Plantilla escrita en una sola línea: `{{Ficha de película |título = …}}`.
+  const inline = /\|\s*((?:t[ií]tulo|nombre)[^=|\n]{0,32})\s*=\s*([^|}]*)/gi;
+  const depthAt = (index) => {
+    const before = text.slice(0, index);
+    const open = (before.match(/\{\{/g) || []).length;
+    const close = (before.match(/\}\}/g) || []).length;
+    return open - close;
+  };
+  while ((match = inline.exec(text))) {
+    if (/original/i.test(match[1])) continue;
+    // Dentro de la ficha (nivel 1) sí; dentro de una cita anidada (nivel 2+), no.
+    if (depthAt(match.index) > 1) continue;
+    push(match[2]);
   }
 
   return titles.slice(0, 4);
@@ -312,6 +331,23 @@ function mergeTitles(candidates) {
       titles.push(title);
     }
   }
+  if (titles.length) return titles.slice(0, 4);
+
+  // Plantilla escrita en una sola línea: `{{Ficha de película |título = …}}`.
+  const inline = /\|\s*((?:t[ií]tulo|nombre)[^=|\n]{0,32})\s*=\s*([^|}]*)/gi;
+  const depthAt = (index) => {
+    const before = text.slice(0, index);
+    const open = (before.match(/\{\{/g) || []).length;
+    const close = (before.match(/\}\}/g) || []).length;
+    return open - close;
+  };
+  while ((match = inline.exec(text))) {
+    if (/original/i.test(match[1])) continue;
+    // Dentro de la ficha (nivel 1) sí; dentro de una cita anidada (nivel 2+), no.
+    if (depthAt(match.index) > 1) continue;
+    push(match[2]);
+  }
+
   return titles.slice(0, 4);
 }
 
