@@ -243,3 +243,30 @@ test('si Wikidata no conoce el ID no se adivina el artículo', async (t) => {
     assert.equal(stub.calls.some((call) => call.url.startsWith('https://es.wikipedia.org')), false);
   });
 });
+
+test('con clave de TMDB, su título es-MX va antes que las variantes de Wikipedia', async (t) => {
+  metaCache.clear();
+  const stub = installFetchStub({
+    'https://v3-cinemeta.strem.io/meta/movie/tt0816692.json': jsonRoute(cinemetaMovie),
+    'https://api.themoviedb.org/3/find/tt0816692': jsonRoute({
+      movie_results: [{ id: 157336, title: 'Interestelar', original_title: 'Interstellar', release_date: '2014-11-05' }],
+      tv_results: []
+    }),
+    ...wikidataRoutes(),
+    'https://es.wikipedia.org/w/api.php': jsonRoute({
+      parse: {
+        title: 'Interstellar',
+        // TMDB y la ficha coinciden en «Interestelar»; «Estelar» solo está en Wikipedia.
+        wikitext: "{{Ficha de película\n| título = ''Interestelar'' ([[Hispanoamérica]])\n| nombre España = ''Estelar''\n}}"
+      }
+    })
+  });
+  t.after(() => stub.restore());
+
+  await withEnv({ tmdbApiKey: 'clave-de-prueba' }, async () => {
+    const info = await lookupTitle('movie', 'tt0816692', { deadline: deadline() });
+
+    assert.deepEqual(info.titles, ['Interestelar', 'Estelar', 'Interstellar']);
+    assert.deepEqual(info.sources, ['cinemeta', 'tmdb', 'wikipedia']);
+  });
+});

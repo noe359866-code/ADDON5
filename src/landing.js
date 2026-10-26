@@ -98,6 +98,9 @@ export function renderLanding(baseUrl) {
       <span>Versión</span><span>${escapeHtml(manifest.version)}</span>
       <span>Recurso</span><span>stream (películas y series)</span>
       <span>Fuentes</span><span>Gnula · GnulaHD</span>
+      <span>Títulos</span><span>${config.tmdbApiKey
+        ? `TMDB (${escapeHtml(config.tmdbLanguage)}) + Wikipedia`
+        : 'Wikipedia (sin clave de TMDB)'}</span>
       <span>Formatos</span><span>${escapeHtml(config.stremioFormats.join(', ').toUpperCase())} (compatibles con Stremio)</span>
       <span>Proxy de video</span><span>${escapeHtml(proxyLabel)}</span>
       <span>Diagnóstico</span><span><a class="ok" href="/selftest?id=tt0111161&amp;type=movie">/selftest?id=tt0111161&amp;type=movie</a></span>

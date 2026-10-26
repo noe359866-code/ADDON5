@@ -88,6 +88,15 @@ Resumen de lo comprobado contra las webs en octubre de 2026:
    | **Cinemeta** | nombre, título original y año | no |
    | **IMDb** (sugerencias) | respaldo si Cinemeta no responde | no |
 
+   **Cómo activar TMDB.** Saca una clave en themoviedb.org (vale la v3
+   clásica o la v4 larga; el addon detecta cuál es por los puntos) y ponla en
+   `TMDB_API_KEY`. Con clave: su título en `TMDB_LANGUAGE` (`es-MX`) se prueba
+   **primero** en las webs, después las variantes de Wikipedia; y el manifest
+   anuncia `idPrefixes: ["tt", "tmdb"]`, así que Stremio puede pedir
+   `tmdb:157336` o `tmdb:1399:1:3`. En `render.yaml` la variable ya está
+   declarada (`sync: false`): se pega en el panel de Render. Sin clave no se
+   rompe nada; Wikidata + Wikipedia siguen dando el título latino.
+
    Wikidata se consulta con `haswbstatement:P345=<imdb>` —así se llega al
    artículo correcto y no a un homónimo: buscar «Loki» a secas devuelve el
    dios nórdico— y de la ficha de Wikipedia se leen todas las variantes por
@@ -188,7 +197,7 @@ Todo es opcional; los valores por defecto están en `.env.example`.
 | `WIKIPEDIA_TITLES` | `true` | título latino vía Wikidata + Wikipedia (sin clave) |
 | `WIKIPEDIA_BASE_URL` | `https://es.wikipedia.org` | Wikipedia que se consulta |
 | `WIKIDATA_BASE_URL` | `https://www.wikidata.org` | Wikidata (IMDb → artículo) |
-| `TMDB_API_KEY` | — | opcional: título en español y IDs `tmdb:…` |
+| `TMDB_API_KEY` | — | opcional (recomendado): título en español y IDs `tmdb:…` |
 | `TMDB_LANGUAGE` | `es-MX` | idioma en que se piden los títulos a TMDB |
 | `STREMIO_FORMATS` | `hls,mp4` | formatos que se entregan (`mkv`, `dash` son opt-in) |
 | `GNULAHD_BASE_URL` | `https://ww3.gnulahd.nu` | hermano GnulaHD |

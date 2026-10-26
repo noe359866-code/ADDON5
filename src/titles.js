@@ -313,41 +313,33 @@ async function fromWikipedia(imdbId, deadline) {
  * ------------------------------------------------------------------ */
 
 function mergeTitles(candidates) {
-  const seen = new Set();
-  const titles = [];
-  for (const candidate of candidates) {
-    // Un título suelto («Interestelar») o un objeto {name, originalName}.
-    const values = typeof candidate === 'string'
-      ? [candidate]
-      : (Array.isArray(candidate)
-        ? candidate
-        : [candidate && candidate.name, candidate && candidate.originalName]);
-    for (const value of values) {
-      const title = clean(value);
-      if (!title) continue;
-      const key = compact(title);
-      if (!key || seen.has(key)) continue;
-      seen.add(key);
-      titles.push(title);
+  const list = candidates.filter(Boolean);
+  const values = [];
+
+  // Primero todos los títulos «de aquí» (TMDB es-MX, variantes de Wikipedia) y
+  // solo después los originales: si no, el original de TMDB se cuela antes que
+  // la variante española de Wikipedia.
+  for (const candidate of list) {
+    if (Array.isArray(candidate)) values.push(...candidate);
+    else if (typeof candidate === 'string') values.push(candidate);
+    else values.push(candidate.name);
+  }
+  for (const candidate of list) {
+    if (candidate && typeof candidate === 'object' && !Array.isArray(candidate)) {
+      values.push(candidate.originalName);
     }
   }
-  if (titles.length) return titles.slice(0, 4);
 
-  // Plantilla escrita en una sola línea: `{{Ficha de película |título = …}}`.
-  const inline = /\|\s*((?:t[ií]tulo|nombre)[^=|\n]{0,32})\s*=\s*([^|}]*)/gi;
-  const depthAt = (index) => {
-    const before = text.slice(0, index);
-    const open = (before.match(/\{\{/g) || []).length;
-    const close = (before.match(/\}\}/g) || []).length;
-    return open - close;
-  };
-  while ((match = inline.exec(text))) {
-    if (/original/i.test(match[1])) continue;
-    // Dentro de la ficha (nivel 1) sí; dentro de una cita anidada (nivel 2+), no.
-    if (depthAt(match.index) > 1) continue;
-    push(match[2]);
+  const seen = new Set();
+  const titles = [];
+  for (const value of values) {
+    const title = clean(value);
+    if (!title) continue;
+    const key = compact(title);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    titles.push(title);
   }
-
   return titles.slice(0, 4);
 }
 
@@ -404,10 +396,12 @@ export async function lookupTitle(type, rawId, { deadline } = {}) {
     return null;
   }
 
-  // El español manda (las dos webs buscan por el título de su ficha): primero
-  // Wikipedia —es el que usa Latinoamérica—, después TMDB y por último el
-  // título original de Cinemeta.
-  const ordered = [...(wikipedia || []), tmdb, imdb];
+  // El español manda (las dos webs buscan por el título de su ficha). Si hay
+  // clave de TMDB, su título es-MX va primero —es el que usan las webs— y
+  // después las variantes de Wikipedia (España, Argentina, resto de
+  // Hispanoamérica), que cubren los títulos que TMDB no traduce. Al final, el
+  // original de Cinemeta.
+  const ordered = [...(tmdb ? [tmdb] : []), ...(wikipedia || []), imdb];
   const info = {
     imdbId: parsed.imdbId,
     tmdbId: parsed.tmdbId,
