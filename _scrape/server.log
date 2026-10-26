@@ -17,27 +17,26 @@ Manifest: http://localhost:7311/manifest.json
 [player] viewsb.com → fetch failed
 [player] voe.sx → HTTP 404
 [player] voe.sx → HTTP 404
-[player] vidsonic.net → The operation was aborted due to timeout
-[stream] series/tt8111088:1:1 → 0 en 16485 ms
+[stream] series/tt8111088:1:1 → 0 en 8901 ms
 [player] streamtape.com → HTTP 404
 [player] streamtape.com → HTTP 404
-[player] savefiles.com → HTTP 403
-[player] savefiles.com → HTTP 403
 [player] doodstream.com → HTTP 403
 [player] doodstream.com → HTTP 403
+[player] savefiles.com → HTTP 403
+[player] savefiles.com → HTTP 403
 [http] GET https://upstream.to/embed-zby84wzdqoqh.html → fetch failed
 [player] upstream.to → fetch failed
 [http] GET https://upstream.to/embed-zby84wzdqoqh.html → fetch failed
 [player] upstream.to → fetch failed
 [player] mixdrop.ch → HTTP 436
 [player] mixdrop.ch → HTTP 436
-[stream] series/tt9140554:2:1 → 1 en 11425 ms
+[stream] series/tt9140554:2:1 → 1 en 8510 ms
+[http] GET https://viewsb.com/e/beypa68rqj3t.html → fetch failed
+[player] viewsb.com → fetch failed
 [http] GET https://viewsb.com/e/beypa68rqj3t.html → fetch failed
 [player] viewsb.com → fetch failed
 [player] jawcloud.co → HTTP 404
-[http] GET https://viewsb.com/e/beypa68rqj3t.html → fetch failed
-[player] viewsb.com → fetch failed
 [player] jawcloud.co → HTTP 404
 [player] savefiles.com → HTTP 403
 [player] savefiles.com → HTTP 403
-[stream] movie/tt0816692 → 2 en 970 ms
+[stream] movie/tt0816692 → 2 en 750 ms

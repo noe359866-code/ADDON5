@@ -183,3 +183,24 @@ selftest tt9140554 200
 stream mando 200
 stream loki 200
 stream interestelar 200
+200  259317  https://ww3.gnulahd.nu/ver/interestelar/
+   UA navegador: 200 29407 B "<HTML>\n<HEAD>\n<link rel=\"stylesheet\" href=\"/css/main.css\">\n<script src=\"/js/jquery.min.js\"></script>"
+   UA curl: 200 29397 B "<HTML>\n<HEAD>\n<link rel=\"stylesheet\" href=\"/css/main.css\">\n<script src=\"/js/jquery.min.js\"></script>"
+   sin UA: 200 29397 B "<HTML>\n<HEAD>\n<link rel=\"stylesheet\" href=\"/css/main.css\">\n<script src=\"/js/jquery.min.js\"></script>"
+https://uqload.com/embed-fqhl3m5h3zcn.html
+   fetch: undefined 38 B 2131 ms | resolve: 550 ms → NULL
+https://viewsb.com/e/beypa68rqj3t.html
+   fetch: null 0 B 340 ms | resolve: 315 ms → NULL
+https://jawcloud.co/embed-lww3ummjhnxl.html
+   fetch: null 0 B 424 ms | resolve: 367 ms → NULL
+https://voe.sx/e/rvnyarijf6gm
+   fetch: undefined 743 B 395 ms | resolve: 781 ms → NULL
+https://byse.sx/e/ltd6r245u81w
+   fetch: undefined 1605 B 755 ms | resolve: 907 ms → NULL
+https://savefiles.com/e/j1zo9m2tgvcs
+   fetch: null 0 B 220 ms | resolve: 184 ms → NULL
+selftest tt0816692 200
+selftest tt9140554 200
+stream mando 200
+stream loki 200
+stream interestelar 200
