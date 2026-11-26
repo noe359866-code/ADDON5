@@ -1,9 +1,0 @@
-#EXTM3U
-#EXT-X-VERSION:3
-#EXT-X-TARGETDURATION:6
-#EXT-X-KEY:METHOD=AES-128,URI="key.bin",IV=0x00000000000000000000000000000001
-#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="aud",NAME="Español",URI="audio/esp.m3u8"
-#EXTINF:6.00000,
-segment-001.ts
-#EXTINF:6.00000,
-https://cdn.example.org/hls/segment-002.ts?token=abc
