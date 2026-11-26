@@ -1,13 +1,13 @@
 # Blueprint de Render: sitio estático gratuito (sin servidor, sin base de datos).
 # Dashboard de Render → New → Blueprint → conecta el repo → elige la rama de abajo → Apply.
 #
-# OJO: la rama `main` todavía contiene el repo antiguo. Si fusionas esta rama
-# en main, cambia `branch` a `main` antes de desplegar.
+# Tras la fusión en main, el Blueprint despliega desde main. Si prefieres
+# desplegar desde otra rama, cambia el valor de `branch`.
 services:
   - type: web
     name: hitzbidaia
     runtime: static
-    branch: arena/691833fa-addon5
+    branch: main
     # --include=dev es importante: vite y typescript están en devDependencies
     # y Render construye con NODE_ENV=production.
     buildCommand: npm ci --include=dev && npm run build

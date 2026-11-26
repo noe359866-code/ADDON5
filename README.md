@@ -69,12 +69,12 @@ La app es una SPA 100 % estática: `npm run build` genera `dist/` y no necesita 
 ### Opción A · Blueprint (recomendada)
 El archivo [`render.yaml`](./render.yaml) ya define todo:
 
-1. Sube esta rama a GitHub (está lista en `arena/691833fa-addon5`).
+1. Los cambios ya están en `main` (la rama de trabajo se fusionó mediante PR).
 2. En [Render Dashboard](https://dashboard.render.com) → **New → Blueprint**.
-3. Conecta el repositorio `noe359866-code/ADDON5` y selecciona la rama `arena/691833fa-addon5`.
+3. Conecta el repositorio `noe359866-code/ADDON5` y selecciona la rama **`main`**.
 4. Revisa los recursos y pulsa **Apply**. Render creará el sitio `hitzbidaia.onrender.com`.
 
-> ⚠️ `main` sigue teniendo el repo antiguo. Si fusionas esta rama en `main`, cambia `branch:` en `render.yaml` a `main` antes de desplegar.
+> 💡 `render.yaml` fija `branch: main`. Si quieres desplegar desde otra rama, cambia ese valor antes de crear el Blueprint.
 
 ### Opción B · Manual
 **New → Static Site** → conecta repo y rama, y rellena:
