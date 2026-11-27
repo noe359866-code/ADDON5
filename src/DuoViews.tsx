@@ -20,7 +20,7 @@ import {
   DuoGemSvg,
   DuoHeartSvg,
   DuoTurtleSvg,
-  IconAccessibility,
+  IconBook,
   IconCheck,
   IconClose,
   IconLock,
@@ -1336,12 +1336,10 @@ export function ProfileView({
                       : 'Castellano'}
               </strong>
             </span>
-            {progress.supports.length > 0 && (
-              <span className="duo-flag-pill support">
-                <IconAccessibility size={15} />
-                <strong>{progress.supports.length} {ui === 'eu' ? 'laguntza' : 'apoyos'}</strong>
-              </span>
-            )}
+            <span className="duo-flag-pill support">
+              <IconBook size={15} />
+              <strong>{t('phase' + (progress.readingPhase[0]!.toUpperCase() + progress.readingPhase.slice(1)), ui)}</strong>
+            </span>
           </div>
         </div>
         <div className="duo-profile-actions">

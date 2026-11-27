@@ -18,6 +18,7 @@ export const defaultProgress: Progress = {
   learnLang: 'both',
   difficultyLevel: 'medio',
   schoolStage: 'general',
+  readingPhase: 'alfabética',
   speechRate: 0.85,
   route: 'mixta',
   sound: true,
@@ -25,7 +26,6 @@ export const defaultProgress: Progress = {
   darkMode: false,
   bigText: false,
   unlockAll: false,
-  supports: [],
   calmMode: false,
 
   xp: 0,
@@ -87,6 +87,13 @@ export function loadProgress(): Progress {
         parsed.schoolStage === 'prim56'
           ? parsed.schoolStage
           : 'general',
+      readingPhase:
+        parsed.readingPhase === 'fonologica' ||
+        parsed.readingPhase === 'logográfica' ||
+        parsed.readingPhase === 'alfabética' ||
+        parsed.readingPhase === 'ortográfica'
+          ? parsed.readingPhase
+          : 'alfabética',
       speechRate:
         typeof parsed.speechRate === 'number' && Number.isFinite(parsed.speechRate)
           ? Math.max(0.4, Math.min(1.05, parsed.speechRate))
@@ -113,7 +120,6 @@ export function loadProgress(): Progress {
       outfits: Array.isArray(parsed.outfits) && parsed.outfits.length ? parsed.outfits : ['classic'],
       frozenDates: Array.isArray(parsed.frozenDates) ? parsed.frozenDates : [],
       badges: Array.isArray(parsed.badges) ? parsed.badges : [],
-      supports: Array.isArray(parsed.supports) ? parsed.supports : [],
     };
   } catch {
     return { ...defaultProgress };

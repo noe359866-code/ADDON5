@@ -59,7 +59,7 @@ const wordByNorm = {
 };
 
 const routes = ['visual', 'auditivo', 'mixta'];
-const presets = [null, ['cognitiva', 'dislexia'], ['tea', 'comunicacion'], ['tdah'], ['down'], ['daltonismo'], ['daltonismo', 'cognitiva']];
+const readingPhases = [null, 'fonologica', 'logográfica', 'alfabética', 'ortográfica'];
 const bareColorCircles = new Set(['🔴', '🔵', '🟢', '🟡', '⚪', '⚫', '🟠', '🟣']);
 const problems = [];
 let total = 0;
@@ -332,9 +332,9 @@ function check(ex, ctx, ad, learnMode) {
 const schoolStages = ['general', 'infantil', 'prim12', 'prim34', 'prim56'];
 const stageLabels = { general: 'todas', infantil: 'infantil', prim12: 'p12', prim34: 'p34', prim56: 'p56' };
 
-for (const preset of presets) {
-  const ad = preset ? adaptationsFor(preset) : undefined;
-  const label = preset ? preset.join('+') : 'estándar';
+for (const readingPhase of readingPhases) {
+  const ad = undefined;
+  const label = readingPhase ?? 'estándar';
   for (let levelId = 1; levelId <= 8; levelId++) {
     for (const route of routes) {
       for (const learn of ['es', 'eu', 'en', 'both']) {
@@ -355,6 +355,7 @@ for (const preset of presets) {
               state,
               adaptations: ad,
               schoolStage,
+              readingPhase,
             });
             check(ex, `${label}/${route}/${learn}/${stageLabel}`, ad, learn);
             total++;
@@ -400,5 +401,5 @@ if (problems.length) {
   process.exit(1);
 }
 console.log(
-  `✅ ${total} ejercicios válidos (8 modos × 3 rutas × ES/EU/EN/ES+EU × Bajo/Medio/Alto × ${schoolStages.length} etapas × ${presets.length} perfiles) · H muda vasca verificada · ${gameKinds.size} minijuegos de Pato Ventura · categorías funcionales e etapas verificadas.`,
+  `✅ ${total} ejercicios válidos (8 modos × 3 rutas × ES/EU/EN/ES+EU × Bajo/Medio/Alto × ${schoolStages.length} etapas × ${readingPhases.length} fases de lectura) · H muda vasca verificada · ${gameKinds.size} minijuegos de Pato Ventura · categorías funcionales e etapas verificadas.`,
 );

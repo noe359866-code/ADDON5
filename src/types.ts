@@ -8,6 +8,12 @@ export type Modality = 'visual' | 'auditivo' | 'any';
 export type ExerciseKind = 'choice' | 'build' | 'tap' | 'story' | 'action' | 'pairs' | 'dictation';
 export type SyllableStage = 1 | 2 | 3; // 1: Directas (CV), 2: Inversas (VC), 3: Trabadas (CCV)
 
+/**
+ * Las 4 fases del aprendizaje de la lectura (de la pre-lectura a la lectura madura).
+ * Un lector experto no abandona la fase alfabética: usa ambas rutas en paralelo (modelo de doble ruta).
+ */
+export type ReadingPhase = 'fonologica' | 'logográfica' | 'alfabética' | 'ortográfica';
+
 export type NavTab = 'learn' | 'letters' | 'stories' | 'practice' | 'leaderboard' | 'quests' | 'shop' | 'profile';
 
 export type OutfitId = 'classic' | 'explorer' | 'super' | 'royal' | 'cool';
@@ -20,16 +26,6 @@ export type SessionMode =
   | 'mistakes'
   | 'listening'
   | 'letters';
-
-export type SupportId =
-  | 'cognitiva'
-  | 'comprension'
-  | 'comunicacion'
-  | 'dislexia'
-  | 'tdah'
-  | 'tea'
-  | 'down'
-  | 'daltonismo';
 
 export interface Option {
   id: string;
@@ -130,6 +126,7 @@ export interface Progress {
   learnLang: LearnLang;
   difficultyLevel: DifficultyLevel;
   schoolStage: SchoolStage;
+  readingPhase: ReadingPhase;
   speechRate: number;
   route: Route;
   sound: boolean;
@@ -137,7 +134,6 @@ export interface Progress {
   darkMode: boolean;
   bigText: boolean;
   unlockAll: boolean;
-  supports: SupportId[];
   calmMode: boolean;
 
   /* Gamificación estilo Duolingo */

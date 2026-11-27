@@ -160,6 +160,7 @@ export function GameScreen({ progress, setProgress, mode, levelId, nodeKey, onEx
       adaptations: ad,
       syllableStage: sylStage,
       schoolStage: progress.schoolStage,
+      readingPhase: progress.readingPhase,
       simpleOnly: ad.simpleOnly,
     });
   };

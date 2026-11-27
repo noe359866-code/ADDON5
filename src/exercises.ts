@@ -36,6 +36,7 @@ import type {
   Modality,
   Option,
   PairCard,
+  ReadingPhase,
   Route,
   SchoolStage,
   SyllableStage,
@@ -59,6 +60,7 @@ interface Ctx {
   ui: UiLang;
   difficulty: number;
   schoolStage: SchoolStage;
+  readingPhase: ReadingPhase;
   syllableStage: SyllableStage;
   state: GenState;
   colorblind: boolean;
@@ -211,7 +213,11 @@ interface OptionInput {
 }
 
 function optionSet(items: OptionInput[], correctIndex: number): { options: Option[]; correctId: string } {
-  const tagged = items.map((it, i) => ({ ...it, id: `o${i}`, ok: i === correctIndex }));
+  if (!items.length) {
+    return { options: [{ id: 'o0', label: '' }], correctId: 'o0' };
+  }
+  const safeIndex = correctIndex >= 0 && correctIndex < items.length ? correctIndex : 0;
+  const tagged = items.map((it, i) => ({ ...it, id: `o${i}`, ok: i === safeIndex }));
   const mixed = shuffle(tagged);
   const correctId = mixed.find((x) => x.ok)!.id;
   const options: Option[] = mixed.map((x) => ({
@@ -546,6 +552,254 @@ function makeStory(c: Ctx, levelId: number, modality: Modality, mode: 'question'
     options,
     correctId,
   });
+}
+
+/* ------------------------------------------------------------------ */
+/* Generadores de las 4 fases de la lectura × 3 niveles                */
+/* ------------------------------------------------------------------ */
+
+/** Sílabas por fase y nivel: Bajo usa sílabas sencillas, Alto combina sílabas trabadas. */
+function phaseSyllables(c: Ctx): string[] {
+  const bank = SYLLABLE_BANKS[c.lang];
+  if (c.difficulty <= 1) return [...bank[1], ...bank[2]];
+  if (c.difficulty === 2) return [...bank[1], ...bank[2], ...bank[3]];
+  return [...bank[2], ...bank[3]];
+}
+
+/** Genera una pseudopalabra (palabra inventada) uniendo sílabas de la fase. */
+function makePseudoword(c: Ctx): string {
+  const pool = phaseSyllables(c);
+  const count = c.difficulty <= 1 ? 2 : c.difficulty === 2 ? 3 : 4;
+  const parts: string[] = [];
+  for (let i = 0; i < count; i++) parts.push(pool[Math.floor(Math.random() * pool.length)]!);
+  return parts.join('');
+}
+
+/** Genera pseudopalabras distintas para opciones sin repetir. */
+function makePseudowordSet(c: Ctx, n: number): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  let attempts = 0;
+  while (out.length < n && attempts < 2000) {
+    attempts++;
+    const w = makePseudoword(c);
+    if (!seen.has(w)) {
+      seen.add(w);
+      out.push(w);
+    }
+  }
+  return out;
+}
+
+/** Asegura que `others` tenga al menos `n` elementos distintos de `target`. */
+function padPseudowords(others: string[], target: string, n: number, c: Ctx): string[] {
+  const out = [...others];
+  const used = new Set([normalize(target), ...out.map(normalize)]);
+  let extras = makePseudowordSet(c, n + 2);
+  for (const w of extras) {
+    if (out.length >= n) break;
+    const nw = normalize(w);
+    if (w && nw && !used.has(nw)) {
+      used.add(nw);
+      out.push(w);
+    }
+  }
+  return out;
+}
+
+/** Palabras frecuentes para la fase ortográfica (según nivel: más complejas en Alto). */
+function frequentWords(c: Ctx): Word[] {
+  const lenLimit = c.difficulty <= 1 ? 5 : c.difficulty === 2 ? 7 : 10;
+  return words.filter((w) => wordText(w, c.lang).length <= lenLimit && wordSyllables(w, c.lang).length >= 2);
+}
+
+/** Asegura que `rest` tenga al menos `n` elementos distintos de `correct`. */
+function padDistractors(rest: string[], correct: string, n: number, fallback: string[]): string[] {
+  const nc = normalize(correct);
+  const out = [...rest];
+  const used = new Set([nc, ...out.map(normalize)]);
+  for (const item of fallback) {
+    if (out.length >= n) break;
+    const ni = normalize(item);
+    if (item && ni && !used.has(ni)) {
+      used.add(ni);
+      out.push(item);
+    }
+  }
+  return out;
+}
+
+/** Fase 1 · Conciencia fonológica: rimas, palmadas por sílabas, sonido inicial. */
+function makePhonological(c: Ctx, levelId: number, mode: 'rhyme' | 'syllables' | 'initial'): Exercise {
+  if (mode === 'rhyme') {
+    const r = pickFresh(rhymes[c.lang], (x) => x.a, `fon-rhyme-${levelId}`, c.state);
+    const pool = [...r.distractors, ...rhymes[c.lang].filter((x) => x.a !== r.a).map((x) => x.b)];
+    const rest = padDistractors(distract(pool, r.b, nOpts(c) - 1, c.difficulty, allSyllables(c.lang)), r.b, nOpts(c) - 1, allSyllables(c.lang));
+    const { options, correctId } = optionSet([r.b, ...rest].map((label) => ({ label })), 0);
+    return makeEx(c, levelId, 'any', 'choice', {
+      eyebrow: t('eyebrowRhyme', c.ui),
+      prompt: tf('promptRhyme', c.ui, { word: r.a }),
+      display: { variant: 'word', text: r.a },
+      audio: { text: r.a, lang: c.lang },
+      options,
+      correctId,
+      hint: t('hintRhyme', c.ui),
+      explanation: answerExplanation(c, r.b),
+    });
+  }
+  if (mode === 'syllables') {
+    const w = pickFresh(stageWords(c), (x) => x.id, `fon-syl-${levelId}`, c.state);
+    const syl = wordSyllables(w, c.lang);
+    const correct = String(syl.length);
+    const nums = Array.from(
+      new Set(
+        [
+          String(syl.length - 2),
+          String(syl.length - 1),
+          correct,
+          String(syl.length + 1),
+          String(syl.length + 2),
+          String(syl.length + 3),
+        ].filter((n) => n !== '' && Number(n) >= 0),
+      ),
+    );
+    const { options, correctId } = optionSet(nums.map((label) => ({ label })), nums.indexOf(correct));
+    return makeEx(c, levelId, 'any', 'choice', {
+      eyebrow: t('eyebrowCount', c.ui),
+      prompt: tf('promptCountSyllables', c.ui, { word: wordText(w, c.lang) }),
+      display: { variant: 'chunks', chunks: syl, emoji: w.emoji },
+      audio: wordAudio(w, c.lang),
+      options,
+      correctId,
+      hint: t('hintSyllables', c.ui),
+      explanation: answerExplanation(c, correct),
+    });
+  }
+  // initial sound
+  const w = pickFresh(stageWords(c), (x) => x.id, `fon-init-${levelId}`, c.state);
+  const token = initialToken(wordText(w, c.lang), c.lang);
+  const rest = padDistractors(distract(allInitials(c.lang), token, nOpts(c) - 1, c.difficulty), token, nOpts(c) - 1, words.map((x) => wordText(x, c.lang)));
+  const { options, correctId } = optionSet([token, ...rest].map((label) => ({ label })), 0);
+  return makeEx(c, levelId, 'auditivo', 'choice', {
+    eyebrow: t('eyebrowListen', c.ui),
+    prompt: t('promptStartSound', c.ui),
+    display: { variant: 'emoji', emoji: w.emoji },
+    audio: wordAudio(w, c.lang),
+    options,
+    correctId,
+    hint: `${t('hintFirst', c.ui)} ${t('hintListen', c.ui)}`,
+    explanation: answerExplanation(c, token),
+  });
+}
+
+/** Fase 2 · Fase logográfica: lectura visual de palabras memorizadas (forma global). */
+function makeLogographic(c: Ctx, levelId: number, mode: 'word-image' | 'image-word'): Exercise {
+  const w = pickFresh(stageWords(c), (x) => x.id, `log-${mode}-${levelId}`, c.state);
+  const text = wordText(w, c.lang);
+  if (mode === 'word-image') {
+    const pool = stageWords(c).filter((x) => x.id !== w.id);
+    const chosen = distract(
+      pool.map((x) => x.emoji),
+      w.emoji,
+      nOpts(c) - 1,
+      c.difficulty,
+      stageWords(c).map((x) => x.emoji),
+    );
+    const items: OptionInput[] = [w.emoji, ...chosen].map((emoji) => ({ label: emoji, emoji }));
+    const { options, correctId } = optionSet(items, 0);
+    return makeEx(c, levelId, 'visual', 'choice', {
+      eyebrow: t('eyebrowRead', c.ui),
+      prompt: tf('promptWhichImage', c.ui, { word: text }),
+      display: { variant: 'word', text },
+      audio: wordAudio(w, c.lang),
+      options,
+      correctId,
+      hint: t('hintVisual', c.ui),
+      explanation: answerExplanation(c, text, 'read'),
+    });
+  }
+  const pool = stageWords(c).filter((x) => x.id !== w.id);
+  const { options, correctId } = wordOptions(c, w, pool, true);
+  return makeEx(c, levelId, 'visual', 'choice', {
+    eyebrow: t('eyebrowLook', c.ui),
+    prompt: t('promptHowWrite', c.ui),
+    display: { variant: 'emoji', emoji: w.emoji },
+    audio: wordAudio(w, c.lang),
+    options,
+    correctId,
+    hint: t('hintVisual', c.ui),
+    explanation: answerExplanation(c, text, 'written'),
+  });
+}
+
+/** Fase 3 · Fase alfabética: decodificación, letra-sonido y pseudopalabras. */
+function makeAlphabetic(c: Ctx, levelId: number, mode: 'pseudoword' | 'letter-order' | 'dictation'): Exercise {
+  if (mode === 'pseudoword') {
+    const target = makePseudoword(c);
+    const others = padPseudowords(makePseudowordSet(c, Math.max(1, nOpts(c) - 1)).filter((o) => o !== target), target, nOpts(c) - 1, c);
+    const all = [target, ...others];
+    const { options, correctId } = optionSet(all.map((label) => ({ label })), 0);
+    return makeEx(c, levelId, 'auditivo', 'choice', {
+      eyebrow: t('eyebrowAlphabetic', c.ui),
+      prompt: t('promptPseudoword', c.ui),
+      display: { variant: 'none' },
+      audio: { text: target, lang: c.lang },
+      options,
+      correctId,
+      hint: t('hintAlphabetic', c.ui),
+      explanation: answerExplanation(c, target, 'written'),
+    });
+  }
+  if (mode === 'letter-order') {
+    return makeLetterOrder(c, levelId, 'visual');
+  }
+  return makeDictation(c, levelId);
+}
+
+/** Fase 4 · Fase ortográfica: fluidez, automatización y comprensión de textos. */
+function makeOrthographic(c: Ctx, levelId: number, mode: 'frequency' | 'sentence' | 'story'): Exercise {
+  if (mode === 'frequency') {
+    const w = pickFresh(frequentWords(c), (x) => x.id, `orto-freq-${levelId}`, c.state);
+    const text = wordText(w, c.lang);
+    const pool = frequentWords(c).filter((x) => x.id !== w.id);
+    const { options, correctId } = wordOptions(c, w, pool, true);
+    return makeEx(c, levelId, 'visual', 'choice', {
+      eyebrow: t('eyebrowOrthographic', c.ui),
+      prompt: t('promptFrequencyWord', c.ui),
+      display: { variant: 'emoji', emoji: w.emoji },
+      audio: wordAudio(w, c.lang),
+      options,
+      correctId,
+      hint: t('hintOrthographic', c.ui),
+      explanation: answerExplanation(c, text, 'written'),
+    });
+  }
+  if (mode === 'sentence') {
+    return makeOrder(c, levelId, 'visual');
+  }
+  return makeStory(c, levelId, 'any', 'question');
+}
+
+/** Dispatcher: genera un ejercicio propio de la fase de lectura (4 fases × 3 niveles). */
+function makePhaseExercise(c: Ctx, phase: ReadingPhase): Exercise | null {
+  switch (phase) {
+    case 'fonologica': {
+      const modes: Array<'rhyme' | 'syllables' | 'initial'> = ['rhyme', 'syllables', 'initial'];
+      return makePhonological(c, c.state.seq % 6, modes[Math.floor(Math.random() * modes.length)]!);
+    }
+    case 'logográfica': {
+      const modes: Array<'word-image' | 'image-word'> = ['word-image', 'image-word'];
+      return makeLogographic(c, c.state.seq % 6, modes[Math.floor(Math.random() * modes.length)]!);
+    }
+    case 'alfabética': {
+      const modes: Array<'pseudoword' | 'letter-order' | 'dictation'> = ['pseudoword', 'letter-order', 'dictation'];
+      return makeAlphabetic(c, c.state.seq % 6, modes[Math.floor(Math.random() * modes.length)]!);
+    }
+    case 'ortográfica': {
+      const modes: Array<'frequency' | 'sentence' | 'story'> = ['frequency', 'sentence', 'story'];
+      return makeOrthographic(c, c.state.seq % 6, modes[Math.floor(Math.random() * modes.length)]!);
+    }
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -1647,6 +1901,7 @@ export interface ExerciseRequest {
   adaptations?: Adaptations;
   syllableStage?: SyllableStage;
   schoolStage?: SchoolStage;
+  readingPhase?: ReadingPhase;
   simpleOnly?: boolean;
 }
 
@@ -1683,6 +1938,7 @@ export function pickExercise(req: ExerciseRequest): Exercise {
     ui: req.ui,
     difficulty: effDiff,
     schoolStage: req.schoolStage ?? 'general',
+    readingPhase: req.readingPhase ?? 'alfabética',
     syllableStage: autoStage,
     state: req.state,
     colorblind: ad.colorblind,
@@ -1693,6 +1949,13 @@ export function pickExercise(req: ExerciseRequest): Exercise {
   if (ad.movement && req.slot > 0 && req.slot % 3 === 2) {
     req.state.lastFactory = 'movement-break';
     return applyAdaptations(makeAction(c, req.levelId), ad, req.ui);
+  }
+
+  // Fases de lectura: cada sesión integra ejercicios propios de la fase elegida.
+  const phaseExercise = makePhaseExercise(c, req.readingPhase ?? 'alfabética');
+  if (phaseExercise && Math.random() < 0.5) {
+    req.state.lastFactory = `phase-${phaseExercise.kind}`;
+    return applyAdaptations(phaseExercise, ad, req.ui);
   }
 
   let preferred: Modality;
@@ -1747,6 +2010,7 @@ export function makePairsExercise(opts: {
     ui: opts.ui,
     difficulty: 2,
     schoolStage: opts.schoolStage ?? 'general',
+    readingPhase: 'alfabética',
     syllableStage: stage,
     state: opts.state,
     colorblind: ad.colorblind,

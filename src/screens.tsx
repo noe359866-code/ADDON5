@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { adaptationsFor, computeAdaptations, supportProfiles, supportSummary } from './adaptations';
+import { computeAdaptations, supportSummary } from './adaptations';
 import {
   Confetti,
   DuoOwlBuddy,
@@ -70,7 +70,7 @@ import { t, tf } from './i18n';
 import { startAmbientMusic, stopAmbientMusic } from './music';
 import { getRecentWeekStats, isUnlocked, isXpBoostActive, nextLevel, todayString, xpBoostMinutesLeft } from './progress';
 import { sfx } from './sound';
-import type { DifficultyLevel, LearnLang, NavTab, Progress, Route, SchoolStage, SessionMode, SessionResult, SupportId, UiLang } from './types';
+import type { DifficultyLevel, LearnLang, NavTab, Progress, ReadingPhase, Route, SchoolStage, SessionMode, SessionResult, UiLang } from './types';
 
 function syncMusic(enabled: boolean) {
   if (enabled) startAmbientMusic();
@@ -136,10 +136,7 @@ export function Onboarding({ onDone }: { onDone: (patch: Partial<Progress>) => v
   const [route, setRoute] = useState<Route>('mixta');
   const [dailyGoal, setDailyGoal] = useState<number>(20);
   const [ui, setUi] = useState<UiLang>('es');
-  const [supports, setSupports] = useState<SupportId[]>([]);
-
-  const toggleSupport = (id: SupportId) =>
-    setSupports((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  const [readingPhase, setReadingPhase] = useState<ReadingPhase>('alfabética');
 
   const langCards: { value: LearnLang; flag: 'es' | 'eu' | 'en' | 'both'; title: string; desc: string }[] = [
     { value: 'es', flag: 'es', title: t('langEs', ui), desc: t('langEsDesc', ui) },
@@ -164,20 +161,26 @@ export function Onboarding({ onDone }: { onDone: (patch: Partial<Progress>) => v
     { value: 'auditivo', title: t('routeAuditivo', ui), desc: t('routeAuditivoDesc', ui) },
     { value: 'mixta', title: t('routeMixta', ui), desc: t('routeMixtaDesc', ui) },
   ];
+  const phaseCards: { value: ReadingPhase; emoji: string; title: string; desc: string }[] = [
+    { value: 'fonologica', emoji: '🎵', title: t('phaseFonologica', ui), desc: t('phaseFonologicaDesc', ui) },
+    { value: 'logográfica', emoji: '👀', title: t('phaseLogografica', ui), desc: t('phaseLogograficaDesc', ui) },
+    { value: 'alfabética', emoji: '🔤', title: t('phaseAlfabetica', ui), desc: t('phaseAlfabeticaDesc', ui) },
+    { value: 'ortográfica', emoji: '📖', title: t('phaseOrtografica', ui), desc: t('phaseOrtograficaDesc', ui) },
+  ];
 
-  function completeOnboarding(chosenSupports: SupportId[]) {
+  function completeOnboarding() {
     onDone({
       onboarded: true,
       name: name.trim() || (ui === 'eu' ? 'Lagun' : 'Amigo'),
       learnLang,
       difficultyLevel,
       schoolStage,
+      readingPhase,
       route,
       dailyGoal,
       uiLang: ui,
-      supports: chosenSupports,
-      calmMode: chosenSupports.includes('tea'),
-      unlimitedHearts: chosenSupports.length > 0,
+      calmMode: false,
+      unlimitedHearts: false,
     });
   }
 
@@ -364,23 +367,23 @@ export function Onboarding({ onDone }: { onDone: (patch: Partial<Progress>) => v
           </>
         ) : (
           <>
-            <h1>{t('step3Title', ui)}</h1>
-            <p className="onb-sub">{t('step3Sub', ui)}</p>
+            <h1>{t('phaseTitle', ui)}</h1>
+            <p className="onb-sub">{t('phaseSub', ui)}</p>
             <div className="support-grid">
-              {supportProfiles.map((profile, i) => (
+              {phaseCards.map((card, i) => (
                 <button
-                  key={profile.id}
+                  key={card.value}
                   style={staggerStyle(i)}
-                  className={`support-card ${supports.includes(profile.id) ? 'selected' : ''}`}
-                  onClick={() => toggleSupport(profile.id)}
-                  aria-pressed={supports.includes(profile.id)}
+                  className={`support-card ${readingPhase === card.value ? 'selected' : ''}`}
+                  onClick={() => setReadingPhase(card.value)}
+                  aria-pressed={readingPhase === card.value}
                 >
-                  <span className="support-emoji" aria-hidden="true">{profile.emoji}</span>
+                  <span className="support-emoji" aria-hidden="true">{card.emoji}</span>
                   <span className="support-text">
-                    <strong>{profile[ui].name}</strong>
-                    <small>{profile[ui].desc}</small>
+                    <strong>{card.title}</strong>
+                    <small>{card.desc}</small>
                   </span>
-                  {supports.includes(profile.id) && (
+                  {readingPhase === card.value && (
                     <span className="choice-check" aria-hidden="true">
                       <IconCheck size={13} />
                     </span>
@@ -388,16 +391,9 @@ export function Onboarding({ onDone }: { onDone: (patch: Partial<Progress>) => v
                 </button>
               ))}
             </div>
-            {supports.length > 0 && (
-              <div className="support-summary">
-                {supportSummary(adaptationsFor(supports), ui).map((s) => (
-                  <span key={s}>{s}</span>
-                ))}
-              </div>
-            )}
             <p className="onb-note">
               <IconLightbulb size={16} />
-              <span>{t('supportsHint', ui)}</span>
+              <span>{t('phaseHint', ui)}</span>
             </p>
             <div className="onb-actions split">
               <button className="duo-btn duo-btn-outline" onClick={() => setStep(1)}>
@@ -406,15 +402,12 @@ export function Onboarding({ onDone }: { onDone: (patch: Partial<Progress>) => v
               </button>
               <button
                 className="duo-btn duo-btn-green duo-btn-lg"
-                onClick={() => completeOnboarding(supports)}
+                onClick={() => completeOnboarding()}
               >
                 <IconPlay size={16} />
                 <span>{t('letsGo', ui).toUpperCase()}</span>
               </button>
             </div>
-            <button className="support-skip" onClick={() => completeOnboarding([])}>
-              {t('supportSkip', ui)}
-            </button>
           </>
         )}
         <p className="onb-foot">{t('onboardNote', ui)}</p>
@@ -1406,7 +1399,7 @@ export function Home({ progress, setProgress, onStart, onToast, onSettings }: Ho
               </button>
             ))}
           </div>
-          {ad.active.length > 0 && (
+          {supportSummary(ad, ui).length > 0 && (
             <div className="support-summary" style={{ marginTop: 10 }}>
               {supportSummary(ad, ui).map((lbl) => (
                 <span key={lbl}>{lbl}</span>
@@ -1491,12 +1484,7 @@ function Toggle({
 export function Settings({ progress, setProgress, onClose, onReset, onToast }: SettingsProps) {
   const ui = progress.uiLang;
   const [confirmReset, setConfirmReset] = useState(false);
-  const activeSupports = progress.supports ?? [];
   const summary = supportSummary(computeAdaptations(progress), ui);
-  const toggleSupport = (id: SupportId) =>
-    setProgress((prev) => ({
-      supports: prev.supports.includes(id) ? prev.supports.filter((x) => x !== id) : [...prev.supports, id],
-    }));
   return (
     <Modal onClose={onClose} labelledBy="settings-title">
       <div className="settings">
@@ -1598,27 +1586,50 @@ export function Settings({ progress, setProgress, onClose, onReset, onToast }: S
         <div className="settings-group">
           <h3 className="settings-group-title">{t('settingsGroupAccess', ui)}</h3>
           <div className="settings-field">
-            <span className="field-label"><IconAccessibility size={15} /> {t('supportsTitle', ui)}</span>
+            <span className="field-label"><IconAccessibility size={15} /> {t('phaseTitle', ui)}</span>
             <div className="support-grid support-grid-settings">
-              {supportProfiles.map((profile) => (
-                <button
-                  key={profile.id}
-                  className={`support-card compact ${activeSupports.includes(profile.id) ? 'selected' : ''}`}
-                  onClick={() => toggleSupport(profile.id)}
-                  aria-pressed={activeSupports.includes(profile.id)}
-                  title={profile[ui].desc}
-                >
-                  <span className="support-emoji" aria-hidden="true">{profile.emoji}</span>
-                  <strong>{profile[ui].name}</strong>
-                  {activeSupports.includes(profile.id) && (
-                    <span className="choice-check" aria-hidden="true">
-                      <IconCheck size={12} />
-                    </span>
-                  )}
-                </button>
-              ))}
+              <button
+                className={`support-card compact ${progress.readingPhase === 'fonologica' ? 'selected' : ''}`}
+                onClick={() => { setProgress({ readingPhase: 'fonologica' }); onToast(t('phaseChanged', ui)); }}
+                aria-pressed={progress.readingPhase === 'fonologica'}
+                title={t('phaseFonologicaDesc', ui)}
+              >
+                <span className="support-emoji" aria-hidden="true">🎵</span>
+                <strong>{t('phaseFonologica', ui)}</strong>
+                {progress.readingPhase === 'fonologica' && (<span className="choice-check" aria-hidden="true"><IconCheck size={12} /></span>)}
+              </button>
+              <button
+                className={`support-card compact ${progress.readingPhase === 'logográfica' ? 'selected' : ''}`}
+                onClick={() => { setProgress({ readingPhase: 'logográfica' }); onToast(t('phaseChanged', ui)); }}
+                aria-pressed={progress.readingPhase === 'logográfica'}
+                title={t('phaseLogograficaDesc', ui)}
+              >
+                <span className="support-emoji" aria-hidden="true">👀</span>
+                <strong>{t('phaseLogografica', ui)}</strong>
+                {progress.readingPhase === 'logográfica' && (<span className="choice-check" aria-hidden="true"><IconCheck size={12} /></span>)}
+              </button>
+              <button
+                className={`support-card compact ${progress.readingPhase === 'alfabética' ? 'selected' : ''}`}
+                onClick={() => { setProgress({ readingPhase: 'alfabética' }); onToast(t('phaseChanged', ui)); }}
+                aria-pressed={progress.readingPhase === 'alfabética'}
+                title={t('phaseAlfabeticaDesc', ui)}
+              >
+                <span className="support-emoji" aria-hidden="true">🔤</span>
+                <strong>{t('phaseAlfabetica', ui)}</strong>
+                {progress.readingPhase === 'alfabética' && (<span className="choice-check" aria-hidden="true"><IconCheck size={12} /></span>)}
+              </button>
+              <button
+                className={`support-card compact ${progress.readingPhase === 'ortográfica' ? 'selected' : ''}`}
+                onClick={() => { setProgress({ readingPhase: 'ortográfica' }); onToast(t('phaseChanged', ui)); }}
+                aria-pressed={progress.readingPhase === 'ortográfica'}
+                title={t('phaseOrtograficaDesc', ui)}
+              >
+                <span className="support-emoji" aria-hidden="true">📖</span>
+                <strong>{t('phaseOrtografica', ui)}</strong>
+                {progress.readingPhase === 'ortográfica' && (<span className="choice-check" aria-hidden="true"><IconCheck size={12} /></span>)}
+              </button>
             </div>
-            <p className="settings-hint">{t('supportsHint', ui)}</p>
+            <p className="settings-hint">{t('phaseHint', ui)}</p>
             <div className="support-summary">
               {summary.length ? summary.map((s) => <span key={s}>{s}</span>) : <span className="summary-muted">{t('supportsNone', ui)}</span>}
             </div>
