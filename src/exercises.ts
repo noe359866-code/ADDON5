@@ -39,6 +39,7 @@ interface Ctx {
   ui: UiLang;
   difficulty: number;
   state: GenState;
+  colorblind: boolean;
 }
 
 interface Factory {
@@ -65,7 +66,12 @@ function rnd<T>(arr: T[]): T {
 }
 
 function normalize(s: string): string {
-  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return s
+    .toLowerCase()
+    .replace(/ñ/g, '\u0001')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\u0001/g, 'ñ');
 }
 
 function pickFresh<T>(arr: T[], key: (item: T) => string, prefix: string, state: GenState): T {
@@ -89,10 +95,22 @@ function similarity(a: string, b: string): number {
 
 function distract(pool: string[], correct: string, n: number, difficulty: number, fallback: string[] = []): string[] {
   const nc = normalize(correct);
-  const unique = Array.from(new Set([...pool, ...fallback].filter((x) => x && normalize(x) !== nc)));
-  let list = shuffle(unique);
-  if (difficulty >= 3) list = list.sort((a, b) => similarity(b, correct) - similarity(a, correct));
-  return list.slice(0, n);
+  const pickFrom = (arr: string[], count: number) => {
+    let list = shuffle(arr);
+    if (difficulty >= 3) list = list.sort((a, b) => similarity(b, correct) - similarity(a, correct));
+    return list.slice(0, count);
+  };
+  const primary = Array.from(new Set(pool.filter((x) => x && normalize(x) !== nc)));
+  const chosen = pickFrom(primary, n);
+  if (chosen.length >= n || !fallback.length) return chosen;
+  const used = new Set([nc, ...chosen.map(normalize)]);
+  const extra = Array.from(new Set(fallback.filter((x) => x && !used.has(normalize(x)))));
+  return [...chosen, ...pickFrom(extra, n - chosen.length)];
+}
+
+/** Palabras con dibujo inequívoco: en daltonismo se evitan los círculos de solo color (🔴🟢🟠). */
+function visualWords(c: Ctx, list: Word[] = words): Word[] {
+  return c.colorblind ? list.filter((w) => w.cat !== 'colores') : list;
 }
 
 interface OptionInput {
@@ -100,6 +118,8 @@ interface OptionInput {
   emoji?: string;
   sub?: string;
   color?: string;
+  pattern?: string;
+  symbol?: string;
 }
 
 function optionSet(items: OptionInput[], correctIndex: number): { options: Option[]; correctId: string } {
@@ -111,6 +131,9 @@ function optionSet(items: OptionInput[], correctIndex: number): { options: Optio
     label: x.label,
     ...(x.emoji ? { emoji: x.emoji } : {}),
     ...(x.sub ? { sub: x.sub } : {}),
+    ...(x.color ? { color: x.color } : {}),
+    ...(x.pattern ? { pattern: x.pattern } : {}),
+    ...(x.symbol ? { symbol: x.symbol } : {}),
   }));
   return { options, correctId };
 }
@@ -188,7 +211,8 @@ function wordOptions(c: Ctx, correct: Word, others: Word[], withEmoji = false): 
   const texts = [wordText(correct, c.lang), ...chosen];
   const items: OptionInput[] = texts.map((label) => {
     const w = words.find((x) => normalize(wordText(x, c.lang)) === normalize(label));
-    return withEmoji && w ? { label, emoji: w.emoji } : { label };
+    if (withEmoji && w && !(c.colorblind && w.cat === 'colores')) return { label, emoji: w.emoji };
+    return { label };
   });
   return optionSet(items, 0);
 }
@@ -198,7 +222,7 @@ function wordOptions(c: Ctx, correct: Word, others: Word[], withEmoji = false): 
 /* ------------------------------------------------------------------ */
 
 function makeBuild(c: Ctx, levelId: number, modality: Modality, minSyllables: number): Exercise {
-  const pool = words.filter((w) => wordSyllables(w, c.lang).length >= minSyllables);
+  const pool = visualWords(c).filter((w) => wordSyllables(w, c.lang).length >= minSyllables);
   const w = pickFresh(pool, (x) => x.id, `build-${levelId}`, c.state);
   const syl = wordSyllables(w, c.lang);
   let tiles: Tile[] = shuffle(syl.map((s, i) => ({ id: `t${i}`, label: s })));
@@ -285,7 +309,7 @@ function makeHearSentence(c: Ctx, levelId: number, modality: Modality): Exercise
 
 function makeStory(c: Ctx, levelId: number, modality: Modality, mode: 'question' | 'theme'): Exercise {
   const s = pickFresh(stories, (x) => x.id, `story-${mode}-${levelId}`, c.state);
-  const block = { title: s.title[c.lang], text: s.text[c.lang], emoji: s.emoji };
+  const block = { title: s.title[c.lang], text: s.text[c.lang], shortText: s.shortText[c.lang], emoji: s.emoji };
   let items: OptionInput[];
   let correctIndex = 0;
   let prompt: string;
@@ -325,7 +349,12 @@ function colorOptions(c: Ctx, correct: ColorItem): { options: Option[]; correctI
   const pool = colors.filter((x) => x.id !== correct.id);
   const labels = distract(pool.map((x) => x[c.lang]), correct[c.lang], Math.max(1, nOpts(c) - 1), c.difficulty);
   const picked = labels.map((label) => colors.find((x) => x[c.lang] === label)!).filter(Boolean);
-  const items: OptionInput[] = [correct, ...picked].map((x) => ({ label: x[c.lang], color: x.hex }));
+  const items: OptionInput[] = [correct, ...picked].map((x) => ({
+    label: x[c.lang],
+    color: x.hex,
+    pattern: x.pattern,
+    symbol: x.symbol,
+  }));
   return optionSet(items, 0);
 }
 
@@ -350,7 +379,7 @@ function makeAction(c: Ctx, levelId: number, twoSteps = false): Exercise {
       c.state,
     );
     steps = [firstText, second[c.lang]];
-    prompt = tf('promptTwoSteps', c.ui, { first: steps[0]!, second: steps[1]! });
+    prompt = tf('promptTwoSteps', c.lang, { first: steps[0]!, second: steps[1]! });
     emoji = `${first.emoji} ${second.emoji}`;
   }
   return makeEx(c, levelId, 'any', 'action', {
@@ -392,13 +421,14 @@ function playNumber(c: Ctx) {
 
 /** Actividad de lectura fácil usada como alternativa cuando el mundo es abstracto. */
 function makeSimpleChoice(c: Ctx, levelId: number): Exercise {
-  const w = pickFresh(words, (x) => x.id, 'simple-choice', c.state);
+  const bank = visualWords(c);
+  const w = pickFresh(bank, (x) => x.id, 'simple-choice', c.state);
   const chosen = distract(
-    words.filter((x) => x.id !== w.id).map((x) => x.emoji),
+    bank.filter((x) => x.id !== w.id).map((x) => x.emoji),
     w.emoji,
     Math.max(1, nOpts(c) - 1),
     c.difficulty,
-    words.map((x) => x.emoji),
+    bank.map((x) => x.emoji),
   );
   const items: OptionInput[] = [w.emoji, ...chosen].map((emoji) => ({ label: emoji, emoji }));
   const { options, correctId } = optionSet(items, 0);
@@ -467,7 +497,7 @@ const factories: Record<number, Factory[]> = {
       id: 'l1-missing',
       modality: 'visual',
       make(c) {
-        const w = pickFresh(words.filter((x) => wordText(x, c.lang).length > 2), (x) => x.id, 'l1-missing', c.state);
+        const w = pickFresh(visualWords(c).filter((x) => wordText(x, c.lang).length > 2), (x) => x.id, 'l1-missing', c.state);
         const text = wordText(w, c.lang);
         const token = initialToken(text, c.lang);
         const hidden = `＿${text.slice(token.length)}`;
@@ -489,7 +519,7 @@ const factories: Record<number, Factory[]> = {
       id: 'l1-picture-letter',
       modality: 'visual',
       make(c) {
-        const w = pickFresh(words, (x) => x.id, 'l1-pic-letter', c.state);
+        const w = pickFresh(visualWords(c), (x) => x.id, 'l1-pic-letter', c.state);
         const text = wordText(w, c.lang);
         const token = initialToken(text, c.lang);
         const rest = distract(allInitials(c.lang), token, nOpts(c) - 1, c.difficulty);
@@ -510,7 +540,7 @@ const factories: Record<number, Factory[]> = {
       id: 'l1-find-letter',
       modality: 'visual',
       make(c) {
-        const w = pickFresh(words.filter((x) => wordText(x, c.lang).length >= 4), (x) => x.id, 'l1-find', c.state);
+        const w = pickFresh(visualWords(c).filter((x) => wordText(x, c.lang).length >= 4), (x) => x.id, 'l1-find', c.state);
         const text = wordText(w, c.lang);
         const gs = splitGraphemes(text, c.lang);
         const counts = new Map<string, number>();
@@ -548,7 +578,7 @@ const factories: Record<number, Factory[]> = {
       id: 'l2-find-syllable',
       modality: 'visual',
       make(c) {
-        const w = pickFresh(words.filter((x) => wordSyllables(x, c.lang).length >= 2), (x) => x.id, 'l2-find', c.state);
+        const w = pickFresh(visualWords(c).filter((x) => wordSyllables(x, c.lang).length >= 2), (x) => x.id, 'l2-find', c.state);
         const syl = wordSyllables(w, c.lang);
         const index = Math.floor(Math.random() * syl.length);
         const chips: Tile[] = syl.map((s, i) => ({ id: `c${i}`, label: s }));
@@ -568,7 +598,7 @@ const factories: Record<number, Factory[]> = {
       id: 'l2-hear-syllable',
       modality: 'auditivo',
       make(c) {
-        const w = pickFresh(words.filter((x) => wordSyllables(x, c.lang).length >= 2), (x) => x.id, 'l2-hear', c.state);
+        const w = pickFresh(visualWords(c).filter((x) => wordSyllables(x, c.lang).length >= 2), (x) => x.id, 'l2-hear', c.state);
         const syl = wordSyllables(w, c.lang);
         const index = Math.floor(Math.random() * syl.length);
         const chips: Tile[] = syl.map((s, i) => ({ id: `c${i}`, label: s }));
@@ -588,7 +618,7 @@ const factories: Record<number, Factory[]> = {
       id: 'l2-count',
       modality: 'any',
       make(c) {
-        const w = pickFresh(words, (x) => x.id, 'l2-count', c.state);
+        const w = pickFresh(visualWords(c), (x) => x.id, 'l2-count', c.state);
         const syl = wordSyllables(w, c.lang);
         const nums = ['1', '2', '3', '4', '5'];
         const correct = String(syl.length);
@@ -652,14 +682,15 @@ const factories: Record<number, Factory[]> = {
       id: 'l3-word-image',
       modality: 'visual',
       make(c) {
-        const w = pickFresh(words, (x) => x.id, 'l3-word-img', c.state);
-        const pool = words.filter((x) => x.id !== w.id);
+        const bank = visualWords(c);
+        const w = pickFresh(bank, (x) => x.id, 'l3-word-img', c.state);
+        const pool = bank.filter((x) => x.id !== w.id);
         const chosen = distract(
           pool.map((x) => x.emoji),
           w.emoji,
           nOpts(c) - 1,
           c.difficulty,
-          words.map((x) => x.emoji),
+          bank.map((x) => x.emoji),
         );
         const items: OptionInput[] = [w.emoji, ...chosen].map((emoji) => ({ label: emoji, emoji }));
         const { options, correctId } = optionSet(items, 0);
@@ -680,8 +711,9 @@ const factories: Record<number, Factory[]> = {
       id: 'l3-image-word',
       modality: 'visual',
       make(c) {
-        const w = pickFresh(words, (x) => x.id, 'l3-img-word', c.state);
-        const { options, correctId } = wordOptions(c, w, words.filter((x) => x.id !== w.id), true);
+        const bank = visualWords(c);
+        const w = pickFresh(bank, (x) => x.id, 'l3-img-word', c.state);
+        const { options, correctId } = wordOptions(c, w, bank.filter((x) => x.id !== w.id), true);
         const text = wordText(w, c.lang);
         return makeEx(c, 3, 'visual', 'choice', {
           eyebrow: t('eyebrowLook', c.ui),
@@ -720,13 +752,14 @@ const factories: Record<number, Factory[]> = {
       id: 'l3-hear-image',
       modality: 'auditivo',
       make(c) {
-        const w = pickFresh(words, (x) => x.id, 'l3-hear-img', c.state);
+        const bank = visualWords(c);
+        const w = pickFresh(bank, (x) => x.id, 'l3-hear-img', c.state);
         const chosen = distract(
-          words.filter((x) => x.id !== w.id).map((x) => x.emoji),
+          bank.filter((x) => x.id !== w.id).map((x) => x.emoji),
           w.emoji,
           nOpts(c) - 1,
           c.difficulty,
-          words.map((x) => x.emoji),
+          bank.map((x) => x.emoji),
         );
         const items: OptionInput[] = [w.emoji, ...chosen].map((emoji) => ({ label: emoji, emoji }));
         const { options, correctId } = optionSet(items, 0);
@@ -870,7 +903,7 @@ const factories: Record<number, Factory[]> = {
           return makeEx(c, 4, 'visual', 'tap', {
             eyebrow: t('eyebrowTap', c.ui),
             prompt: tf('promptSpecialSound', c.ui, { token: special }),
-            display: { variant: 'chunks', chunks: syl, emoji: w.emoji, highlight: special },
+            display: { variant: 'chunks', chunks: syl, emoji: c.colorblind && w.cat === 'colores' ? undefined : w.emoji, highlight: special },
             audio: { text: wordText(w, c.lang), lang: c.lang },
             chips,
             correctChip: `c${index}`,
@@ -885,20 +918,24 @@ const factories: Record<number, Factory[]> = {
       id: 'l4-special-choice',
       modality: 'visual',
       make(c) {
-        const special = rnd(specialSounds[c.lang]);
-        const hits = words.filter((w) => normalize(wordText(w, c.lang)).includes(special));
-        const w = rnd(hits.length ? hits : words);
-        const pool = words.filter((x) => x.id !== w.id && !normalize(wordText(x, c.lang)).includes(special));
-        const { options, correctId } = wordOptions(c, w, pool, true);
-        return makeEx(c, 4, 'visual', 'choice', {
-          eyebrow: t('eyebrowRead', c.ui),
-          prompt: tf('promptSpecialSound', c.ui, { token: special }),
-          display: { variant: 'word', text: special },
-          options,
-          correctId,
-          hint: t('hintVisual', c.ui),
-          explanation: answerExplanation(c, wordText(w, c.lang)),
-        });
+        const specials = shuffle(specialSounds[c.lang]);
+        for (const special of specials) {
+          const hits = words.filter((w) => normalize(wordText(w, c.lang)).includes(special));
+          const pool = words.filter((x) => !normalize(wordText(x, c.lang)).includes(special));
+          if (!hits.length || pool.length < nOpts(c) - 1) continue;
+          const w = pickFresh(hits, (x) => x.id, 'l4-special-choice', c.state);
+          const { options, correctId } = wordOptions(c, w, pool, true);
+          return makeEx(c, 4, 'visual', 'choice', {
+            eyebrow: t('eyebrowRead', c.ui),
+            prompt: tf('promptSpecialSound', c.ui, { token: special }),
+            display: { variant: 'word', text: special },
+            options,
+            correctId,
+            hint: t('hintVisual', c.ui),
+            explanation: answerExplanation(c, wordText(w, c.lang)),
+          });
+        }
+        return makeBuild(c, 4, 'visual', 2);
       },
     },
   ],
@@ -1071,7 +1108,7 @@ const factories: Record<number, Factory[]> = {
         return makeEx(c, 7, 'visual', 'choice', {
           eyebrow: t('eyebrowColors', c.ui),
           prompt: t('promptWhichColor', c.ui),
-          display: { variant: 'swatch', color: col.hex, emoji: col.emoji },
+          display: { variant: 'swatch', color: col.hex, emoji: col.emoji, pattern: col.pattern, symbol: col.symbol },
           audio: { text: t('promptWhichColor', c.lang), lang: c.lang },
           options,
           correctId,
@@ -1119,7 +1156,7 @@ const factories: Record<number, Factory[]> = {
     },
   ],
 
-  /* Mundo 8 · ¡Luma dice!: instrucciones literales, movimiento y cero fallos. */
+  /* Mundo 8 · ¡Pato Ventura dice!: instrucciones literales, movimiento y cero fallos. */
   8: [
     { id: 'a1-action', modality: 'any', make: (c) => makeAction(c, 8) },
     { id: 'a2-two-steps', modality: 'any', make: (c) => makeAction(c, 8, true) },
@@ -1163,13 +1200,14 @@ const factories: Record<number, Factory[]> = {
       id: 'a5-luma-object',
       modality: 'visual',
       make(c) {
-        const w = pickFresh(words, (x) => x.id, 'a5', c.state);
+        const bank = visualWords(c);
+        const w = pickFresh(bank, (x) => x.id, 'a5', c.state);
         const chosen = distract(
-          words.filter((x) => x.id !== w.id).map((x) => x.emoji),
+          bank.filter((x) => x.id !== w.id).map((x) => x.emoji),
           w.emoji,
           Math.max(1, nOpts(c) - 1),
           c.difficulty,
-          words.map((x) => x.emoji),
+          bank.map((x) => x.emoji),
         );
         const items: OptionInput[] = [w.emoji, ...chosen].map((emoji) => ({ label: emoji, emoji }));
         const { options, correctId } = optionSet(items, 0);
@@ -1218,7 +1256,7 @@ const factories: Record<number, Factory[]> = {
       id: 'a10-find',
       modality: 'visual',
       make(c) {
-        const items = shuffle(words)
+        const items = shuffle(visualWords(c))
           .slice(0, Math.max(3, nOpts(c)))
           .map((w, i) => ({ id: `f${i}`, emoji: w.emoji, label: wordText(w, c.lang) }));
         const prompt = t('promptLumaFind', c.lang);
@@ -1271,7 +1309,13 @@ function isEasyFactory(id: string): boolean {
 
 export function pickExercise(req: ExerciseRequest): Exercise {
   const ad = req.adaptations ?? defaultAdaptations;
-  const c: Ctx = { lang: req.lang, ui: req.ui, difficulty: Math.min(req.difficulty, ad.difficultyCap), state: req.state };
+  const c: Ctx = {
+    lang: req.lang,
+    ui: req.ui,
+    difficulty: Math.min(req.difficulty, ad.difficultyCap),
+    state: req.state,
+    colorblind: ad.colorblind,
+  };
 
   // Pausa de movimiento periódica para perfiles con hiperactividad.
   if (ad.movement && req.slot > 0 && req.slot % 3 === 2) {
@@ -1284,7 +1328,9 @@ export function pickExercise(req: ExerciseRequest): Exercise {
   else if (req.route === 'auditivo') preferred = Math.random() < 0.16 ? 'visual' : 'auditivo';
   else preferred = req.slot % 2 === 0 ? 'visual' : 'auditivo';
 
-  const all = factories[req.levelId] ?? factories[3]!;
+  const base = factories[req.levelId] ?? factories[3]!;
+  // En daltonismo no se piden pruebas de «adivinar un color puro sin objeto ni texto».
+  const all = ad.colorblind ? base.filter((f) => f.id !== 'n6-swatch-color') : base;
   let candidates = all.filter((f) => f.modality === preferred || f.modality === 'any');
   if (!candidates.length) candidates = all;
 

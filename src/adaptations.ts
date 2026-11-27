@@ -56,6 +56,12 @@ export const supportProfiles: SupportProfile[] = [
     es: { name: 'Síndrome de Down', desc: 'Más imágenes, repetición, botones grandes y refuerzo positivo.' },
     eu: { name: 'Down sindromea', desc: 'Irudi gehiago, errepikapena, botoi handiak eta indarpen positiboa.' },
   },
+  {
+    id: 'daltonismo',
+    emoji: '🎨',
+    es: { name: 'Daltonismo', desc: 'Paleta de alto contraste, patrones y símbolos en los colores y sin pruebas de solo color.' },
+    eu: { name: 'Daltonismoa', desc: 'Kontraste handiko paleta, patroiak eta ikurrak koloreetan, eta kolore hutseko probarik gabe.' },
+  },
 ];
 
 export const supportById: Record<string, SupportProfile> = Object.fromEntries(supportProfiles.map((p) => [p.id, p]));
@@ -80,6 +86,7 @@ export interface Adaptations {
   speakAnswer: boolean;
   movement: boolean;
   shortPrompts: boolean;
+  colorblind: boolean;
   active: SupportId[];
 }
 
@@ -99,6 +106,7 @@ export const defaultAdaptations: Adaptations = {
   speakAnswer: false,
   movement: false,
   shortPrompts: false,
+  colorblind: false,
   active: [],
 };
 
@@ -146,6 +154,9 @@ export function adaptationsFor(supports: SupportId[], extra: { calmMode?: boolea
     a.gentle = true;
     a.optionCount = Math.min(a.optionCount, 3);
   }
+  if (has('daltonismo')) {
+    a.colorblind = true;
+  }
   if (extra.calmMode) a.calm = true;
   if (extra.bigText) a.bigTargets = true;
   return a;
@@ -167,6 +178,7 @@ export function supportSummary(a: Adaptations, ui: UiLang): string[] {
   if (a.firstThen) out.push(t('adaptSchedule', ui));
   if (a.gentle) out.push(t('adaptGentle', ui));
   if (a.bigTargets) out.push(t('adaptTargets', ui));
+  if (a.colorblind) out.push(t('adaptColorblind', ui));
   return out;
 }
 
@@ -175,7 +187,12 @@ export function supportSummary(a: Adaptations, ui: UiLang): string[] {
 /* ------------------------------------------------------------------ */
 
 function norm(s: string): string {
-  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return s
+    .toLowerCase()
+    .replace(/ñ/g, '\u0001')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\u0001/g, 'ñ');
 }
 
 const pictograms = new Map<string, string>();
@@ -183,9 +200,12 @@ for (const w of words) {
   pictograms.set(norm(w.es), w.emoji);
   pictograms.set(norm(w.eu), w.emoji);
 }
+const colorMeta = new Map<string, { hex: string; pattern: string; symbol: string }>();
 for (const c of colors) {
   pictograms.set(norm(c.es), c.emoji);
   pictograms.set(norm(c.eu), c.emoji);
+  colorMeta.set(norm(c.es), { hex: c.hex, pattern: c.pattern, symbol: c.symbol });
+  colorMeta.set(norm(c.eu), { hex: c.hex, pattern: c.pattern, symbol: c.symbol });
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -228,8 +248,23 @@ export function applyAdaptations(source: Exercise, ad: Adaptations, ui: UiLang):
   if (ad.pictograms && out.options) {
     out.options = out.options.map((o) => {
       if (o.emoji || o.color) return o;
+      if (ad.colorblind && colorMeta.has(norm(o.label))) return o;
       const pic = pictograms.get(norm(o.label));
       return pic ? { ...o, emoji: pic } : o;
+    });
+  }
+
+  // 2b · Daltonismo: toda opción de color lleva patrón y símbolo propios, nunca solo tono.
+  if (ad.colorblind && out.options) {
+    out.options = out.options.map((o) => {
+      const meta = colorMeta.get(norm(o.label));
+      if (!meta) return o;
+      return {
+        ...o,
+        color: o.color ?? meta.hex,
+        pattern: o.pattern ?? meta.pattern,
+        symbol: o.symbol ?? meta.symbol,
+      };
     });
   }
 
@@ -238,9 +273,9 @@ export function applyAdaptations(source: Exercise, ad: Adaptations, ui: UiLang):
     out.eyebrow = t('simpleChoose', ui);
     if (out.prompt.length > 90) out.prompt = out.prompt.split(/[.:]/)[0] || out.prompt;
     if (out.story) {
-      const first = out.story.text.split(/(?<=[.!?])\s+/)[0] || out.story.text;
-      out.story.text = first;
-      out.audio = { text: first, lang: out.lang };
+      const simple = out.story.shortText || out.story.text.split(/(?<=[.!?])\s+/)[0] || out.story.text;
+      out.story.text = simple;
+      out.audio = { text: simple, lang: out.lang };
     }
   }
 

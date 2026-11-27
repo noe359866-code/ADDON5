@@ -1,4 +1,4 @@
-# 🐦 HitzBidaia · Viaje de Palabras
+# 🦆 HitzBidaia · Viaje de Palabras
 
 Una app **progresiva y divertida para aprender a leer en euskera y castellano**, pensada para niños y niñas que empiezan a leer (y para cualquier persona que quiera practicar). No hay cuentas, ni anuncios, ni servidor: todo funciona en el navegador y el progreso se guarda en `localStorage`.
 
@@ -25,11 +25,11 @@ Y en el **🎠 Patio de juegos**, dos modos siempre abiertos (sin desbloqueo):
 | # | Modo | Se practica |
 |---|------|-------------|
 | 7 | 🔢 Números y colores / Zenbakiak eta koloreak | Contar objetos, numeral ↔ palabra, sucesiones, colores con muestras de color y objetos reales |
-| 8 | 🕹️ ¡Luma dice! / Lumak dio! | Instrucciones de uno y dos pasos, movimiento, burbujas, palmas, respiración, «toca algo que te guste» e imitación |
+| 8 | 🕹️ ¡Pato Ventura dice! / Pato Venturak dio! | Instrucciones de uno y dos pasos, movimiento, burbujas, palmas, respiración, «toca algo que te guste» e imitación |
 
 ### Rutas de aprendizaje adaptadas
 - 👁️ **Visual**: dibujos, sílabas de colores, letras ocultas, piezas para construir palabras y frases.
-- 🎧 **Auditiva**: la voz de Luma lee cada pregunta, ejercicios de escucha, rimas, pares mínimos y dictado.
+- 🎧 **Auditiva**: la voz de Pato Ventura lee cada pregunta, ejercicios de escucha, rimas, pares mínimos y dictado.
 - 🌈 **Mixta**: alterna imagen y sonido pregunta a pregunta.
 
 La ruta se elige al empezar y **se puede cambiar en cualquier momento** desde el mapa o Ajustes: el generador de ejercicios pondera las actividades según la ruta activa.
@@ -38,7 +38,7 @@ La ruta se elige al empezar y **se puede cambiar en cualquier momento** desde el
 - **Dificultad viva**: 3 aciertos seguidos → más opciones y distractores más parecidos; 2 fallos seguidos → baja la dificultad.
 - **Dos idiomas**: castellano, euskera o alternando una pregunta de cada (`¡Los dos!`). Cada pregunta muestra su chip `ES` / `EU`.
 - **Interfaz bilingüe**: todos los textos de la app en español o en euskera.
-- **Pistas** de Luma (con repetición lenta del audio), sin castigo más allá de algo menos de XP.
+- **Pistas** de Pato Ventura (con repetición lenta del audio), sin castigo más allá de algo menos de XP.
 - **Voz**: Web Speech API (`eu-ES` / `es-ES`). Si el navegador no tiene voz en euskera, se usa la voz en español y se avisa con un cartelito.
 - **Efectos de sonido** sintetizados con Web Audio API (sin archivos de audio).
 
@@ -54,11 +54,13 @@ En el **tercer paso del inicio** y en **Ajustes → Apoyos de aprendizaje** se p
 | ⚡ Hiperactividad / TDAH | Sesiones de 4 actividades, **pausa de movimiento cada 3**, botones grandes, refuerzo inmediato |
 | 🧩 TEA / Autismo | Rutina predecible y literal, **sin confeti ni animaciones**, colores atenuados, voz siempre, sin reglas con truco ni sorpresas |
 | 🌈 Síndrome de Down | Más imagen, repetición, 2 opciones, botones grandes, sesiones cortas y refuerzo positivo |
+| 🎨 Daltonismo | Paleta de alto contraste **Okabe–Ito** (azul sólido `#0072B2` frente a naranja discontinuo `#D55E00`), **patrones + símbolos geométricos** en todas las muestras de color, sílabas con distintos estilos de borde, sin adivinanzas por tono puro ni círculos de color sin contexto |
 
 Detalles de diseño deliberados:
+- **Nunca se comunica información solo con color** (WCAG 1.4.1): todas las opciones y fichas de letras muestran iconos `✓` / `✕` y bordes sólidos frente a discontinuos incluso sin activar el perfil de daltonismo.
 - **Nunca hay tiempo límite, vidas ni penalización**; fallar muestra la respuesta con una pista, no un error.
 - **Los juegos imperativos no tienen respuesta incorrecta**: participar ya suma, y se puede repetir o saltar sin consecuencias.
-- Se evitó el «Simón dice» clásico (la regla de *no hacerlo si no dice "Simón dice"* excluye a quien tiene dificultades de comprensión): **siempre se hace lo que dice Luma**.
+- Se evitó el «Simón dice» clásico (la regla de *no hacerlo si no dice "Simón dice"* excluye a quien tiene dificultades de comprensión): **siempre se hace lo que dice Pato Ventura**.
 - Instrucciones de un paso, literales, con pictograma + texto + voz (comunicación total); opcionalmente dos pasos con apoyo visual numerado.
 - Modo **«Menos estímulos»** independiente en Ajustes, además de `prefers-reduced-motion` del sistema.
 
@@ -67,12 +69,12 @@ Detalles de diseño deliberados:
 ### Diversión y accesibilidad general
 Mascota animada en SVG, confeti, estrellas, XP, nivel lector, racha diaria, 10 insignias, práctica libre, atajos de teclado (`1`–`4` y `Enter`), modo «letras grandes», interfaz bilingüe es/eu, soporte de `prefers-reduced-motion` y diseño responsive móvil/escritorio.
 
-**Microinteracciones de estilo Duolingo:** botones con profundidad 3D y hundimiento al pulsar, entrada escalonada de tarjetas/opciones, transición entre preguntas, barra de progreso con brillo, mapa con burbujas flotantes, Luma con reacciones de ánimo, `+XP` flotante, píldoras de racha, estrellas que aparecen una a una, contador de XP animado, insignias escalonadas y celebración al subir de nivel. Todo usa `transform`/`opacity` para no bloquear el renderizado; los efectos nuevos de sonido (`combo` y `levelup`) se omiten en modo calmo. El modo **«Menos estímulos»** y `prefers-reduced-motion` desactivan animaciones, flotantes y confeti.
+**Microinteracciones de estilo Duolingo:** botones con profundidad 3D y hundimiento al pulsar, entrada escalonada de tarjetas/opciones, transición entre preguntas, barra de progreso con brillo, mapa con burbujas flotantes, **Pato Ventura** con reacciones de ánimo y bocadillo en cada pregunta (y ¡cuac! interactivo al tocarlo), `+XP` flotante, píldoras de racha, estrellas que aparecen una a una, contador de XP animado, insignias escalonadas y celebración al subir de nivel. Todo usa `transform`/`opacity` para no bloquear el renderizado; los efectos nuevos de sonido (`combo` y `levelup`) se omiten en modo calmo. El modo **«Menos estímulos»** y `prefers-reduced-motion` desactivan animaciones, flotantes y confeti.
 
 **Orden y profesionalismo:** tokens de diseño (`--surface`, `--border-soft`, radios y sombras), barra superior estable, onboarding con paso numérico y progreso explícito, secciones del panel numeradas y agrupadas en tarjetas neutras, mapa de mundos alineado como *timeline*, selector de ruta/idioma con jerarquía tipográfica, tarjetas de resultados y ajustes con bordes coherentes, e insignias en cuadrícula. Los componentes `SectionHead`, `StepProgress` y el helper `staggerStyle` centralizan la estructura visual y evitan estilos repetidos.
 
 ### 🧸 Minijuegos y música relajante
-Además de las instrucciones de «¡Luma dice!», el modo 8 incluye **minijuegos sin fallo** pensados para niños: explotar burbujas, contar palmadas, respirar con Luma, tocar un pictograma elegido libremente e imitar un gesto. Todos mantienen voz, pictograma, «Otra vez» y «Siguiente»; participar siempre suma.
+Además de las instrucciones de «¡Pato Ventura dice!», el modo 8 incluye **minijuegos sin fallo** pensados para niños: explotar burbujas, contar palmadas, respirar con Pato Ventura, tocar un pictograma elegido libremente e imitar un gesto. Todos mantienen voz, pictograma, «Otra vez» y «Siguiente»; participar siempre suma.
 
 La **música relajante** se genera con Web Audio en el navegador (acordes suaves, sin voces, sin archivos externos ni servicios de terceros). Se controla con el botón 🎵 de la cabecera y desde Ajustes, se guarda en `localStorage` y **no se inicia automáticamente**: los navegadores bloquean el autoplay, así que arranca con el gesto del usuario o en la primera interacción si ya estaba activada. Es independiente de los efectos y la voz; en modo calmo permanece apagada salvo que se encienda explícitamente.
 
@@ -93,7 +95,7 @@ Otros comandos:
 npm run build          # tsc --noEmit + build de producción en dist/
 npm run preview        # sirve dist/
 npm run typecheck      # solo comprobación de tipos
-npm run check:content  # valida 21.600 ejercicios (8 modos × 3 rutas × 3 idiomas × 3 dificultades × 5 perfiles)
+npm run check:content  # valida 30.240 ejercicios (8 modos × 3 rutas × 3 idiomas × 3 dificultades × 7 perfiles)
 ```
 
 Requiere Node.js 18+.

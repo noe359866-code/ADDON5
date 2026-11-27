@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { computeAdaptations } from './adaptations';
-import { ComboPill, Confetti, LangChip, Mascot, Modal, ProgressBar, RoutePill, XpFloat, prefersReducedMotion, staggerStyle } from './components';
+import { ComboPill, Confetti, LangChip, Mascot, Modal, RoutePill, SessionProgress, XpFloat, prefersReducedMotion, staggerStyle } from './components';
+import type { Mood } from './components';
 import { bonusModes } from './data';
+import { IconAccessibility, IconArrowRight, IconBolt, IconClose, IconLightbulb, IconVolume } from './icons';
 import { createGenState, pickExercise, practiceLevel } from './exercises';
 import type { GenState } from './exercises';
 import { t, tf } from './i18n';
@@ -90,14 +92,29 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
   const xpRef = useRef(0);
   const historyRef = useRef<HistoryEntry[]>([]);
   const pendingRef = useRef(false);
+  const answerTimerRef = useRef<number | null>(null);
+  const speakAnswerTimerRef = useRef<number | null>(null);
   const aliveRef = useRef(true);
   const actionDoneRef = useRef(false);
   const actionTokenRef = useRef(0);
+
+  function clearPendingTimers() {
+    if (answerTimerRef.current !== null) {
+      window.clearTimeout(answerTimerRef.current);
+      answerTimerRef.current = null;
+    }
+    if (speakAnswerTimerRef.current !== null) {
+      window.clearTimeout(speakAnswerTimerRef.current);
+      speakAnswerTimerRef.current = null;
+    }
+    pendingRef.current = false;
+  }
 
   useEffect(() => {
     aliveRef.current = true;
     return () => {
       aliveRef.current = false;
+      clearPendingTimers();
     };
   }, []);
 
@@ -144,7 +161,11 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
     setFeedback(ok ? 'correct' : 'wrong');
     sfx(ok ? 'correct' : 'wrong', progress.sound);
     if (ad.speakAnswer && correctLabel && progress.sound) {
-      window.setTimeout(() => speak(correctLabel, current.lang, true, 0.8), 560);
+      if (speakAnswerTimerRef.current !== null) window.clearTimeout(speakAnswerTimerRef.current);
+      speakAnswerTimerRef.current = window.setTimeout(() => {
+        speakAnswerTimerRef.current = null;
+        if (aliveRef.current) speak(correctLabel, current.lang, true, 0.8);
+      }, 560);
     }
     if (ok) {
       if (!ad.calm) setXpPop({ id: Date.now(), amount: gain });
@@ -166,7 +187,8 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
       return;
     }
     pendingRef.current = true;
-    window.setTimeout(() => {
+    answerTimerRef.current = window.setTimeout(() => {
+      answerTimerRef.current = null;
       pendingRef.current = false;
       if (aliveRef.current) submitAnswer(ok);
     }, 170);
@@ -185,7 +207,7 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
     advance(true);
   }
 
-  /** Minijuegos de Luma: cualquier interacción cuenta, nunca hay fallo. */
+  /** Minijuegos de Pato Ventura: cualquier interacción cuenta, nunca hay fallo. */
   function handleActionGameTap(id?: string) {
     if (feedback !== 'none' || current.kind !== 'action' || !current.action?.game || actionDoneRef.current) return;
     const game = current.action.game;
@@ -210,27 +232,27 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
   }
 
   function submitChoice(id: string) {
-    if (feedback !== 'none') return;
+    if (feedback !== 'none' || pendingRef.current) return;
     setSelected(id);
     sfx('click', progress.sound);
     delayedAnswer(id === current.correctId);
   }
 
   function submitChip(id: string) {
-    if (feedback !== 'none') return;
+    if (feedback !== 'none' || pendingRef.current) return;
     setChip(id);
     sfx('click', progress.sound);
     delayedAnswer(id === current.correctChip);
   }
 
   function addPick(id: string) {
-    if (feedback !== 'none' || picks.includes(id) || !current.tiles) return;
+    if (feedback !== 'none' || pendingRef.current || picks.includes(id) || !current.tiles) return;
     sfx('pop', progress.sound);
     setPicks([...picks, id]);
   }
 
   function submitBuild() {
-    if (feedback !== 'none' || !current.correctOrder || picks.length !== current.correctOrder.length) return;
+    if (feedback !== 'none' || pendingRef.current || !current.correctOrder || picks.length !== current.correctOrder.length) return;
     delayedAnswer(picks.every((id, i) => id === current.correctOrder![i]));
   }
 
@@ -250,6 +272,7 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
       langsUsed: Array.from(new Set(history.map((h) => h.lang))) as Lang[],
       perfect: correct === total,
     };
+    clearPendingTimers();
     stopSpeaking();
     onFinish(result);
   }
@@ -270,6 +293,7 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
     setWrongStreak(newWrong);
     setDifficulty(nextDifficulty);
     const lang: Lang = progress.learnLang === 'both' ? (nextIndex % 2 === 0 ? 'es' : 'eu') : progress.learnLang;
+    clearPendingTimers();
     stopSpeaking();
     setCurrent(makeExercise(nextIndex, nextDifficulty, lang));
     setIndex(nextIndex);
@@ -297,6 +321,7 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
   }
 
   function showHint() {
+    if (feedback !== 'none' || pendingRef.current) return;
     setHintShown(true);
     sfx('pop', progress.sound);
     if (current.audio && progress.route !== 'visual') listen(0.68);
@@ -349,22 +374,38 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
   const subCorrect = ad.gentle ? t('actionDone', ui) : t('wellDone', ui);
   const subWrong = ad.gentle ? current.hint : t('almost', ui);
   const actionGame = current.kind === 'action' ? current.action?.game : undefined;
+  const promptMood: Mood =
+    feedback === 'correct'
+      ? 'cheer'
+      : feedback === 'wrong'
+        ? ad.gentle
+          ? 'think'
+          : 'sad'
+        : hintShown
+          ? 'think'
+          : current.kind === 'action'
+            ? 'wave'
+            : streak >= 2
+              ? 'excited'
+              : index === 0
+                ? 'wave'
+                : 'happy';
 
   return (
     <div className={`game-screen ${ad.calm ? 'calm' : ''}`}>
       {burst > 0 && !ad.calm && <Confetti burstKey={burst} />}
       <header className="game-header">
-        <button className="icon-btn" onClick={() => setShowExit(true)} aria-label={t('exit', ui)}>
-          ✕
+        <button className="icon-btn" onClick={() => setShowExit(true)} aria-label={t('exit', ui)} title={t('exit', ui)}>
+          <IconClose size={18} />
         </button>
         <div className="game-progress">
           <div className="game-progress-top">
             <span className="game-title">{gameTitle}</span>
             <span className="game-count">
-              {t('question', ui)} {index + 1} {t('of', ui)} {total}
+              {index + 1} / {total}
             </span>
           </div>
-          <ProgressBar value={index} max={total} tone="mint" />
+          <SessionProgress current={index} total={total} />
         </div>
         <LangChip lang={current.lang} />
       </header>
@@ -377,10 +418,18 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
               <i key={n} className={n <= difficulty ? 'on' : ''} />
             ))}
           </span>
-          {t('adaptive', ui)}: {adaptiveLabel}
+          <span>{adaptiveLabel}</span>
         </span>
-        <span className="xp-pill">⚡ {xpRef.current} {t('xp', ui)}</span>
-        {ad.active.length > 0 && <span className="support-pill">🧩 {t('supportsActive', ui)}: {ad.active.length}</span>}
+        <span className="xp-pill">
+          <IconBolt size={13} />
+          <span>{xpRef.current} {t('xp', ui)}</span>
+        </span>
+        {ad.active.length > 0 && (
+          <span className="support-pill">
+            <IconAccessibility size={14} />
+            <span>{ad.active.length}</span>
+          </span>
+        )}
       </div>
 
       <main
@@ -399,14 +448,20 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
           </div>
         )}
         <div className="ex-eyebrow">
-          <span>{current.eyebrow}</span>
+          <span className="ex-eyebrow-pill">{current.eyebrow}</span>
           {current.audio && (
             <button className="listen-small" onClick={() => listen()} aria-label={t('listenAgain', ui)}>
-              🔊 {t('listen', ui)}
+              <IconVolume size={15} />
+              <span>{t('listen', ui)}</span>
             </button>
           )}
         </div>
-        <h2 className="ex-prompt">{current.prompt}</h2>
+        <div className="ex-prompt-row">
+          <Mascot mood={promptMood} size={68} interactive sound={progress.sound} />
+          <div className="ex-prompt-bubble">
+            <h2 className="ex-prompt">{current.prompt}</h2>
+          </div>
+        </div>
 
         {current.story && (
           <section className="story-card">
@@ -417,7 +472,8 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
               <h3>{current.story.title}</h3>
               <p>{current.story.text}</p>
               <button className="btn btn-tiny" onClick={() => listen(0.82)}>
-                🔊 {t('readAloud', ui)}
+                <IconVolume size={14} />
+                <span>{t('readAloud', ui)}</span>
               </button>
             </div>
           </section>
@@ -434,8 +490,16 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
               </div>
             )}
             {current.display.variant === 'swatch' && (
-              <div className="display-swatch" style={{ background: current.display.color }} aria-label={current.display.emoji}>
-                {current.display.emoji}
+              <div
+                className={`display-swatch ${ad.colorblind && current.display.pattern ? `swatch-pattern pattern-${current.display.pattern}` : ''}`}
+                style={{ backgroundColor: current.display.color }}
+                aria-label={current.display.emoji}
+              >
+                {ad.colorblind && current.display.symbol ? (
+                  <span className="swatch-symbol swatch-symbol-lg" aria-hidden="true">{current.display.symbol}</span>
+                ) : (
+                  current.display.emoji
+                )}
               </div>
             )}
             {current.display.variant === 'chunks' && current.display.chunks && (
@@ -465,7 +529,7 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
           <button className={`sound-orb ${current.modality === 'auditivo' ? 'pulsing' : ''}`} onClick={() => listen()} aria-label={t('listenAgain', ui)}>
             <span className="orb-ring ring-1" />
             <span className="orb-ring ring-2" />
-            <span className="orb-icon">🔊</span>
+            <span className="orb-icon"><IconVolume size={34} /></span>
             <span className="orb-label">{t('listenAgain', ui)}</span>
           </button>
         )}
@@ -474,7 +538,7 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
           <div className="voice-note">
             <span>{t('voiceFallback', ui)}</span>
             <button onClick={() => setNoteDismissed(true)} aria-label={t('close', ui)}>
-              ✕
+              <IconClose size={14} />
             </button>
           </div>
         )}
@@ -503,11 +567,20 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
                   disabled={feedback !== 'none'}
                 >
                   <span className="option-key">{i + 1}</span>
-                  {opt.color && <span className="option-swatch" style={{ background: opt.color }} aria-hidden="true" />}
+                  {opt.color && (
+                    <span
+                      className={`option-swatch ${ad.colorblind && opt.pattern ? `swatch-pattern pattern-${opt.pattern}` : ''}`}
+                      style={{ backgroundColor: opt.color }}
+                      aria-hidden="true"
+                    >
+                      {ad.colorblind && opt.symbol && <span className="swatch-symbol">{opt.symbol}</span>}
+                    </span>
+                  )}
                   {opt.emoji && <span className="option-emoji">{opt.emoji}</span>}
                   {(!opt.emoji || opt.label !== opt.emoji) && <span className="option-label">{opt.label}</span>}
                   {opt.sub && <span className="option-sub">{opt.sub}</span>}
-                  {feedback !== 'none' && isCorrect && <span className="option-check">✓</span>}
+                  {feedback !== 'none' && isCorrect && <span className="option-check" aria-hidden="true">✓</span>}
+                  {feedback !== 'none' && isChosen && !isCorrect && <span className="option-cross" aria-hidden="true">✕</span>}
                 </button>
               );
             })}
@@ -532,6 +605,8 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
                   >
                     {c.label}
                     <span className="option-key">{i + 1}</span>
+                    {feedback !== 'none' && isCorrect && <span className="chip-badge chip-ok" aria-hidden="true">✓</span>}
+                    {feedback !== 'none' && isChosen && !isCorrect && <span className="chip-badge chip-no" aria-hidden="true">✕</span>}
                   </button>
                 );
               })}
@@ -551,7 +626,7 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
                     key={slotId}
                     className={`build-slot ${tile ? 'filled' : ''}`}
                     onClick={() => {
-                      if (feedback === 'none' && pickedId) setPicks(picks.filter((_, idx) => idx !== i));
+                      if (feedback === 'none' && !pendingRef.current && pickedId) setPicks(picks.filter((_, idx) => idx !== i));
                     }}
                     disabled={feedback !== 'none'}
                   >
@@ -574,7 +649,13 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
               ))}
             </div>
             <div className="build-actions">
-              <button className="btn btn-quiet" onClick={() => setPicks(picks.slice(0, -1))} disabled={!picks.length || feedback !== 'none'}>
+              <button
+                className="btn btn-quiet"
+                onClick={() => {
+                  if (feedback === 'none' && !pendingRef.current) setPicks(picks.slice(0, -1));
+                }}
+                disabled={!picks.length || feedback !== 'none'}
+              >
                 ↩ {t('undo', ui)}
               </button>
               <button className="btn btn-primary" onClick={submitBuild} disabled={picks.length !== current.tiles.length || feedback !== 'none'}>
@@ -681,17 +762,18 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
         {feedback === 'none' ? (
           <div className="game-footer">
             <button className={`btn btn-ghost ${hintShown ? 'active' : ''}`} onClick={showHint} disabled={hintShown}>
-              💡 {t('hint', ui)}
+              <IconLightbulb size={16} />
+              <span>{t('hint', ui)}</span>
             </button>
             {hintShown && (
               <div className="hint-box">
-                <Mascot mood="think" size={60} />
+                <Mascot mood="think" size={62} interactive sound={progress.sound} />
                 <div>
                   <strong>{t('hintTitle', ui)}</strong>
                   <p>{current.hint}</p>
                 </div>
                 <button className="icon-btn" onClick={() => setHintShown(false)} aria-label={t('hideHint', ui)}>
-                  ✕
+                  <IconClose size={15} />
                 </button>
               </div>
             )}
@@ -699,7 +781,7 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
         ) : (
           <div className={`feedback feedback-${feedback}`} role="status">
             <div className="feedback-head">
-              <Mascot mood={feedback === 'correct' ? 'excited' : ad.gentle ? 'think' : 'sad'} size={76} />
+              <Mascot mood={feedback === 'correct' ? 'excited' : ad.gentle ? 'think' : 'sad'} size={80} interactive sound={progress.sound} />
               <div>
                 <h3>{feedback === 'correct' ? titleCorrect : titleWrong}</h3>
                 <p>{feedback === 'correct' ? subCorrect : subWrong}</p>
@@ -712,7 +794,8 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
               </p>
             )}
             <button className="btn btn-primary btn-wide" onClick={() => advance()} autoFocus>
-              {index + 1 >= total ? t('finishSession', ui) : t('continueBtn', ui)} →
+              <span>{index + 1 >= total ? t('finishSession', ui) : t('continueBtn', ui)}</span>
+              <IconArrowRight size={17} />
             </button>
           </div>
         )}

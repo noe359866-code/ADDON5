@@ -51,6 +51,7 @@ export default function App() {
     document.body.classList.toggle('hyperlegible', ad.hyperlegible);
     document.body.classList.toggle('calm', ad.calm);
     document.body.classList.toggle('big-targets', ad.bigTargets);
+    document.body.classList.toggle('colorblind', ad.colorblind);
     document.title = `HitzBidaia · ${t('appSub', progress.uiLang)}`;
   }, [progress]);
 

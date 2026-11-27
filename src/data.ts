@@ -105,8 +105,8 @@ export interface LevelDef {
   emoji: string;
   theme: string;
   questions: number;
-  es: { title: string; sub: string };
-  eu: { title: string; sub: string };
+  es: { title: string; sub: string; skill: string };
+  eu: { title: string; sub: string; skill: string };
 }
 
 export const levels: LevelDef[] = [
@@ -115,48 +115,48 @@ export const levels: LevelDef[] = [
     emoji: '🔤',
     theme: 'mint',
     questions: 6,
-    es: { title: 'Letras que suenan', sub: 'Descubre el sonido de cada letra' },
-    eu: { title: 'Soinua duten letrak', sub: 'Ezagutu letra bakoitzaren soinua' },
+    es: { title: 'Letras que suenan', sub: 'Descubre el sonido de cada letra', skill: 'Fonética' },
+    eu: { title: 'Soinua duten letrak', sub: 'Ezagutu letra bakoitzaren soinua', skill: 'Fonetika' },
   },
   {
     id: 2,
     emoji: '🧩',
     theme: 'sky',
     questions: 6,
-    es: { title: 'El taller de sílabas', sub: 'Une las piezas y escucha cómo suenan' },
-    eu: { title: 'Silaben tailerra', sub: 'Elkartu piezak eta entzun nola soinua duten' },
+    es: { title: 'El taller de sílabas', sub: 'Une las piezas y escucha cómo suenan', skill: 'Conciencia silábica' },
+    eu: { title: 'Silaben tailerra', sub: 'Elkartu piezak eta entzun nolako soinua duten', skill: 'Silabak' },
   },
   {
     id: 3,
     emoji: '🍎',
     theme: 'coral',
     questions: 6,
-    es: { title: 'Primeras palabras', sub: 'Lee, mira y escucha palabras reales' },
-    eu: { title: 'Lehen hitzak', sub: 'Irakurri, ikusi eta entzun benetako hitzak' },
+    es: { title: 'Primeras palabras', sub: 'Lee, mira y escucha palabras reales', skill: 'Vocabulario' },
+    eu: { title: 'Lehen hitzak', sub: 'Irakurri, ikusi eta entzun benetako hitzak', skill: 'Hiztegia' },
   },
   {
     id: 4,
     emoji: '🎵',
     theme: 'grape',
     questions: 6,
-    es: { title: 'Rimas y sonidos', sub: 'Juega con palabras que suenan parecido' },
-    eu: { title: 'Errimak eta soinuak', sub: 'Jolastu antzeko soinua duten hitzekin' },
+    es: { title: 'Rimas y sonidos', sub: 'Juega con palabras que suenan parecido', skill: 'Conciencia fonológica' },
+    eu: { title: 'Errimak eta soinuak', sub: 'Jolastu antzeko soinua duten hitzekin', skill: 'Entzumen-bereizketa' },
   },
   {
     id: 5,
     emoji: '💬',
     theme: 'sun',
     questions: 6,
-    es: { title: 'Frases que cobran vida', sub: 'Une palabras para contar cosas' },
-    eu: { title: 'Bizirik dauden esaldiak', sub: 'Elkartu hitzak gauzak kontatzeko' },
+    es: { title: 'Frases que cobran vida', sub: 'Une palabras para contar cosas', skill: 'Sintaxis' },
+    eu: { title: 'Bizirik dauden esaldiak', sub: 'Elkartu hitzak gauzak kontatzeko', skill: 'Sintaxia' },
   },
   {
     id: 6,
     emoji: '📖',
     theme: 'violet',
     questions: 6,
-    es: { title: 'El bosque de los cuentos', sub: 'Lee historias y descubre sus secretos' },
-    eu: { title: 'Ipuinen basoa', sub: 'Irakurri istorioak eta ezagutu sekretuak' },
+    es: { title: 'El bosque de los cuentos', sub: 'Lee historias y descubre sus secretos', skill: 'Comprensión lectora' },
+    eu: { title: 'Ipuinen basoa', sub: 'Irakurri istorioak eta ezagutu sekretuak', skill: 'Ulermena' },
   },
 ];
 
@@ -167,7 +167,7 @@ export const digraphs: Record<Lang, string[]> = {
 
 export const specialSounds: Record<Lang, string[]> = {
   es: ['ch', 'rr', 'ñ', 'll', 'qu', 'z'],
-  eu: ['tx', 'tz', 'rr', 'll', 'ai', 'eu'],
+  eu: ['tx', 'tz', 'rr', 'ai', 'h', 'k'],
 };
 
 export interface Rhyme {
@@ -276,6 +276,8 @@ export interface Story {
   emoji: string;
   title: LocalizedText;
   text: LocalizedText;
+  /** Versión de lectura fácil (una sola frase que siempre contiene la respuesta). */
+  shortText: LocalizedText;
   question: LocalizedText;
   options: LocalizedText[];
   correct: number;
@@ -290,6 +292,10 @@ export const stories: Story[] = [
     text: {
       es: 'El sol brilla. El pájaro canta en el árbol. Todo está alegre.',
       eu: 'Eguzkiak distira egiten du. Txoriak zuhaitzean abesten du. Dena alai dago.',
+    },
+    shortText: {
+      es: 'El pájaro canta en el árbol.',
+      eu: 'Txoriak zuhaitzean abesten du.',
     },
     question: { es: '¿Quién canta?', eu: 'Nork abesten du?' },
     options: [
@@ -308,6 +314,10 @@ export const stories: Story[] = [
       es: 'La mariposa vuela sobre la flor roja. Después descansa en una hoja verde.',
       eu: 'Tximeleta lore gorriaren gainean hegan dabil. Gero hosto berde batean atseden hartzen du.',
     },
+    shortText: {
+      es: 'La mariposa vuela sobre la flor roja.',
+      eu: 'Tximeleta lore gorriaren gainean hegan dabil.',
+    },
     question: { es: '¿Sobre qué vuela la mariposa?', eu: 'Zeren gainean egiten du hegan tximeletak?' },
     options: [
       { es: 'Sobre la flor', eu: 'Lorearen gainean' },
@@ -324,6 +334,10 @@ export const stories: Story[] = [
     text: {
       es: 'En la mesa hay pan, queso y una manzana. Falta la leche: ¡la busca el gato!',
       eu: 'Mahaian ogia, gazta eta sagarra daude. Esnea falta da: katuak bilatzen du!',
+    },
+    shortText: {
+      es: 'En la mesa hay pan y manzana, pero falta la leche.',
+      eu: 'Mahaian ogia eta sagarra daude, baina esnea falta da.',
     },
     question: { es: '¿Qué NO está en la mesa?', eu: 'Zer EZ dago mahaian?' },
     options: [
@@ -342,6 +356,10 @@ export const stories: Story[] = [
       es: 'Mi amigo y yo leemos un libro azul. El cuento habla de una estrella muy pequeña.',
       eu: 'Lagunak eta biok liburu urdin bat irakurtzen dugu. Ipuinak izar txiki bati buruz hitz egiten du.',
     },
+    shortText: {
+      es: 'Mi amigo y yo leemos un libro azul.',
+      eu: 'Lagunak eta biok liburu urdin bat irakurtzen dugu.',
+    },
     question: { es: '¿De qué color es el libro?', eu: 'Zer koloretakoa da liburua?' },
     options: [
       { es: 'Azul', eu: 'Urdina' },
@@ -359,6 +377,10 @@ export const stories: Story[] = [
       es: 'El perro corre hacia el árbol grande. El viento mueve las hojas y el perro ladra contento.',
       eu: 'Txakurra zuhaitz handirantz korrika doa. Haizeak hostoak mugitzen ditu eta txakurrak alai zaunka egiten du.',
     },
+    shortText: {
+      es: 'El perro corre hacia el árbol grande.',
+      eu: 'Txakurra zuhaitz handirantz korrika doa.',
+    },
     question: { es: '¿Hacia dónde corre el perro?', eu: 'Nora doa korrika txakurra?' },
     options: [
       { es: 'Hacia el árbol', eu: 'Zuhaitzera' },
@@ -370,13 +392,17 @@ export const stories: Story[] = [
   },
   {
     id: 'st6',
-    emoji: '🌙⭐',
-    title: { es: 'Buenas noches, Luma', eu: 'Gabon, Luma' },
+    emoji: '🌙🦆',
+    title: { es: 'Buenas noches, Pato Ventura', eu: 'Gabon, Pato Ventura' },
     text: {
-      es: 'La luna blanca mira el cielo. Una estrella pequeña brilla y Luma se duerme en su nido.',
-      eu: 'Ilargi zuriak zeruari begiratzen dio. Izar txiki batek distira egiten du eta Luma habian lokartzen da.',
+      es: 'La luna blanca mira el cielo. Una estrella pequeña brilla y Pato Ventura se duerme en su nido.',
+      eu: 'Ilargi zuriak zeruari begiratzen dio. Izar txiki batek distira egiten du eta Pato Ventura habian lokartzen da.',
     },
-    question: { es: '¿Dónde se duerme Luma?', eu: 'Non lokartzen da Luma?' },
+    shortText: {
+      es: 'Por la noche, Pato Ventura se duerme en su nido.',
+      eu: 'Gauez, Pato Ventura habian lokartzen da.',
+    },
+    question: { es: '¿Dónde se duerme Pato Ventura?', eu: 'Non lokartzen da Pato Ventura?' },
     options: [
       { es: 'En su nido', eu: 'Habian' },
       { es: 'En el mar', eu: 'Itsasoan' },
@@ -404,7 +430,7 @@ export const badges: Badge[] = [
   { id: 'storyteller', emoji: '📚', es: { name: 'Cuentacuentos', desc: 'Terminar el bosque de los cuentos' }, eu: { name: 'Ipuinlaria', desc: 'Ipuinen basoa amaitu' } },
   { id: 'master', emoji: '🏆', es: { name: 'Maestro lector', desc: 'Completar los 6 mundos' }, eu: { name: 'Irakurle maisu', desc: '6 munduak osatu' } },
   { id: 'counter', emoji: '🔢', es: { name: 'Contador de colores', desc: 'Completar números y colores' }, eu: { name: 'Kolore zenbatzailea', desc: 'Zenbakiak eta koloreak osatu' } },
-  { id: 'mover', emoji: '🕹️', es: { name: 'Siguiendo a Luma', desc: 'Completar ¡Luma dice!' }, eu: { name: 'Lumari jarraituz', desc: 'Lumak dio! osatu' } },
+  { id: 'mover', emoji: '🕹️', es: { name: 'Siguiendo a Pato Ventura', desc: 'Completar ¡Pato Ventura dice!' }, eu: { name: 'Pato Venturari jarraituz', desc: 'Pato Venturak dio! osatu' } },
 ];
 
 export const badgeById: Record<string, Badge> = Object.fromEntries(badges.map((b) => [b.id, b]));
@@ -419,18 +445,21 @@ export interface ColorItem {
   eu: string;
   hex: string;
   emoji: string;
+  /** Patrón geométrico y símbolo único para niños con daltonismo. */
+  pattern: string;
+  symbol: string;
 }
 
 export const colors: ColorItem[] = [
-  { id: 'rojo', es: 'rojo', eu: 'gorri', hex: '#E8503A', emoji: '🔴' },
-  { id: 'azul', es: 'azul', eu: 'urdin', hex: '#3B82F6', emoji: '🔵' },
-  { id: 'verde', es: 'verde', eu: 'berde', hex: '#34A853', emoji: '🟢' },
-  { id: 'amarillo', es: 'amarillo', eu: 'hori', hex: '#F5C518', emoji: '🟡' },
-  { id: 'blanco', es: 'blanco', eu: 'zuri', hex: '#F5F3EE', emoji: '⚪' },
-  { id: 'negro', es: 'negro', eu: 'beltz', hex: '#2C3A57', emoji: '⚫' },
-  { id: 'naranja', es: 'naranja', eu: 'laranja', hex: '#F58A32', emoji: '🟠' },
-  { id: 'morado', es: 'morado', eu: 'morea', hex: '#8B5CF6', emoji: '🟣' },
-  { id: 'rosa', es: 'rosa', eu: 'arrosa', hex: '#F472B6', emoji: '🌷' },
+  { id: 'rojo', es: 'rojo', eu: 'gorri', hex: '#E8503A', emoji: '🔴', pattern: 'stripes', symbol: '▲' },
+  { id: 'azul', es: 'azul', eu: 'urdin', hex: '#3B82F6', emoji: '🔵', pattern: 'waves', symbol: '●' },
+  { id: 'verde', es: 'verde', eu: 'berde', hex: '#34A853', emoji: '🟢', pattern: 'dots', symbol: '■' },
+  { id: 'amarillo', es: 'amarillo', eu: 'hori', hex: '#F5C518', emoji: '🟡', pattern: 'grid', symbol: '★' },
+  { id: 'blanco', es: 'blanco', eu: 'zuri', hex: '#F5F3EE', emoji: '⚪', pattern: 'ring', symbol: '○' },
+  { id: 'negro', es: 'negro', eu: 'beltz', hex: '#2C3A57', emoji: '⚫', pattern: 'solid', symbol: '◆' },
+  { id: 'naranja', es: 'naranja', eu: 'laranja', hex: '#F58A32', emoji: '🟠', pattern: 'vstripes', symbol: '▼' },
+  { id: 'morado', es: 'morado', eu: 'morea', hex: '#8B5CF6', emoji: '🟣', pattern: 'diamond', symbol: '❖' },
+  { id: 'rosa', es: 'rosa', eu: 'arrosa', hex: '#F472B6', emoji: '🌷', pattern: 'check', symbol: '♥' },
 ];
 
 export const colorById: Record<string, ColorItem> = Object.fromEntries(colors.map((c) => [c.id, c]));
@@ -483,7 +512,7 @@ export interface Imperative {
 /**
  * Instrucciones de un solo paso, literales y sin reglas con truco.
  * Se evita deliberadamente el "Simón dice" clásico (que excluye a quien
- * tiene dificultades de comprensión): siempre se hace lo que dice Luma.
+ * tiene dificultades de comprensión): siempre se hace lo que dice Pato Ventura.
  */
 export const imperatives: Imperative[] = [
   { id: 'i1', emoji: '🧍', es: 'Levántate', eu: 'Jaiki' },
@@ -496,7 +525,7 @@ export const imperatives: Imperative[] = [
   { id: 'i8', emoji: '🌬️', es: 'Respira hondo', eu: 'Arnasa hartu' },
   { id: 'i9', emoji: '⬆️', es: 'Mira arriba', eu: 'Begiratu gora' },
   { id: 'i10', emoji: '🚪', es: 'Señala la puerta', eu: 'Seinalatu atea' },
-  { id: 'i11', emoji: '🔢', es: 'Cuenta hasta tres', eu: 'Zenbat hirura arte' },
+  { id: 'i11', emoji: '🔢', es: 'Cuenta hasta tres', eu: 'Zenbatu hirura arte' },
   { id: 'i12', emoji: '😊', es: 'Sonríe', eu: 'Irribarre egin' },
   { id: 'i13', emoji: '🙌', es: 'Estira los brazos', eu: 'Luzatu besoak' },
   { id: 'i14', emoji: '🔄', es: 'Da una vuelta', eu: 'Buelta eman' },
@@ -507,7 +536,7 @@ export const imperatives: Imperative[] = [
   { id: 'i19', emoji: '🧘', es: 'Estira la espalda', eu: 'Luzatu bizkarra' },
   { id: 'i20', emoji: '👂', es: 'Escucha un sonido', eu: 'Entzun soinu bat' },
   { id: 'i21', emoji: '🤫', es: 'Haz palmas suaves', eu: 'Egin txalo leunak' },
-  { id: 'i22', emoji: '🐦', es: 'Mira a Luma y sonríe', eu: 'Begiratu Lumari eta irribarre egin' },
+  { id: 'i22', emoji: '🦆', es: 'Mira a Pato Ventura y sonríe', eu: 'Begiratu Pato Venturari eta irribarre egin' },
 ];
 
 export interface BonusMode {
@@ -534,8 +563,8 @@ export const bonusModes: BonusMode[] = [
     emoji: '🕹️',
     theme: 'mint',
     questions: 6,
-    es: { title: '¡Luma dice!', sub: 'Instrucciones, burbujas, palmas y respiración' },
-    eu: { title: 'Lumak dio!', sub: 'Jarraibideak, burbuilak, txaloak eta arnasa' },
+    es: { title: '¡Pato Ventura dice!', sub: 'Instrucciones, burbujas, palmas y respiración' },
+    eu: { title: 'Pato Venturak dio!', sub: 'Jarraibideak, burbuilak, txaloak eta arnasa' },
   },
 ];
 
