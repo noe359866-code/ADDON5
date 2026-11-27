@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { computeAdaptations } from './adaptations';
-import { Confetti, LangChip, Mascot, Modal, ProgressBar, RoutePill } from './components';
+import { ComboPill, Confetti, LangChip, Mascot, Modal, ProgressBar, RoutePill, XpFloat, prefersReducedMotion, staggerStyle } from './components';
 import { bonusModes } from './data';
 import { createGenState, pickExercise, practiceLevel } from './exercises';
 import type { GenState } from './exercises';
-import { t } from './i18n';
+import { t, tf } from './i18n';
 import { sfx, speak, stopSpeaking, voicesFor } from './sound';
 import { starsFor } from './progress';
 import type { Exercise, Lang, Modality, Progress, SessionResult } from './types';
@@ -81,10 +81,25 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
   const [noteDismissed, setNoteDismissed] = useState(false);
   const [soundNotice, setSoundNotice] = useState(false);
   const [euVoice, setEuVoice] = useState(true);
+  const [xpPop, setXpPop] = useState<{ id: number; amount: number } | null>(null);
+  const [combo, setCombo] = useState<{ id: number; count: number } | null>(null);
+  const [actionTaps, setActionTaps] = useState(0);
+  const [actionPicks, setActionPicks] = useState<string[]>([]);
 
   const correctRef = useRef(0);
   const xpRef = useRef(0);
   const historyRef = useRef<HistoryEntry[]>([]);
+  const pendingRef = useRef(false);
+  const aliveRef = useRef(true);
+  const actionDoneRef = useRef(false);
+  const actionTokenRef = useRef(0);
+
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+    };
+  }, []);
 
   const ui = progress.uiLang;
   const routeLabel = t(`route${progress.route === 'auditivo' ? 'Auditivo' : progress.route === 'visual' ? 'Visual' : 'Mixta'}`, ui);
@@ -132,9 +147,29 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
       window.setTimeout(() => speak(correctLabel, current.lang, true, 0.8), 560);
     }
     if (ok) {
+      if (!ad.calm) setXpPop({ id: Date.now(), amount: gain });
       if (!ad.calm) setBurst((b) => b + 1);
       if (correctRef.current % 3 === 0) sfx('star', progress.sound);
+    } else {
+      setXpPop(null);
     }
+    const nextCombo = ok ? streak + 1 : 0;
+    if (!ad.calm) setCombo(nextCombo >= 2 ? { id: Date.now(), count: nextCombo } : null);
+    if (nextCombo >= 3 && !ad.calm && !prefersReducedMotion()) sfx('combo', progress.sound);
+  }
+
+  /** Un instante de "presión" antes del resultado: la sensación Duolingo. */
+  function delayedAnswer(ok: boolean) {
+    if (pendingRef.current) return;
+    if (ad.calm || prefersReducedMotion()) {
+      submitAnswer(ok);
+      return;
+    }
+    pendingRef.current = true;
+    window.setTimeout(() => {
+      pendingRef.current = false;
+      if (aliveRef.current) submitAnswer(ok);
+    }, 170);
   }
 
   /** Los juegos imperativos no tienen fallo: participar ya es un acierto. */
@@ -150,18 +185,42 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
     advance(true);
   }
 
+  /** Minijuegos de Luma: cualquier interacción cuenta, nunca hay fallo. */
+  function handleActionGameTap(id?: string) {
+    if (feedback !== 'none' || current.kind !== 'action' || !current.action?.game || actionDoneRef.current) return;
+    const game = current.action.game;
+    if (!ad.calm) sfx('pop', progress.sound);
+    if (game.kind === 'find' || game.kind === 'imitate') {
+      actionDoneRef.current = true;
+      completeAction();
+      return;
+    }
+    if (game.kind === 'bubbles' && id && actionPicks.includes(id)) return;
+    const next = Math.min(actionTaps + 1, game.target);
+    setActionTaps(next);
+    if (id) setActionPicks((prev) => [...prev, id]);
+    if (next >= game.target) {
+      actionDoneRef.current = true;
+      if (!ad.calm) sfx('star', progress.sound);
+      const token = ++actionTokenRef.current;
+      window.setTimeout(() => {
+        if (aliveRef.current && actionTokenRef.current === token && feedback === 'none') completeAction();
+      }, 240);
+    }
+  }
+
   function submitChoice(id: string) {
     if (feedback !== 'none') return;
     setSelected(id);
     sfx('click', progress.sound);
-    submitAnswer(id === current.correctId);
+    delayedAnswer(id === current.correctId);
   }
 
   function submitChip(id: string) {
     if (feedback !== 'none') return;
     setChip(id);
     sfx('click', progress.sound);
-    submitAnswer(id === current.correctChip);
+    delayedAnswer(id === current.correctChip);
   }
 
   function addPick(id: string) {
@@ -172,7 +231,7 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
 
   function submitBuild() {
     if (feedback !== 'none' || !current.correctOrder || picks.length !== current.correctOrder.length) return;
-    submitAnswer(picks.every((id, i) => id === current.correctOrder![i]));
+    delayedAnswer(picks.every((id, i) => id === current.correctOrder![i]));
   }
 
   function finish() {
@@ -219,6 +278,12 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
     setChip(null);
     setFeedback('none');
     setHintShown(false);
+    setXpPop(null);
+    setCombo(null);
+    setActionTaps(0);
+    setActionPicks([]);
+    actionDoneRef.current = false;
+    actionTokenRef.current += 1;
   }
 
   function listen(rate = 0.88) {
@@ -283,6 +348,7 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
   const titleWrong = ad.gentle ? t('gentleAlmost', ui) : t('wrongTitle', ui);
   const subCorrect = ad.gentle ? t('actionDone', ui) : t('wellDone', ui);
   const subWrong = ad.gentle ? current.hint : t('almost', ui);
+  const actionGame = current.kind === 'action' ? current.action?.game : undefined;
 
   return (
     <div className={`game-screen ${ad.calm ? 'calm' : ''}`}>
@@ -317,7 +383,12 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
         {ad.active.length > 0 && <span className="support-pill">🧩 {t('supportsActive', ui)}: {ad.active.length}</span>}
       </div>
 
-      <main className={`exercise-card modality-${current.modality} ${progress.bigText ? 'big-text' : ''} ${ad.hyperlegible ? 'hyperlegible' : ''} ${ad.bigTargets ? 'big-targets' : ''}`}>
+      <main
+        key={current.id}
+        className={`exercise-card modality-${current.modality} ${progress.bigText ? 'big-text' : ''} ${ad.hyperlegible ? 'hyperlegible' : ''} ${ad.bigTargets ? 'big-targets' : ''}`}
+      >
+        {!ad.calm && xpPop && <XpFloat amount={xpPop.amount} burstKey={xpPop.id} />}
+        {!ad.calm && combo && <ComboPill count={combo.count} label={t('comboLabel', ui)} burstKey={combo.id} />}
         {ad.firstThen && (
           <div className="first-then" aria-label={t('adaptSchedule', ui)}>
             <span><b>1</b> {t('stepListen', ui)}</span>
@@ -426,7 +497,8 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
               return (
                 <button
                   key={opt.id}
-                  className={`option ${state} ${opt.emoji ? 'has-emoji' : ''} ${opt.color ? 'has-swatch' : ''}`}
+                  className={`option ${state} ${opt.emoji ? 'has-emoji' : ''} ${opt.color ? 'has-swatch' : ''} ${selected === opt.id && feedback === 'none' ? 'pressing' : ''}`}
+                  style={staggerStyle(i)}
                   onClick={() => submitChoice(opt.id)}
                   disabled={feedback !== 'none'}
                 >
@@ -451,7 +523,13 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
                 const isChosen = chip === c.id;
                 const state = feedback === 'none' ? '' : isCorrect ? 'is-correct' : isChosen ? 'is-wrong' : 'is-muted';
                 return (
-                  <button key={c.id} className={`letter-chip ${state}`} onClick={() => submitChip(c.id)} disabled={feedback !== 'none'}>
+                  <button
+                    key={c.id}
+                    className={`letter-chip ${state} ${chip === c.id && feedback === 'none' ? 'pressing' : ''}`}
+                    style={staggerStyle(i)}
+                    onClick={() => submitChip(c.id)}
+                    disabled={feedback !== 'none'}
+                  >
                     {c.label}
                     <span className="option-key">{i + 1}</span>
                   </button>
@@ -483,9 +561,10 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
               })}
             </div>
             <div className="tile-pool">
-              {current.tiles.map((tile) => (
+              {current.tiles.map((tile, i) => (
                 <button
                   key={tile.id}
+                  style={staggerStyle(i)}
                   className={`tile ${picks.includes(tile.id) ? 'used' : ''} ${current.unit === 'word' ? 'tile-word' : ''}`}
                   onClick={() => addPick(tile.id)}
                   disabled={picks.includes(tile.id) || feedback !== 'none'}
@@ -506,7 +585,7 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
         )}
 
         {current.kind === 'action' && current.action && feedback === 'none' && (
-          <div className="action-card">
+          <div className={`action-card ${actionGame ? `action-game-card action-game-${actionGame.kind}` : ''}`}>
             <div className="action-emoji" aria-hidden="true">{current.action.emoji}</div>
             <p className="action-text">{current.action.text}</p>
             {current.action.steps && (
@@ -519,9 +598,81 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
                 ))}
               </div>
             )}
+
+            {actionGame?.kind === 'bubbles' && (
+              <div className="bubble-grid" role="group" aria-label={actionGame.label}>
+                {Array.from({ length: actionGame.target + 2 }, (_, i) => `b${i}`).map((id, i) => (
+                  <button
+                    key={id}
+                    style={staggerStyle(i)}
+                    className={`bubble ${actionPicks.includes(id) ? 'popped' : ''}`}
+                    onClick={() => handleActionGameTap(id)}
+                    disabled={actionPicks.includes(id) || feedback !== 'none'}
+                    aria-label={`${actionGame.label} ${i + 1}`}
+                  >
+                    🫧
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {actionGame && (actionGame.kind === 'count' || actionGame.kind === 'breathe') && (
+              <div className="action-tap-area">
+                {actionGame.kind === 'breathe' && <div className="breath-orb" aria-hidden="true">🌬️</div>}
+                <button
+                  className="action-tap-btn"
+                  onClick={() => handleActionGameTap()}
+                  disabled={feedback !== 'none'}
+                >
+                  <span aria-hidden="true">{actionGame.kind === 'count' ? actionGame.emoji : '🌬️'}</span>
+                  <strong>{actionGame.label}</strong>
+                </button>
+                <div className="action-dots" aria-hidden="true">
+                  {Array.from({ length: actionGame.target }, (_, i) => (
+                    <i key={i} className={i < actionTaps ? 'on' : ''} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {actionGame?.kind === 'find' && (
+              <div className="find-area">
+                <div className="find-grid" role="group" aria-label={actionGame.label}>
+                  {actionGame.items.map((item, i) => (
+                    <button
+                      key={item.id}
+                      style={staggerStyle(i)}
+                      className="find-card"
+                      onClick={() => handleActionGameTap(item.id)}
+                      disabled={feedback !== 'none'}
+                    >
+                      <span className="find-emoji" aria-hidden="true">{item.emoji}</span>
+                      <span className="find-label">{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+                <p className="action-game-hint">{actionGame.label}</p>
+              </div>
+            )}
+
+            {actionGame?.kind === 'imitate' && (
+              <button className="imitate-btn" onClick={() => handleActionGameTap()} disabled={feedback !== 'none'}>
+                <span aria-hidden="true">{current.action.emoji}</span>
+                <strong>{t('actionDo', ui)}</strong>
+              </button>
+            )}
+
+            {actionGame && actionGame.kind !== 'find' && actionGame.kind !== 'imitate' && (
+              <p className="action-game-status" role="status">
+                {tf('actionCounter', ui, { done: String(actionTaps), total: String(actionGame.target) })}
+              </p>
+            )}
+
             <div className="action-buttons">
               <button className="btn btn-quiet" onClick={() => listen(0.78)}>🔁 {t('actionAgain', ui)}</button>
-              <button className="btn btn-primary btn-lg" onClick={completeAction}>{t('actionDo', ui)}</button>
+              {actionGame?.kind !== 'imitate' && (
+                <button className="btn btn-primary btn-lg" onClick={completeAction}>{t('actionDo', ui)}</button>
+              )}
               <button className="btn btn-quiet" onClick={completeAction}>{t('actionSkip', ui)}</button>
             </div>
           </div>
@@ -548,7 +699,7 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
         ) : (
           <div className={`feedback feedback-${feedback}`} role="status">
             <div className="feedback-head">
-              <Mascot mood={feedback === 'correct' ? 'cheer' : 'think'} size={76} />
+              <Mascot mood={feedback === 'correct' ? 'excited' : ad.gentle ? 'think' : 'sad'} size={76} />
               <div>
                 <h3>{feedback === 'correct' ? titleCorrect : titleWrong}</h3>
                 <p>{feedback === 'correct' ? subCorrect : subWrong}</p>

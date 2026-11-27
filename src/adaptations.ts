@@ -216,6 +216,14 @@ export function applyAdaptations(source: Exercise, ad: Adaptations, ui: UiLang):
     out.correctId = `ad${mixed.indexOf(correct)}`;
   }
 
+  // 1b · En los juegos de «toca algo», menos pictogramas si el perfil lo pide.
+  if (out.action?.game?.kind === 'find' && out.action.game.items.length > ad.optionCount) {
+    out.action = {
+      ...out.action,
+      game: { ...out.action.game, items: out.action.game.items.slice(0, ad.optionCount) },
+    };
+  }
+
   // 2 · Pictogramas en todas las opciones de texto que sea posible.
   if (ad.pictograms && out.options) {
     out.options = out.options.map((o) => {

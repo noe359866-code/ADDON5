@@ -28,6 +28,7 @@ const routes = ['visual', 'auditivo', 'mixta'];
 const presets = [null, ['cognitiva', 'dislexia'], ['tea', 'comunicacion'], ['tdah'], ['down']];
 const problems = [];
 let total = 0;
+const gameKinds = new Set();
 
 function check(ex, ctx, ad) {
   const at = `${ctx} modo=${ex.levelId} lang=${ex.lang} ${ex.kind}`;
@@ -49,6 +50,21 @@ function check(ex, ctx, ad) {
   if (ex.kind === 'action') {
     ok(!!ex.action && !!ex.action.emoji && !!ex.action.text, 'juego imperativo incompleto');
     ok(!ex.options, 'un juego imperativo no debería tener opciones');
+    const game = ex.action?.game;
+    if (game) {
+      gameKinds.add(game.kind);
+      if (game.kind === 'bubbles' || game.kind === 'count' || game.kind === 'breathe') {
+        ok(Number.isInteger(game.target) && game.target >= 2 && game.target <= 5, 'objetivo de minijuego inválido');
+        ok(!!game.label, 'etiqueta de minijuego vacía');
+      }
+      if (game.kind === 'count') ok(!!game.emoji, 'emoji de conteo vacío');
+      if (game.kind === 'find') {
+        ok(game.items.length >= Math.max(2, minOptions), 'muy pocos pictogramas en «toca algo»');
+        ok(game.items.every((i) => !!i.id && !!i.emoji && !!i.label), 'pictograma incompleto');
+        ok(new Set(game.items.map((i) => i.id)).size === game.items.length, 'pictogramas repetidos');
+        ok(!!game.label, 'ayuda de «toca algo» vacía');
+      }
+    }
   }
   if (ex.kind === 'tap') {
     ok((ex.chips ?? []).length >= 2, 'demasiado pocas piezas');
@@ -83,9 +99,14 @@ for (const preset of presets) {
   }
 }
 
+const expectedGames = ['bubbles', 'count', 'breathe', 'find', 'imitate'];
+for (const kind of expectedGames) {
+  if (!gameKinds.has(kind)) problems.push(`no se generó el minijuego «${kind}»`);
+}
+
 if (problems.length) {
   console.error(`❌ ${problems.length} problemas en ${total} ejercicios:`);
   console.error(problems.slice(0, 20).join('\n'));
   process.exit(1);
 }
-console.log(`✅ ${total} ejercicios válidos (8 modos × 3 rutas × 3 idiomas × 3 dificultades × ${presets.length} perfiles).`);
+console.log(`✅ ${total} ejercicios válidos (8 modos × 3 rutas × 3 idiomas × 3 dificultades × ${presets.length} perfiles) · ${gameKinds.size} minijuegos de Luma.`);

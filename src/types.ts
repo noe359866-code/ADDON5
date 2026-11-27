@@ -27,6 +27,20 @@ export interface Tile {
   label: string;
 }
 
+export interface ActionItem {
+  id: string;
+  emoji: string;
+  label: string;
+}
+
+/** Minijuegos sin fallo dentro de una tarjeta de acción de Luma. */
+export type ActionGame =
+  | { kind: 'imitate' }
+  | { kind: 'count'; target: number; emoji: string; label: string }
+  | { kind: 'breathe'; target: number; label: string }
+  | { kind: 'bubbles'; target: number; label: string }
+  | { kind: 'find'; items: ActionItem[]; label: string };
+
 export interface Exercise {
   id: string;
   kind: ExerciseKind;
@@ -52,7 +66,7 @@ export interface Exercise {
   chips?: Tile[];
   correctChip?: string;
   story?: { title: string; text: string; emoji: string };
-  action?: { emoji: string; text: string; steps?: string[] };
+  action?: { emoji: string; text: string; steps?: string[]; game?: ActionGame };
   hint: string;
   explanation: string;
   autoAudio: boolean;
@@ -65,6 +79,7 @@ export interface Progress {
   learnLang: LearnLang;
   route: Route;
   sound: boolean;
+  music: boolean;
   bigText: boolean;
   unlockAll: boolean;
   supports: SupportId[];

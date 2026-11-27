@@ -11,6 +11,7 @@ export const defaultProgress: Progress = {
   learnLang: 'both',
   route: 'mixta',
   sound: true,
+  music: false,
   bigText: false,
   unlockAll: false,
   supports: [],

@@ -22,7 +22,7 @@ import type { ColorItem, Word } from './data';
 import { applyAdaptations, defaultAdaptations } from './adaptations';
 import type { Adaptations } from './adaptations';
 import { t, tf } from './i18n';
-import type { Exercise, ExerciseKind, Lang, Modality, Option, Route, Tile, UiLang } from './types';
+import type { ActionGame, Exercise, ExerciseKind, Lang, Modality, Option, Route, Tile, UiLang } from './types';
 
 export interface GenState {
   used: Set<string>;
@@ -363,6 +363,31 @@ function makeAction(c: Ctx, levelId: number, twoSteps = false): Exercise {
     hint: t('hintAction', c.ui),
     explanation: t('actionDone', c.ui),
   });
+}
+
+/** Tarjeta de minijuego interactivo: siempre sin fallo y con voz. */
+function makePlayAction(
+  c: Ctx,
+  levelId: number,
+  game: ActionGame,
+  emoji: string,
+  prompt: string,
+  audioText: string,
+): Exercise {
+  return makeEx(c, levelId, 'any', 'action', {
+    eyebrow: t('eyebrowLumaSays', c.ui),
+    prompt,
+    display: { variant: 'none' },
+    action: { emoji, text: prompt, game },
+    audio: { text: audioText, lang: c.lang },
+    autoAudio: true,
+    hint: t('hintAction', c.ui),
+    explanation: t('actionDone', c.ui),
+  });
+}
+
+function playNumber(c: Ctx) {
+  return numbers[1 + (c.state.seq % 4)]!;
 }
 
 /** Actividad de lectura fácil usada como alternativa cuando el mundo es abstracto. */
@@ -1162,6 +1187,54 @@ const factories: Record<number, Factory[]> = {
       },
     },
     { id: 'a6-action', modality: 'any', make: (c) => makeAction(c, 8) },
+    {
+      id: 'a7-bubbles',
+      modality: 'any',
+      make(c) {
+        const n = playNumber(c);
+        const prompt = tf('promptLumaBubbles', c.lang, { n: n[c.lang] });
+        return makePlayAction(c, 8, { kind: 'bubbles', target: n.n, label: t('actionBubble', c.ui) }, '🫧', prompt, prompt);
+      },
+    },
+    {
+      id: 'a8-claps',
+      modality: 'any',
+      make(c) {
+        const n = playNumber(c);
+        const prompt = tf('promptLumaClaps', c.lang, { n: n[c.lang] });
+        return makePlayAction(c, 8, { kind: 'count', target: n.n, emoji: '👏', label: t('actionClap', c.ui) }, '👏', prompt, prompt);
+      },
+    },
+    {
+      id: 'a9-breathe',
+      modality: 'any',
+      make(c) {
+        const n = playNumber(c);
+        const prompt = tf('promptLumaBreathe', c.lang, { n: n[c.lang] });
+        return makePlayAction(c, 8, { kind: 'breathe', target: n.n, label: t('actionBreathe', c.ui) }, '🌬️', prompt, prompt);
+      },
+    },
+    {
+      id: 'a10-find',
+      modality: 'visual',
+      make(c) {
+        const items = shuffle(words)
+          .slice(0, Math.max(3, nOpts(c)))
+          .map((w, i) => ({ id: `f${i}`, emoji: w.emoji, label: wordText(w, c.lang) }));
+        const prompt = t('promptLumaFind', c.lang);
+        return makePlayAction(c, 8, { kind: 'find', items, label: t('actionFindHint', c.ui) }, '🔎', prompt, prompt);
+      },
+    },
+    {
+      id: 'a11-imitate',
+      modality: 'any',
+      make(c) {
+        const imp = pickFresh(imperatives, (x) => x.id, 'a11-imitate', c.state);
+        const prompt = tf('promptLumaImitate', c.lang, { emoji: imp.emoji });
+        return makePlayAction(c, 8, { kind: 'imitate' }, imp.emoji, prompt, prompt);
+      },
+    },
+    { id: 'a12-move', modality: 'any', make: (c) => makeAction(c, 8) },
   ],
 };
 

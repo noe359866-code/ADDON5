@@ -500,6 +500,14 @@ export const imperatives: Imperative[] = [
   { id: 'i12', emoji: '😊', es: 'Sonríe', eu: 'Irribarre egin' },
   { id: 'i13', emoji: '🙌', es: 'Estira los brazos', eu: 'Luzatu besoak' },
   { id: 'i14', emoji: '🔄', es: 'Da una vuelta', eu: 'Buelta eman' },
+  { id: 'i15', emoji: '🤪', es: 'Haz una mueca', eu: 'Egin imintzio bat' },
+  { id: 'i16', emoji: '👋', es: 'Saluda con la mano', eu: 'Agurtu eskuarekin' },
+  { id: 'i17', emoji: '✍️', es: 'Dibuja una letra en el aire', eu: 'Marraztu letra bat airean' },
+  { id: 'i18', emoji: '🐧', es: 'Camina como un pingüino', eu: 'Ibili pinguino bezala' },
+  { id: 'i19', emoji: '🧘', es: 'Estira la espalda', eu: 'Luzatu bizkarra' },
+  { id: 'i20', emoji: '👂', es: 'Escucha un sonido', eu: 'Entzun soinu bat' },
+  { id: 'i21', emoji: '🤫', es: 'Haz palmas suaves', eu: 'Egin txalo leunak' },
+  { id: 'i22', emoji: '🐦', es: 'Mira a Luma y sonríe', eu: 'Begiratu Lumari eta irribarre egin' },
 ];
 
 export interface BonusMode {
@@ -526,8 +534,8 @@ export const bonusModes: BonusMode[] = [
     emoji: '🕹️',
     theme: 'mint',
     questions: 6,
-    es: { title: '¡Luma dice!', sub: 'Sigue instrucciones y muévete' },
-    eu: { title: 'Lumak dio!', sub: 'Jarraibideak jarraitu eta mugitu' },
+    es: { title: '¡Luma dice!', sub: 'Instrucciones, burbujas, palmas y respiración' },
+    eu: { title: 'Lumak dio!', sub: 'Jarraibideak, burbuilak, txaloak eta arnasa' },
   },
 ];
 

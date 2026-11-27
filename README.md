@@ -25,7 +25,7 @@ Y en el **🎠 Patio de juegos**, dos modos siempre abiertos (sin desbloqueo):
 | # | Modo | Se practica |
 |---|------|-------------|
 | 7 | 🔢 Números y colores / Zenbakiak eta koloreak | Contar objetos, numeral ↔ palabra, sucesiones, colores con muestras de color y objetos reales |
-| 8 | 🕹️ ¡Luma dice! / Lumak dio! | Seguir instrucciones de uno y dos pasos, movimiento, «señala el color / número / objeto» |
+| 8 | 🕹️ ¡Luma dice! / Lumak dio! | Instrucciones de uno y dos pasos, movimiento, burbujas, palmas, respiración, «toca algo que te guste» e imitación |
 
 ### Rutas de aprendizaje adaptadas
 - 👁️ **Visual**: dibujos, sílabas de colores, letras ocultas, piezas para construir palabras y frases.
@@ -66,6 +66,15 @@ Detalles de diseño deliberados:
 
 ### Diversión y accesibilidad general
 Mascota animada en SVG, confeti, estrellas, XP, nivel lector, racha diaria, 10 insignias, práctica libre, atajos de teclado (`1`–`4` y `Enter`), modo «letras grandes», interfaz bilingüe es/eu, soporte de `prefers-reduced-motion` y diseño responsive móvil/escritorio.
+
+**Microinteracciones de estilo Duolingo:** botones con profundidad 3D y hundimiento al pulsar, entrada escalonada de tarjetas/opciones, transición entre preguntas, barra de progreso con brillo, mapa con burbujas flotantes, Luma con reacciones de ánimo, `+XP` flotante, píldoras de racha, estrellas que aparecen una a una, contador de XP animado, insignias escalonadas y celebración al subir de nivel. Todo usa `transform`/`opacity` para no bloquear el renderizado; los efectos nuevos de sonido (`combo` y `levelup`) se omiten en modo calmo. El modo **«Menos estímulos»** y `prefers-reduced-motion` desactivan animaciones, flotantes y confeti.
+
+**Orden y profesionalismo:** tokens de diseño (`--surface`, `--border-soft`, radios y sombras), barra superior estable, onboarding con paso numérico y progreso explícito, secciones del panel numeradas y agrupadas en tarjetas neutras, mapa de mundos alineado como *timeline*, selector de ruta/idioma con jerarquía tipográfica, tarjetas de resultados y ajustes con bordes coherentes, e insignias en cuadrícula. Los componentes `SectionHead`, `StepProgress` y el helper `staggerStyle` centralizan la estructura visual y evitan estilos repetidos.
+
+### 🧸 Minijuegos y música relajante
+Además de las instrucciones de «¡Luma dice!», el modo 8 incluye **minijuegos sin fallo** pensados para niños: explotar burbujas, contar palmadas, respirar con Luma, tocar un pictograma elegido libremente e imitar un gesto. Todos mantienen voz, pictograma, «Otra vez» y «Siguiente»; participar siempre suma.
+
+La **música relajante** se genera con Web Audio en el navegador (acordes suaves, sin voces, sin archivos externos ni servicios de terceros). Se controla con el botón 🎵 de la cabecera y desde Ajustes, se guarda en `localStorage` y **no se inicia automáticamente**: los navegadores bloquean el autoplay, así que arranca con el gesto del usuario o en la primera interacción si ya estaba activada. Es independiente de los efectos y la voz; en modo calmo permanece apagada salvo que se encienda explícitamente.
 
 En **Ajustes → Desbloquear todos los mundos (demo)** se pueden explorar los 6 mundos sin completarlos.
 
@@ -139,17 +148,24 @@ src/
   i18n.ts            todos los textos de interfaz en es/eu
   progress.ts        progreso en localStorage, estrellas, racha, insignias
   sound.ts           síntesis de voz (SpeechSynthesis) y efectos (Web Audio)
-  components.tsx     mascota SVG, confeti, estrellas, barras y modal
+  music.ts           música ambiental relajante generada con Web Audio
+  components.tsx     mascota SVG, confeti, estrellas, barras, contadores, flotantes, encabezados, progreso y modal
   types.ts
   styles.css
 scripts/check-exercises.mjs
 ```
 
 ### Cómo se genera un ejercicio
-`pickExercise()` recibe `{ levelId, lang, ui, route, difficulty, slot, state, adaptations }`, elige una fábrica del mundo según la modalidad preferida por la ruta (con un 16 % de la otra ruta para variar), filtra las actividades abstractas si hay lectura fácil, inserta pausas de movimiento y evita repetir contenido dentro de la sesión. Después `applyAdaptations()` recorta opciones, añade pictogramas, acorta textos y activa la voz. Las fábricas devuelven cinco tipos: `choice`, `tap`, `build`, `story` y `action` (juego imperativo sin fallo).
+`pickExercise()` recibe `{ levelId, lang, ui, route, difficulty, slot, state, adaptations }`, elige una fábrica del mundo según la modalidad preferida por la ruta (con un 16 % de la otra ruta para variar), filtra las actividades abstractas si hay lectura fácil, inserta pausas de movimiento y evita repetir contenido dentro de la sesión. Después `applyAdaptations()` recorta opciones, añade pictogramas, acorta textos y activa la voz. Las fábricas devuelven cinco tipos: `choice`, `tap`, `build`, `story` y `action` (juego imperativo sin fallo). Las tarjetas `action` pueden llevar además un `game` con burbujas, conteo, respiración, búsqueda libre o imitación; `applyAdaptations()` reduce también los pictogramas de esos minijuegos cuando el perfil pide menos opciones.
 
 ### Sobre el contenido
 El banco de palabras usa formas de diccionario (`katu`, `sagar`, `etxe`…) para mantener las sílabas claras en ambos idiomas. Las rimas en euskera son asonantes, como suele hacerse en material infantil. Los cuentos son originales y breves, con una pregunta de comprensión cada uno.
+
+---
+
+## 🙌 Créditos
+
+by;**++Iñigo++**
 
 ---
 
