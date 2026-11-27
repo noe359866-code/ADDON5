@@ -883,6 +883,21 @@ export function Home({ progress, setProgress, onStart, onToast, onSettings }: Ho
   const [openPop, setOpenPop] = useState<PopoverKind>(null);
   const [guidebookUnit, setGuidebookUnit] = useState<number | null>(null);
   const [activeStory, setActiveStory] = useState<DuoStory | null>(null);
+  const [childMode, setChildMode] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('hitzbidaia.childMode.v1') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('hitzbidaia.childMode.v1', String(childMode));
+    } catch {
+      // El modo elegido solo afecta a la presentación; si no se puede guardar, la app sigue funcionando.
+    }
+  }, [childMode]);
 
   const ad = computeAdaptations(progress);
   const effectiveUnlimited = progress.unlimitedHearts || ad.gentle;
@@ -1181,7 +1196,7 @@ export function Home({ progress, setProgress, onStart, onToast, onSettings }: Ho
   );
 
   return (
-    <div className="duo-app-shell" onClick={() => setOpenPop(null)}>
+    <div className={`duo-app-shell ${childMode ? 'duo-child-mode' : ''}`} onClick={() => setOpenPop(null)}>
       {/* Barra lateral izquierda estilo Duolingo (256px en escritorio, barra inferior en móvil) */}
       <aside className="duo-left-sidebar">
         <button className="duo-logo-btn" onClick={() => setActiveTab('learn')}>
@@ -1206,6 +1221,16 @@ export function Home({ progress, setProgress, onStart, onToast, onSettings }: Ho
               <span className="duo-nav-label">{item.label}</span>
             </button>
           ))}
+
+          <button
+            className={`duo-nav-item duo-mode-toggle ${childMode ? 'active' : ''}`}
+            onClick={() => setChildMode((value) => !value)}
+            aria-pressed={childMode}
+            title={childMode ? (ui === 'eu' ? 'Ikuspegi osoa' : 'Vista completa') : (ui === 'eu' ? 'Haurrentzako ikuspegia' : 'Modo infantil')}
+          >
+            <span className="duo-nav-icon-wrap" aria-hidden="true">🧸</span>
+            <span className="duo-nav-label">{childMode ? (ui === 'eu' ? 'Ikuspegi osoa' : 'Vista completa') : (ui === 'eu' ? 'Haurrentzako modua' : 'Modo infantil')}</span>
+          </button>
 
           <button className="duo-nav-item desktop-only-nav" onClick={onSettings}>
             <span className="duo-nav-icon-wrap">
