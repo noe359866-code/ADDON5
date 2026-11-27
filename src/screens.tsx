@@ -179,7 +179,10 @@ export function Onboarding({ onDone }: { onDone: (patch: Partial<Progress>) => v
                   key={card.value}
                   style={staggerStyle(i)}
                   className={`choice-card ${learnLang === card.value ? 'selected' : ''}`}
-                  onClick={() => setLearnLang(card.value)}
+                  onClick={() => {
+                    setLearnLang(card.value);
+                    if (card.value === 'eu' || card.value === 'es') setUi(card.value);
+                  }}
                   aria-pressed={learnLang === card.value}
                 >
                   <span className="choice-head">

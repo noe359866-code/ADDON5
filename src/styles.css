@@ -1645,3 +1645,203 @@ body.calm .breath-orb { transform: none !important; }
   .result-stats strong { font-size: 1.22rem; }
   .lang-chip span { display: none; }
 }
+
+/* === Duolingo-inspired tactile 3D polish & Hearts === */
+.hearts-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  background: #fff0f0;
+  border: 2px solid #ffc7c7;
+  color: #e53935;
+  font-weight: 800;
+  font-size: 0.92rem;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+.hearts-pill.low {
+  background: #ffe0e0;
+  border-color: #ff4b4b;
+  animation: pulseHeart 1.2s ease-in-out infinite;
+}
+@keyframes pulseHeart {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+
+.btn-primary,
+.option-btn,
+.choice-card {
+  border-bottom-width: 4px !important;
+  transition: transform 0.1s ease, border-bottom-width 0.1s ease, box-shadow 0.15s ease;
+}
+.btn-primary:active:not(:disabled),
+.option-btn:active:not(:disabled),
+.choice-card:active:not(:disabled) {
+  transform: translateY(2px);
+  border-bottom-width: 2px !important;
+}
+
+/* === Duolingo-inspired Streak Pill & Option 3D Polish === */
+.streak-pill-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #fff3e0;
+  border: 2px solid #ffb74d;
+  color: #e65100;
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+
+.option,
+.letter-chip {
+  border-bottom-width: 4px !important;
+  transition: transform 0.1s ease, border-bottom-width 0.1s ease, background-color 0.15s ease;
+}
+.option:active:not(:disabled),
+.letter-chip:active:not(:disabled) {
+  transform: translateY(2px);
+  border-bottom-width: 2px !important;
+}
+.option.is-correct,
+.letter-chip.is-correct {
+  background: #d7ffb8 !important;
+  border-color: #58cc02 !important;
+  color: #2e7d00 !important;
+}
+.option.is-wrong,
+.letter-chip.is-wrong {
+  background: #ffdfe0 !important;
+  border-color: #ff4b4b !important;
+  color: #b71c1c !important;
+}
+
+/* === Pato Ventura Duolingo-style Animations (all levels) === */
+.game-screen:not(.calm) .mascot-excited,
+.mascot-excited {
+  animation: patoCelebrate 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) infinite alternate;
+}
+.game-screen:not(.calm) .mascot-wave {
+  animation: patoWave 1.6s ease-in-out infinite;
+}
+.game-screen:not(.calm) .mascot-happy {
+  animation: patoBob 2.2s ease-in-out infinite;
+}
+.game-screen:not(.calm) .mascot-think {
+  animation: patoThink 2s ease-in-out infinite;
+}
+.game-screen:not(.calm) .mascot-sad {
+  animation: patoSad 1.8s ease-in-out infinite;
+}
+
+@keyframes patoCelebrate {
+  0% { transform: translateY(0) scale(1) rotate(-3deg); }
+  100% { transform: translateY(-8px) scale(1.06) rotate(3deg); }
+}
+@keyframes patoWave {
+  0%, 100% { transform: rotate(0deg) translateY(0); }
+  25% { transform: rotate(-5deg) translateY(-3px); }
+  75% { transform: rotate(5deg) translateY(-3px); }
+}
+@keyframes patoBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+@keyframes patoThink {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-6deg) translateY(-2px); }
+}
+@keyframes patoSad {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(3px) scale(0.97); }
+}
+
+/* === More Duolingo-style UI Micro-Animations === */
+.game-screen:not(.calm) .exercise-card {
+  animation: exerciseEnter 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes exerciseEnter {
+  0% { opacity: 0; transform: translateY(14px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.game-screen:not(.calm) .feedback-banner,
+.game-screen:not(.calm) .feedback-bar {
+  animation: feedbackSlideUp 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes feedbackSlideUp {
+  0% { opacity: 0; transform: translateY(18px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.game-screen:not(.calm) .option.is-correct,
+.game-screen:not(.calm) .letter-chip.is-correct {
+  animation: duoPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes duoPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+.game-screen:not(.calm) .option.is-wrong,
+.game-screen:not(.calm) .letter-chip.is-wrong {
+  animation: duoShake 0.36s ease-in-out;
+}
+@keyframes duoShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+/* === Immersive Kid-Friendly Visual Polish === */
+.game-screen:not(.calm) {
+  background:
+    radial-gradient(circle at 12% 18%, rgba(88, 204, 2, 0.08) 0%, transparent 42%),
+    radial-gradient(circle at 88% 82%, rgba(28, 176, 246, 0.09) 0%, transparent 45%);
+}
+
+.level-card:hover,
+.choice-card:hover:not(:disabled),
+.option:hover:not(:disabled),
+.letter-chip:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
+}
+
+.game-screen:not(.calm) .audio-btn,
+.game-screen:not(.calm) .listen-btn {
+  animation: audioInvite 2.4s ease-in-out infinite;
+}
+@keyframes audioInvite {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(28, 176, 246, 0.35); }
+  50% { box-shadow: 0 0 0 8px rgba(28, 176, 246, 0); }
+}
+
+/* === Design, Accessibility & Responsive Polish === */
+button:focus-visible,
+[role="button"]:focus-visible {
+  outline: 3px solid #1cb0f6;
+  outline-offset: 2px;
+}
+
+@media (max-width: 520px) {
+  .game-header {
+    gap: 8px;
+  }
+  .hearts-pill {
+    padding: 5px 8px;
+    font-size: 0.84rem;
+  }
+  .game-meta {
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+}

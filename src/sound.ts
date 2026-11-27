@@ -93,11 +93,25 @@ export function sfx(kind: Sfx, enabled = true) {
   }
 }
 
+function voiceScore(v: SpeechSynthesisVoice, lang: Lang): number {
+  let score = 0;
+  const name = v.name.toLowerCase();
+  const vLang = v.lang.toLowerCase();
+  if (lang === 'eu' && vLang.startsWith('eu')) score += 20;
+  if (lang === 'es' && (vLang === 'es-es' || vLang === 'es_es')) score += 10;
+  if (name.includes('natural') || name.includes('neural') || name.includes('online')) score += 15;
+  if (name.includes('google') || name.includes('microsoft') || name.includes('apple')) score += 8;
+  if (!v.localService) score += 4;
+  return score;
+}
+
 export function voicesFor(lang: Lang): SpeechSynthesisVoice[] {
   if (typeof window === 'undefined' || !window.speechSynthesis) return [];
   const all = window.speechSynthesis.getVoices();
   const tag = lang === 'eu' ? 'eu' : 'es';
-  return all.filter((v) => v.lang.toLowerCase().startsWith(tag));
+  return all
+    .filter((v) => v.lang.toLowerCase().startsWith(tag))
+    .sort((a, b) => voiceScore(b, lang) - voiceScore(a, lang));
 }
 
 export function stopSpeaking() {
@@ -120,7 +134,7 @@ export function speak(text: string, lang: Lang, enabled = true, rate = 0.88): vo
     utter.lang = lang === 'eu' ? 'eu-ES' : 'es-ES';
   }
   utter.rate = rate;
-  utter.pitch = 1.12;
+  utter.pitch = 1.05;
   utter.volume = 1;
   // Algunos navegadores necesitan un pequeño retardo tras cancel().
   window.setTimeout(() => {
