@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # --include=dev es clave: vite y typescript están en devDependencies.
+      - name: Instalar dependencias
+        run: npm ci --include=dev
+
+      - name: Tipos
+        run: npm run typecheck
+
+      - name: Pruebas
+        run: npm test
+
+      - name: Validar contenido (ejercicios generados)
+        run: npm run check:content
+
+      - name: Build de producción
+        run: npm run build
