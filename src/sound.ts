@@ -27,7 +27,31 @@ function note(freq: number, start: number, duration: number, volume: number, typ
   osc.stop(ac.currentTime + start + duration + 0.02);
 }
 
-export type Sfx = 'click' | 'correct' | 'wrong' | 'star' | 'badge' | 'pop' | 'combo' | 'levelup';
+function quackPulse(start: number, baseFreq: number, duration: number) {
+  const ac = getAudioContext();
+  if (!ac) return;
+  const now = ac.currentTime + start;
+  const osc = ac.createOscillator();
+  const filter = ac.createBiquadFilter();
+  const gain = ac.createGain();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(baseFreq * 1.15, now);
+  osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.72, now + duration);
+  filter.type = 'bandpass';
+  filter.Q.value = 3.2;
+  filter.frequency.setValueAtTime(1450, now);
+  filter.frequency.exponentialRampToValueAtTime(760, now + duration);
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(0.06, now + 0.018);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+  osc.connect(filter);
+  filter.connect(gain);
+  gain.connect(ac.destination);
+  osc.start(now);
+  osc.stop(now + duration + 0.02);
+}
+
+export type Sfx = 'click' | 'correct' | 'wrong' | 'star' | 'badge' | 'pop' | 'combo' | 'levelup' | 'quack';
 
 export function sfx(kind: Sfx, enabled = true) {
   if (!enabled) return;
@@ -39,6 +63,10 @@ export function sfx(kind: Sfx, enabled = true) {
       case 'pop':
         note(680, 0, 0.09, 0.06, 'sine');
         note(880, 0.05, 0.09, 0.04, 'sine');
+        break;
+      case 'quack':
+        quackPulse(0, 440, 0.11);
+        quackPulse(0.13, 500, 0.12);
         break;
       case 'correct':
         [523.25, 659.25, 783.99].forEach((f, i) => note(f, i * 0.085, 0.22, 0.07, 'sine'));

@@ -12,7 +12,8 @@ export type SupportId =
   | 'dislexia'
   | 'tdah'
   | 'tea'
-  | 'down';
+  | 'down'
+  | 'daltonismo';
 
 export interface Option {
   id: string;
@@ -20,6 +21,8 @@ export interface Option {
   emoji?: string;
   sub?: string;
   color?: string;
+  pattern?: string;
+  symbol?: string;
 }
 
 export interface Tile {
@@ -33,7 +36,7 @@ export interface ActionItem {
   label: string;
 }
 
-/** Minijuegos sin fallo dentro de una tarjeta de acción de Luma. */
+/** Minijuegos sin fallo dentro de una tarjeta de acción de Pato Ventura. */
 export type ActionGame =
   | { kind: 'imitate' }
   | { kind: 'count'; target: number; emoji: string; label: string }
@@ -56,6 +59,8 @@ export interface Exercise {
     chunks?: string[];
     highlight?: string;
     color?: string;
+    pattern?: string;
+    symbol?: string;
   };
   audio?: { text: string; lang: Lang };
   options?: Option[];
@@ -65,7 +70,7 @@ export interface Exercise {
   unit?: 'syllable' | 'word';
   chips?: Tile[];
   correctChip?: string;
-  story?: { title: string; text: string; emoji: string };
+  story?: { title: string; text: string; shortText?: string; emoji: string };
   action?: { emoji: string; text: string; steps?: string[]; game?: ActionGame };
   hint: string;
   explanation: string;
