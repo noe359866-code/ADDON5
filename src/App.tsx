@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
+import { computeAdaptations } from './adaptations';
 import { Toast } from './components';
 import { GameScreen } from './GameScreen';
 import { t } from './i18n';
+import { startAmbientMusic, stopAmbientMusic } from './music';
 import { badgesForResult, todayString, useProgress } from './progress';
 import { Home, Onboarding, ResultScreen, Settings } from './screens';
 import { sfx } from './sound';
@@ -17,6 +19,11 @@ function yesterdayString(): string {
   const d = new Date();
   d.setDate(d.getDate() - 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function scrollToTop() {
+  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.body.classList.contains('calm');
+  window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
 }
 
 export default function App() {
@@ -37,13 +44,36 @@ export default function App() {
   }
 
   useEffect(() => {
+    const ad = computeAdaptations(progress);
     document.documentElement.lang = progress.uiLang === 'eu' ? 'eu' : 'es';
     document.body.dataset.route = progress.route;
     document.body.classList.toggle('big-text', progress.bigText);
+    document.body.classList.toggle('hyperlegible', ad.hyperlegible);
+    document.body.classList.toggle('calm', ad.calm);
+    document.body.classList.toggle('big-targets', ad.bigTargets);
     document.title = `HitzBidaia · ${t('appSub', progress.uiLang)}`;
-  }, [progress.uiLang, progress.route, progress.bigText]);
+  }, [progress]);
+
+  // Música ambiental: se intenta iniciar al cargar, pero el navegador puede
+  // dejar el AudioContext suspendido; la primera interacción lo reanuda.
+  useEffect(() => {
+    if (progress.music) startAmbientMusic();
+    else stopAmbientMusic();
+  }, [progress.music]);
+
+  useEffect(() => {
+    if (!progress.music) return;
+    const resume = () => startAmbientMusic();
+    window.addEventListener('pointerdown', resume, { once: true });
+    window.addEventListener('keydown', resume, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', resume);
+      window.removeEventListener('keydown', resume);
+    };
+  }, [progress.music]);
 
   useEffect(() => () => {
+    stopAmbientMusic();
     if (toastTimer.current) window.clearTimeout(toastTimer.current);
   }, []);
 
@@ -52,7 +82,7 @@ export default function App() {
     setSession({ mode: levelId === null ? 'practice' : 'level', levelId });
     setNonce((n) => n + 1);
     setScreen('game');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    scrollToTop();
   }
 
   function finishSession(res: SessionResult) {
@@ -83,13 +113,13 @@ export default function App() {
     setNewBadges(earned);
     setResult(res);
     setScreen('result');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    scrollToTop();
   }
 
   function goHome() {
     setScreen('home');
     setSession(null);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    scrollToTop();
   }
 
   const content = !progress.onboarded ? (

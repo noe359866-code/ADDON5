@@ -62,10 +62,15 @@ export const words: Word[] = [
   { id: 'amarillo', es: 'amarillo', eu: 'hori', emoji: '🟡', sylEs: ['a', 'ma', 'ri', 'llo'], sylEu: ['ho', 'ri'], cat: 'colores' },
   { id: 'blanco', es: 'blanco', eu: 'zuri', emoji: '⚪', sylEs: ['blan', 'co'], sylEu: ['zu', 'ri'], cat: 'colores' },
   { id: 'negro', es: 'negro', eu: 'beltz', emoji: '⚫', sylEs: ['ne', 'gro'], sylEu: ['beltz'], cat: 'colores' },
+  { id: 'naranja', es: 'naranja', eu: 'laranja', emoji: '🟠', sylEs: ['na', 'ran', 'ja'], sylEu: ['la', 'ran', 'ja'], cat: 'colores' },
+  { id: 'morado', es: 'morado', eu: 'morea', emoji: '🟣', sylEs: ['mo', 'ra', 'do'], sylEu: ['mo', 're', 'a'], cat: 'colores' },
+  { id: 'rosa', es: 'rosa', eu: 'arrosa', emoji: '🌷', sylEs: ['ro', 'sa'], sylEu: ['a', 'rro', 'sa'], cat: 'colores' },
 
   { id: 'uno', es: 'uno', eu: 'bat', emoji: '1️⃣', sylEs: ['u', 'no'], sylEu: ['bat'], cat: 'numeros' },
   { id: 'dos', es: 'dos', eu: 'bi', emoji: '2️⃣', sylEs: ['dos'], sylEu: ['bi'], cat: 'numeros' },
   { id: 'tres', es: 'tres', eu: 'hiru', emoji: '3️⃣', sylEs: ['tres'], sylEu: ['hi', 'ru'], cat: 'numeros' },
+  { id: 'cuatro', es: 'cuatro', eu: 'lau', emoji: '4️⃣', sylEs: ['cua', 'tro'], sylEu: ['lau'], cat: 'numeros' },
+  { id: 'cinco', es: 'cinco', eu: 'bost', emoji: '5️⃣', sylEs: ['cin', 'co'], sylEu: ['bost'], cat: 'numeros' },
 
   { id: 'correr', es: 'correr', eu: 'korrika', emoji: '🏃', sylEs: ['co', 'rrer'], sylEu: ['ko', 'rri', 'ka'], cat: 'acciones' },
   { id: 'cantar', es: 'cantar', eu: 'abestu', emoji: '🎤', sylEs: ['can', 'tar'], sylEu: ['a', 'bes', 'tu'], cat: 'acciones' },
@@ -398,6 +403,139 @@ export const badges: Badge[] = [
   { id: 'bilingual', emoji: '🌈', es: { name: 'Bilingüe', desc: 'Leer en euskera y castellano' }, eu: { name: 'Elebiduna', desc: 'Euskaraz eta gaztelaniaz irakurri' } },
   { id: 'storyteller', emoji: '📚', es: { name: 'Cuentacuentos', desc: 'Terminar el bosque de los cuentos' }, eu: { name: 'Ipuinlaria', desc: 'Ipuinen basoa amaitu' } },
   { id: 'master', emoji: '🏆', es: { name: 'Maestro lector', desc: 'Completar los 6 mundos' }, eu: { name: 'Irakurle maisu', desc: '6 munduak osatu' } },
+  { id: 'counter', emoji: '🔢', es: { name: 'Contador de colores', desc: 'Completar números y colores' }, eu: { name: 'Kolore zenbatzailea', desc: 'Zenbakiak eta koloreak osatu' } },
+  { id: 'mover', emoji: '🕹️', es: { name: 'Siguiendo a Luma', desc: 'Completar ¡Luma dice!' }, eu: { name: 'Lumari jarraituz', desc: 'Lumak dio! osatu' } },
 ];
 
 export const badgeById: Record<string, Badge> = Object.fromEntries(badges.map((b) => [b.id, b]));
+
+/* ================================================================== */
+/* Contenido de apoyo: números, colores y juegos imperativos           */
+/* ================================================================== */
+
+export interface ColorItem {
+  id: string;
+  es: string;
+  eu: string;
+  hex: string;
+  emoji: string;
+}
+
+export const colors: ColorItem[] = [
+  { id: 'rojo', es: 'rojo', eu: 'gorri', hex: '#E8503A', emoji: '🔴' },
+  { id: 'azul', es: 'azul', eu: 'urdin', hex: '#3B82F6', emoji: '🔵' },
+  { id: 'verde', es: 'verde', eu: 'berde', hex: '#34A853', emoji: '🟢' },
+  { id: 'amarillo', es: 'amarillo', eu: 'hori', hex: '#F5C518', emoji: '🟡' },
+  { id: 'blanco', es: 'blanco', eu: 'zuri', hex: '#F5F3EE', emoji: '⚪' },
+  { id: 'negro', es: 'negro', eu: 'beltz', hex: '#2C3A57', emoji: '⚫' },
+  { id: 'naranja', es: 'naranja', eu: 'laranja', hex: '#F58A32', emoji: '🟠' },
+  { id: 'morado', es: 'morado', eu: 'morea', hex: '#8B5CF6', emoji: '🟣' },
+  { id: 'rosa', es: 'rosa', eu: 'arrosa', hex: '#F472B6', emoji: '🌷' },
+];
+
+export const colorById: Record<string, ColorItem> = Object.fromEntries(colors.map((c) => [c.id, c]));
+
+export interface ColorObject {
+  emoji: string;
+  es: string;
+  eu: string;
+  colorId: string;
+}
+
+/** Objetos de color inequívocos, para preguntas concretas y literales. */
+export const colorObjects: ColorObject[] = [
+  { emoji: '🍅', es: 'el tomate', eu: 'tomatea', colorId: 'rojo' },
+  { emoji: '🍌', es: 'el plátano', eu: 'banana', colorId: 'amarillo' },
+  { emoji: '🥬', es: 'la lechuga', eu: 'letxuga', colorId: 'verde' },
+  { emoji: '🌊', es: 'el mar', eu: 'itsasoa', colorId: 'azul' },
+  { emoji: '❄️', es: 'la nieve', eu: 'elurra', colorId: 'blanco' },
+  { emoji: '🌑', es: 'la noche', eu: 'gaua', colorId: 'negro' },
+  { emoji: '🍊', es: 'la naranja', eu: 'laranja', colorId: 'naranja' },
+  { emoji: '🍇', es: 'las uvas', eu: 'mahatsak', colorId: 'morado' },
+  { emoji: '🌷', es: 'la flor rosa', eu: 'lore arrosa', colorId: 'rosa' },
+];
+
+export interface NumberItem {
+  n: number;
+  es: string;
+  eu: string;
+  emoji: string;
+}
+
+export const numbers: NumberItem[] = [
+  { n: 1, es: 'uno', eu: 'bat', emoji: '1️⃣' },
+  { n: 2, es: 'dos', eu: 'bi', emoji: '2️⃣' },
+  { n: 3, es: 'tres', eu: 'hiru', emoji: '3️⃣' },
+  { n: 4, es: 'cuatro', eu: 'lau', emoji: '4️⃣' },
+  { n: 5, es: 'cinco', eu: 'bost', emoji: '5️⃣' },
+];
+
+/** Emojis para contar: todos del mismo tipo en cada pregunta. */
+export const countingEmojis = ['🍎', '⭐', '🐟', '🎈', '🌸', '🐦', '🍋'];
+
+export interface Imperative {
+  id: string;
+  emoji: string;
+  es: string;
+  eu: string;
+}
+
+/**
+ * Instrucciones de un solo paso, literales y sin reglas con truco.
+ * Se evita deliberadamente el "Simón dice" clásico (que excluye a quien
+ * tiene dificultades de comprensión): siempre se hace lo que dice Luma.
+ */
+export const imperatives: Imperative[] = [
+  { id: 'i1', emoji: '🧍', es: 'Levántate', eu: 'Jaiki' },
+  { id: 'i2', emoji: '🪑', es: 'Siéntate', eu: 'Eseri' },
+  { id: 'i3', emoji: '👏', es: 'Da una palmada', eu: 'Txalo egin' },
+  { id: 'i4', emoji: '🙆', es: 'Toca la cabeza', eu: 'Ukitu burua' },
+  { id: 'i5', emoji: '👃', es: 'Toca la nariz', eu: 'Ukitu sudurra' },
+  { id: 'i6', emoji: '🤲', es: 'Abre las manos', eu: 'Ireki eskuak' },
+  { id: 'i7', emoji: '🦘', es: 'Da un salto', eu: 'Jauzi egin' },
+  { id: 'i8', emoji: '🌬️', es: 'Respira hondo', eu: 'Arnasa hartu' },
+  { id: 'i9', emoji: '⬆️', es: 'Mira arriba', eu: 'Begiratu gora' },
+  { id: 'i10', emoji: '🚪', es: 'Señala la puerta', eu: 'Seinalatu atea' },
+  { id: 'i11', emoji: '🔢', es: 'Cuenta hasta tres', eu: 'Zenbat hirura arte' },
+  { id: 'i12', emoji: '😊', es: 'Sonríe', eu: 'Irribarre egin' },
+  { id: 'i13', emoji: '🙌', es: 'Estira los brazos', eu: 'Luzatu besoak' },
+  { id: 'i14', emoji: '🔄', es: 'Da una vuelta', eu: 'Buelta eman' },
+  { id: 'i15', emoji: '🤪', es: 'Haz una mueca', eu: 'Egin imintzio bat' },
+  { id: 'i16', emoji: '👋', es: 'Saluda con la mano', eu: 'Agurtu eskuarekin' },
+  { id: 'i17', emoji: '✍️', es: 'Dibuja una letra en el aire', eu: 'Marraztu letra bat airean' },
+  { id: 'i18', emoji: '🐧', es: 'Camina como un pingüino', eu: 'Ibili pinguino bezala' },
+  { id: 'i19', emoji: '🧘', es: 'Estira la espalda', eu: 'Luzatu bizkarra' },
+  { id: 'i20', emoji: '👂', es: 'Escucha un sonido', eu: 'Entzun soinu bat' },
+  { id: 'i21', emoji: '🤫', es: 'Haz palmas suaves', eu: 'Egin txalo leunak' },
+  { id: 'i22', emoji: '🐦', es: 'Mira a Luma y sonríe', eu: 'Begiratu Lumari eta irribarre egin' },
+];
+
+export interface BonusMode {
+  id: number;
+  emoji: string;
+  theme: string;
+  questions: number;
+  es: { title: string; sub: string };
+  eu: { title: string; sub: string };
+}
+
+/** Mundos especiales, siempre abiertos y sin bloqueo por estrellas. */
+export const bonusModes: BonusMode[] = [
+  {
+    id: 7,
+    emoji: '🔢',
+    theme: 'sun',
+    questions: 6,
+    es: { title: 'Números y colores', sub: 'Contar, reconocer y señalar' },
+    eu: { title: 'Zenbakiak eta koloreak', sub: 'Zenbatzen, ezagutzen eta seinalatzen' },
+  },
+  {
+    id: 8,
+    emoji: '🕹️',
+    theme: 'mint',
+    questions: 6,
+    es: { title: '¡Luma dice!', sub: 'Instrucciones, burbujas, palmas y respiración' },
+    eu: { title: 'Lumak dio!', sub: 'Jarraibideak, burbuilak, txaloak eta arnasa' },
+  },
+];
+

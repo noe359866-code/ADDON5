@@ -2,7 +2,7 @@ import type { Lang } from './types';
 
 let ctx: AudioContext | null = null;
 
-function audioContext(): AudioContext | null {
+export function getAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
   const Ctor = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
   if (!Ctor) return null;
@@ -12,7 +12,7 @@ function audioContext(): AudioContext | null {
 }
 
 function note(freq: number, start: number, duration: number, volume: number, type: OscillatorType = 'sine') {
-  const ac = audioContext();
+  const ac = getAudioContext();
   if (!ac) return;
   const osc = ac.createOscillator();
   const gain = ac.createGain();
@@ -27,7 +27,7 @@ function note(freq: number, start: number, duration: number, volume: number, typ
   osc.stop(ac.currentTime + start + duration + 0.02);
 }
 
-export type Sfx = 'click' | 'correct' | 'wrong' | 'star' | 'badge' | 'pop';
+export type Sfx = 'click' | 'correct' | 'wrong' | 'star' | 'badge' | 'pop' | 'combo' | 'levelup';
 
 export function sfx(kind: Sfx, enabled = true) {
   if (!enabled) return;
@@ -52,6 +52,12 @@ export function sfx(kind: Sfx, enabled = true) {
         break;
       case 'badge':
         [392, 523.25, 659.25, 1046.5].forEach((f, i) => note(f, i * 0.1, 0.35, 0.06, 'triangle'));
+        break;
+      case 'combo':
+        [659.25, 880, 1174.66].forEach((f, i) => note(f, i * 0.06, 0.18, 0.055, 'triangle'));
+        break;
+      case 'levelup':
+        [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, i) => note(f, i * 0.09, 0.32, 0.055, 'sine'));
         break;
     }
   } catch {

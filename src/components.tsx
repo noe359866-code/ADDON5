@@ -1,8 +1,48 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import type { Lang, Route } from './types';
 
-type Mood = 'happy' | 'cheer' | 'think' | 'wave';
+type Mood = 'happy' | 'cheer' | 'think' | 'wave' | 'sad' | 'excited';
+
+/** Variable CSS reutilizable para entradas escalonadas (evita casts repetidos). */
+export function staggerStyle(index: number): CSSProperties {
+  return { '--i': index } as CSSProperties;
+}
+
+/** Encabezado consistente y numerado para las secciones del panel. */
+export function SectionHead({ index, title, sub }: { index: string; title: ReactNode; sub?: string }) {
+  return (
+    <div className="section-head">
+      <span className="section-index" aria-hidden="true">{index}</span>
+      <div className="section-head-text">
+        <h2>{title}</h2>
+        {sub && <p>{sub}</p>}
+      </div>
+    </div>
+  );
+}
+
+/** Indicador de paso con texto y barra, para un onboarding más claro. */
+export function StepProgress({ current, total, label }: { current: number; total: number; label: string }) {
+  return (
+    <div className="step-progress-wrap">
+      <div className="step-progress-head">
+        <span className="step-progress-label">{label}</span>
+        <span className="step-progress-count">{current} / {total}</span>
+      </div>
+      <div
+        className="step-progress"
+        role="progressbar"
+        aria-valuemin={1}
+        aria-valuemax={total}
+        aria-valuenow={current}
+        aria-valuetext={label}
+      >
+        <span style={{ width: `${(current / total) * 100}%` }} />
+      </div>
+    </div>
+  );
+}
 
 /** Luma, la mascotita: un pajarito dibujado a mano en SVG (sin assets externos). */
 export function Mascot({ mood = 'happy', size = 120, className = '' }: { mood?: Mood; size?: number; className?: string }) {
@@ -40,10 +80,16 @@ export function Mascot({ mood = 'happy', size = 120, className = '' }: { mood?: 
       {/* copete */}
       <path d="M63 53 Q58 34 72 41 Q74 27 84 38 Q94 32 92 50 Z" fill="#2BBBAE" />
       {/* ojos */}
-      {mood === 'cheer' ? (
+      {mood === 'cheer' || mood === 'excited' ? (
         <>
           <path d="M60 84 q8 -10 16 0" stroke="#26415A" strokeWidth="4" strokeLinecap="round" fill="none" />
           <path d="M92 84 q8 -10 16 0" stroke="#26415A" strokeWidth="4" strokeLinecap="round" fill="none" />
+        </>
+      ) : mood === 'sad' ? (
+        <>
+          <path d="M60 88 q8 -7 16 0" stroke="#26415A" strokeWidth="4" strokeLinecap="round" fill="none" />
+          <path d="M92 88 q8 -7 16 0" stroke="#26415A" strokeWidth="4" strokeLinecap="round" fill="none" />
+          <circle className="mascot-tear" cx="60" cy="96" r="3" fill="#7EC8F5" />
         </>
       ) : (
         <>
@@ -61,7 +107,7 @@ export function Mascot({ mood = 'happy', size = 120, className = '' }: { mood?: 
       {/* bufanda */}
       <path d="M53 128 Q80 141 108 128 L106 137 Q80 149 55 137 Z" fill="#7C6CF0" />
       <path d="M103 134 l13 15 l-12 3 l-6 -14 Z" fill="#6457DC" />
-      {mood === 'cheer' && (
+      {(mood === 'cheer' || mood === 'excited') && (
         <g className="mascot-sparkles" fill="#FFC93C">
           <path d="M20 48 l3 8 l8 3 l-8 3 l-3 8 l-3 -8 l-8 -3 l8 -3 Z" />
           <path d="M140 46 l2 6 l6 2 l-6 2 l-2 6 l-2 -6 l-6 -2 l6 -2 Z" />
@@ -98,15 +144,76 @@ export function Confetti({ burstKey, count = 34 }: { burstKey: number; count?: n
   );
 }
 
-export function StarRow({ count, max = 3, size = 'md' }: { count: number; max?: number; size?: 'sm' | 'md' | 'lg' }) {
+export function StarRow({
+  count,
+  max = 3,
+  size = 'md',
+  animate = false,
+}: {
+  count: number;
+  max?: number;
+  size?: 'sm' | 'md' | 'lg';
+  animate?: boolean;
+}) {
   return (
-    <span className={`star-row star-row-${size}`} aria-label={`${count} / ${max}`}>
+    <span className={`star-row star-row-${size} ${animate ? 'star-row-animated' : ''}`} aria-label={`${count} / ${max}`}>
       {Array.from({ length: max }, (_, i) => (
-        <span key={i} className={i < count ? 'star on' : 'star off'}>
+        <span
+          key={i}
+          className={i < count ? 'star on' : 'star off'}
+          style={animate ? { animationDelay: `${i * 0.17}s` } : undefined}
+        >
           ★
         </span>
       ))}
     </span>
+  );
+}
+
+/** ¿El sistema o el modo calm piden evitar movimiento? */
+export function prefersReducedMotion(): boolean {
+  if (typeof window === 'undefined') return false;
+  return Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+}
+
+/** Número que sube con easing, como el contador de XP de Duolingo. */
+export function useCountUp(target: number, duration = 850): number {
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    const reduce =
+      prefersReducedMotion() ||
+      (typeof document !== 'undefined' && document.body.classList.contains('calm')) ||
+      typeof requestAnimationFrame === 'undefined';
+    if (reduce) {
+      setValue(target);
+      return;
+    }
+    let raf = 0;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - start) / duration);
+      setValue(Math.round(target * (1 - Math.pow(1 - p, 3))));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration]);
+  return value;
+}
+
+export function XpFloat({ amount, burstKey }: { amount: number; burstKey: number }) {
+  return (
+    <div className="xp-float" key={burstKey} aria-hidden="true">
+      +{amount} XP ⚡
+    </div>
+  );
+}
+
+export function ComboPill({ count, label, burstKey }: { count: number; label: string; burstKey: number }) {
+  return (
+    <div className="combo-pill" key={burstKey} role="status">
+      🔥 {label} ×{count}
+    </div>
   );
 }
 

@@ -1,8 +1,14 @@
 import {
   blanks,
+  colorById,
+  colors,
+  colorObjects,
+  countingEmojis,
   digraphs,
+  imperatives,
   levels,
   minimalPairs,
+  numbers,
   rhymes,
   sentences,
   specialSounds,
@@ -12,9 +18,11 @@ import {
   wordText,
   words,
 } from './data';
-import type { Word } from './data';
+import type { ColorItem, Word } from './data';
+import { applyAdaptations, defaultAdaptations } from './adaptations';
+import type { Adaptations } from './adaptations';
 import { t, tf } from './i18n';
-import type { Exercise, ExerciseKind, Lang, Modality, Option, Route, Tile, UiLang } from './types';
+import type { ActionGame, Exercise, ExerciseKind, Lang, Modality, Option, Route, Tile, UiLang } from './types';
 
 export interface GenState {
   used: Set<string>;
@@ -91,6 +99,7 @@ interface OptionInput {
   label: string;
   emoji?: string;
   sub?: string;
+  color?: string;
 }
 
 function optionSet(items: OptionInput[], correctIndex: number): { options: Option[]; correctId: string } {
@@ -305,6 +314,104 @@ function makeStory(c: Ctx, levelId: number, modality: Modality, mode: 'question'
     story: block,
     options,
     correctId,
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Generadores de los modos de apoyo                                   */
+/* ------------------------------------------------------------------ */
+
+function colorOptions(c: Ctx, correct: ColorItem): { options: Option[]; correctId: string } {
+  const pool = colors.filter((x) => x.id !== correct.id);
+  const labels = distract(pool.map((x) => x[c.lang]), correct[c.lang], Math.max(1, nOpts(c) - 1), c.difficulty);
+  const picked = labels.map((label) => colors.find((x) => x[c.lang] === label)!).filter(Boolean);
+  const items: OptionInput[] = [correct, ...picked].map((x) => ({ label: x[c.lang], color: x.hex }));
+  return optionSet(items, 0);
+}
+
+function numeralOptions(correctN: number): { options: Option[]; correctId: string } {
+  const all = numbers.map((n) => String(n.n));
+  const { options, correctId } = optionSet(all.map((label) => ({ label })), all.indexOf(String(correctN)));
+  return { options, correctId };
+}
+
+/** Juego imperativo: sin respuestas incorrectas y a ritmo libre. */
+function makeAction(c: Ctx, levelId: number, twoSteps = false): Exercise {
+  const first = pickFresh(imperatives, (x) => x.id, `action-${levelId}`, c.state);
+  const firstText = first[c.lang];
+  let prompt = firstText;
+  let steps: string[] | undefined;
+  let emoji = first.emoji;
+  if (twoSteps) {
+    const second = pickFresh(
+      imperatives.filter((x) => x.id !== first.id),
+      (x) => x.id,
+      `action2-${levelId}`,
+      c.state,
+    );
+    steps = [firstText, second[c.lang]];
+    prompt = tf('promptTwoSteps', c.ui, { first: steps[0]!, second: steps[1]! });
+    emoji = `${first.emoji} ${second.emoji}`;
+  }
+  return makeEx(c, levelId, 'any', 'action', {
+    eyebrow: t('eyebrowLumaSays', c.ui),
+    prompt,
+    display: { variant: 'none' },
+    action: { emoji, text: prompt, steps },
+    audio: { text: prompt, lang: c.lang },
+    autoAudio: true,
+    hint: t('hintAction', c.ui),
+    explanation: t('actionDone', c.ui),
+  });
+}
+
+/** Tarjeta de minijuego interactivo: siempre sin fallo y con voz. */
+function makePlayAction(
+  c: Ctx,
+  levelId: number,
+  game: ActionGame,
+  emoji: string,
+  prompt: string,
+  audioText: string,
+): Exercise {
+  return makeEx(c, levelId, 'any', 'action', {
+    eyebrow: t('eyebrowLumaSays', c.ui),
+    prompt,
+    display: { variant: 'none' },
+    action: { emoji, text: prompt, game },
+    audio: { text: audioText, lang: c.lang },
+    autoAudio: true,
+    hint: t('hintAction', c.ui),
+    explanation: t('actionDone', c.ui),
+  });
+}
+
+function playNumber(c: Ctx) {
+  return numbers[1 + (c.state.seq % 4)]!;
+}
+
+/** Actividad de lectura fácil usada como alternativa cuando el mundo es abstracto. */
+function makeSimpleChoice(c: Ctx, levelId: number): Exercise {
+  const w = pickFresh(words, (x) => x.id, 'simple-choice', c.state);
+  const chosen = distract(
+    words.filter((x) => x.id !== w.id).map((x) => x.emoji),
+    w.emoji,
+    Math.max(1, nOpts(c) - 1),
+    c.difficulty,
+    words.map((x) => x.emoji),
+  );
+  const items: OptionInput[] = [w.emoji, ...chosen].map((emoji) => ({ label: emoji, emoji }));
+  const { options, correctId } = optionSet(items, 0);
+  const text = wordText(w, c.lang);
+  return makeEx(c, levelId, 'visual', 'choice', {
+    eyebrow: t('eyebrowLook', c.ui),
+    prompt: tf('promptWhichImage', c.ui, { word: text }),
+    display: { variant: 'word', text },
+    audio: { text, lang: c.lang },
+    options,
+    correctId,
+    hint: t('hintVisual', c.ui),
+    explanation: answerExplanation(c, text, 'read'),
   });
 }
 
@@ -855,6 +962,280 @@ const factories: Record<number, Factory[]> = {
     { id: 'l6-blank', modality: 'visual', make: (c) => makeBlank(c, 6, 'visual') },
     { id: 'l6-hear-sentence', modality: 'auditivo', make: (c) => makeHearSentence(c, 6, 'auditivo') },
   ],
+
+  /* Mundo 7 · Números y colores: contenido concreto, muy visual. */
+  7: [
+    {
+      id: 'n1-count',
+      modality: 'visual',
+      make(c) {
+        const n = pickFresh(numbers, (x) => String(x.n), 'n1', c.state);
+        const emoji = rnd(countingEmojis);
+        const group = Array.from({ length: n.n }, () => emoji).join(' ');
+        const { options, correctId } = numeralOptions(n.n);
+        return makeEx(c, 7, 'visual', 'choice', {
+          eyebrow: t('eyebrowNumbers', c.ui),
+          prompt: t('promptHowMany', c.ui),
+          display: { variant: 'objects', text: group, emoji },
+          audio: { text: t('promptHowMany', c.lang), lang: c.lang },
+          options,
+          correctId,
+          hint: t('hintVisual', c.ui),
+          explanation: answerExplanation(c, String(n.n)),
+        });
+      },
+    },
+    {
+      id: 'n2-digit-word',
+      modality: 'visual',
+      make(c) {
+        const n = pickFresh(numbers, (x) => String(x.n), 'n2', c.state);
+        const labels = numbers.map((x) => x[c.lang]);
+        const { options, correctId } = optionSet(labels.map((label) => ({ label })), labels.indexOf(n[c.lang]));
+        return makeEx(c, 7, 'visual', 'choice', {
+          eyebrow: t('eyebrowNumbers', c.ui),
+          prompt: t('promptReadNumber', c.ui),
+          display: { variant: 'word', text: String(n.n) },
+          audio: { text: t('promptReadNumber', c.lang), lang: c.lang },
+          options,
+          correctId,
+          hint: t('hintVisual', c.ui),
+          explanation: answerExplanation(c, n[c.lang], 'read'),
+        });
+      },
+    },
+    {
+      id: 'n3-word-quantity',
+      modality: 'visual',
+      make(c) {
+        const n = pickFresh(numbers, (x) => String(x.n), 'n3', c.state);
+        const emoji = rnd(countingEmojis);
+        const groups = numbers.map((x) => Array.from({ length: x.n }, () => emoji).join(' '));
+        const correctGroup = groups[n.n - 1]!;
+        const { options, correctId } = optionSet(groups.map((label) => ({ label })), groups.indexOf(correctGroup));
+        return makeEx(c, 7, 'visual', 'choice', {
+          eyebrow: t('eyebrowNumbers', c.ui),
+          prompt: t('promptFindNumber', c.ui),
+          display: { variant: 'word', text: n[c.lang] },
+          audio: { text: t('promptFindNumber', c.lang), lang: c.lang },
+          options,
+          correctId,
+          hint: t('hintVisual', c.ui),
+          explanation: answerExplanation(c, n[c.lang]),
+        });
+      },
+    },
+    {
+      id: 'n4-next-number',
+      modality: 'visual',
+      make(c) {
+        const n = pickFresh(numbers.filter((x) => x.n < 5), (x) => String(x.n), 'n4', c.state);
+        const next = n.n + 1;
+        const { options, correctId } = numeralOptions(next);
+        return makeEx(c, 7, 'visual', 'choice', {
+          eyebrow: t('eyebrowNumbers', c.ui),
+          prompt: t('promptNextNumber', c.ui),
+          display: { variant: 'word', text: String(n.n) },
+          audio: { text: t('promptNextNumber', c.lang), lang: c.lang },
+          options,
+          correctId,
+          hint: t('hintVisual', c.ui),
+          explanation: answerExplanation(c, String(next)),
+        });
+      },
+    },
+    {
+      id: 'n5-hear-number',
+      modality: 'auditivo',
+      make(c) {
+        const n = pickFresh(numbers, (x) => String(x.n), 'n5', c.state);
+        const { options, correctId } = numeralOptions(n.n);
+        return makeEx(c, 7, 'auditivo', 'choice', {
+          eyebrow: t('eyebrowListen', c.ui),
+          prompt: t('promptHearNumber', c.ui),
+          display: { variant: 'none' },
+          audio: { text: n[c.lang], lang: c.lang },
+          options,
+          correctId,
+          hint: t('hintListen', c.ui),
+          explanation: answerExplanation(c, String(n.n)),
+        });
+      },
+    },
+    {
+      id: 'n6-swatch-color',
+      modality: 'visual',
+      make(c) {
+        const col = pickFresh(colors, (x) => x.id, 'n6', c.state);
+        const { options, correctId } = colorOptions(c, col);
+        return makeEx(c, 7, 'visual', 'choice', {
+          eyebrow: t('eyebrowColors', c.ui),
+          prompt: t('promptWhichColor', c.ui),
+          display: { variant: 'swatch', color: col.hex, emoji: col.emoji },
+          audio: { text: t('promptWhichColor', c.lang), lang: c.lang },
+          options,
+          correctId,
+          hint: t('hintVisual', c.ui),
+          explanation: answerExplanation(c, col[c.lang]),
+        });
+      },
+    },
+    {
+      id: 'n7-object-color',
+      modality: 'visual',
+      make(c) {
+        const obj = pickFresh(colorObjects, (x) => x.emoji, 'n7', c.state);
+        const col = colorById[obj.colorId]!;
+        const { options, correctId } = colorOptions(c, col);
+        return makeEx(c, 7, 'visual', 'choice', {
+          eyebrow: t('eyebrowColors', c.ui),
+          prompt: tf('promptObjectColor', c.ui, { object: obj[c.ui] }),
+          display: { variant: 'emoji', emoji: obj.emoji },
+          audio: { text: tf('promptObjectColor', c.lang, { object: obj[c.lang] }), lang: c.lang },
+          options,
+          correctId,
+          hint: t('hintVisual', c.ui),
+          explanation: answerExplanation(c, col[c.lang]),
+        });
+      },
+    },
+    {
+      id: 'n8-hear-color',
+      modality: 'auditivo',
+      make(c) {
+        const col = pickFresh(colors, (x) => x.id, 'n8', c.state);
+        const { options, correctId } = colorOptions(c, col);
+        return makeEx(c, 7, 'auditivo', 'choice', {
+          eyebrow: t('eyebrowListen', c.ui),
+          prompt: t('promptHearColor', c.ui),
+          display: { variant: 'none' },
+          audio: { text: col[c.lang], lang: c.lang },
+          options,
+          correctId,
+          hint: t('hintListen', c.ui),
+          explanation: answerExplanation(c, col[c.lang]),
+        });
+      },
+    },
+  ],
+
+  /* Mundo 8 · ¡Luma dice!: instrucciones literales, movimiento y cero fallos. */
+  8: [
+    { id: 'a1-action', modality: 'any', make: (c) => makeAction(c, 8) },
+    { id: 'a2-two-steps', modality: 'any', make: (c) => makeAction(c, 8, true) },
+    {
+      id: 'a3-luma-color',
+      modality: 'visual',
+      make(c) {
+        const col = pickFresh(colors, (x) => x.id, 'a3', c.state);
+        const { options, correctId } = colorOptions(c, col);
+        return makeEx(c, 8, 'visual', 'choice', {
+          eyebrow: t('eyebrowLumaSays', c.ui),
+          prompt: tf('promptLumaColor', c.ui, { word: col[c.lang] }),
+          display: { variant: 'none' },
+          audio: { text: tf('promptLumaColor', c.lang, { word: col[c.lang] }), lang: c.lang },
+          options,
+          correctId,
+          hint: t('hintAction', c.ui),
+          explanation: answerExplanation(c, col[c.lang]),
+        });
+      },
+    },
+    {
+      id: 'a4-luma-number',
+      modality: 'visual',
+      make(c) {
+        const n = pickFresh(numbers, (x) => String(x.n), 'a4', c.state);
+        const { options, correctId } = numeralOptions(n.n);
+        return makeEx(c, 8, 'visual', 'choice', {
+          eyebrow: t('eyebrowLumaSays', c.ui),
+          prompt: tf('promptLumaNumber', c.ui, { word: String(n.n) }),
+          display: { variant: 'none' },
+          audio: { text: tf('promptLumaNumber', c.lang, { word: String(n.n) }), lang: c.lang },
+          options,
+          correctId,
+          hint: t('hintAction', c.ui),
+          explanation: answerExplanation(c, String(n.n)),
+        });
+      },
+    },
+    {
+      id: 'a5-luma-object',
+      modality: 'visual',
+      make(c) {
+        const w = pickFresh(words, (x) => x.id, 'a5', c.state);
+        const chosen = distract(
+          words.filter((x) => x.id !== w.id).map((x) => x.emoji),
+          w.emoji,
+          Math.max(1, nOpts(c) - 1),
+          c.difficulty,
+          words.map((x) => x.emoji),
+        );
+        const items: OptionInput[] = [w.emoji, ...chosen].map((emoji) => ({ label: emoji, emoji }));
+        const { options, correctId } = optionSet(items, 0);
+        const text = wordText(w, c.lang);
+        return makeEx(c, 8, 'visual', 'choice', {
+          eyebrow: t('eyebrowLumaSays', c.ui),
+          prompt: tf('promptLumaObject', c.ui, { word: text }),
+          display: { variant: 'none' },
+          audio: { text: tf('promptLumaObject', c.lang, { word: text }), lang: c.lang },
+          options,
+          correctId,
+          hint: t('hintAction', c.ui),
+          explanation: answerExplanation(c, text, 'read'),
+        });
+      },
+    },
+    { id: 'a6-action', modality: 'any', make: (c) => makeAction(c, 8) },
+    {
+      id: 'a7-bubbles',
+      modality: 'any',
+      make(c) {
+        const n = playNumber(c);
+        const prompt = tf('promptLumaBubbles', c.lang, { n: n[c.lang] });
+        return makePlayAction(c, 8, { kind: 'bubbles', target: n.n, label: t('actionBubble', c.ui) }, '🫧', prompt, prompt);
+      },
+    },
+    {
+      id: 'a8-claps',
+      modality: 'any',
+      make(c) {
+        const n = playNumber(c);
+        const prompt = tf('promptLumaClaps', c.lang, { n: n[c.lang] });
+        return makePlayAction(c, 8, { kind: 'count', target: n.n, emoji: '👏', label: t('actionClap', c.ui) }, '👏', prompt, prompt);
+      },
+    },
+    {
+      id: 'a9-breathe',
+      modality: 'any',
+      make(c) {
+        const n = playNumber(c);
+        const prompt = tf('promptLumaBreathe', c.lang, { n: n[c.lang] });
+        return makePlayAction(c, 8, { kind: 'breathe', target: n.n, label: t('actionBreathe', c.ui) }, '🌬️', prompt, prompt);
+      },
+    },
+    {
+      id: 'a10-find',
+      modality: 'visual',
+      make(c) {
+        const items = shuffle(words)
+          .slice(0, Math.max(3, nOpts(c)))
+          .map((w, i) => ({ id: `f${i}`, emoji: w.emoji, label: wordText(w, c.lang) }));
+        const prompt = t('promptLumaFind', c.lang);
+        return makePlayAction(c, 8, { kind: 'find', items, label: t('actionFindHint', c.ui) }, '🔎', prompt, prompt);
+      },
+    },
+    {
+      id: 'a11-imitate',
+      modality: 'any',
+      make(c) {
+        const imp = pickFresh(imperatives, (x) => x.id, 'a11-imitate', c.state);
+        const prompt = tf('promptLumaImitate', c.lang, { emoji: imp.emoji });
+        return makePlayAction(c, 8, { kind: 'imitate' }, imp.emoji, prompt, prompt);
+      },
+    },
+    { id: 'a12-move', modality: 'any', make: (c) => makeAction(c, 8) },
+  ],
 };
 
 /* ------------------------------------------------------------------ */
@@ -869,10 +1250,35 @@ export interface ExerciseRequest {
   difficulty: number;
   slot: number;
   state: GenState;
+  adaptations?: Adaptations;
+}
+
+/** Actividades adecuadas para lectura fácil: concretas, cortas y con imagen. */
+function isEasyFactory(id: string): boolean {
+  if (id.startsWith('n') || id.startsWith('a') || id.startsWith('l1') || id.startsWith('l3')) return id !== 'l3-category';
+  return [
+    'l2-build',
+    'l2-find-syllable',
+    'l2-hear-syllable',
+    'l4-special-choice',
+    'l4-special-tap',
+    'l5-blank',
+    'l5-blank-audio',
+    'l6-blank',
+    'l6-story',
+  ].includes(id);
 }
 
 export function pickExercise(req: ExerciseRequest): Exercise {
-  const c: Ctx = { lang: req.lang, ui: req.ui, difficulty: req.difficulty, state: req.state };
+  const ad = req.adaptations ?? defaultAdaptations;
+  const c: Ctx = { lang: req.lang, ui: req.ui, difficulty: Math.min(req.difficulty, ad.difficultyCap), state: req.state };
+
+  // Pausa de movimiento periódica para perfiles con hiperactividad.
+  if (ad.movement && req.slot > 0 && req.slot % 3 === 2) {
+    req.state.lastFactory = 'movement-break';
+    return applyAdaptations(makeAction(c, req.levelId), ad, req.ui);
+  }
+
   let preferred: Modality;
   if (req.route === 'visual') preferred = Math.random() < 0.16 ? 'auditivo' : 'visual';
   else if (req.route === 'auditivo') preferred = Math.random() < 0.16 ? 'visual' : 'auditivo';
@@ -881,11 +1287,20 @@ export function pickExercise(req: ExerciseRequest): Exercise {
   const all = factories[req.levelId] ?? factories[3]!;
   let candidates = all.filter((f) => f.modality === preferred || f.modality === 'any');
   if (!candidates.length) candidates = all;
+
+  if (ad.simpleOnly) {
+    const byModality = candidates.filter((f) => isEasyFactory(f.id));
+    const anyEasy = all.filter((f) => isEasyFactory(f.id));
+    if (byModality.length) candidates = byModality;
+    else if (anyEasy.length) candidates = anyEasy;
+    else return applyAdaptations(makeSimpleChoice(c, req.levelId), ad, req.ui);
+  }
+
   const notRepeated = candidates.filter((f) => f.id !== req.state.lastFactory);
   const pool = notRepeated.length ? notRepeated : candidates;
   const factory = rnd(pool);
   req.state.lastFactory = factory.id;
-  return factory.make(c);
+  return applyAdaptations(factory.make(c), ad, req.ui);
 }
 
 export function practiceLevel(progressStars: Record<number, number>): number {
