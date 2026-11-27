@@ -8,7 +8,7 @@ Una app **progresiva y divertida para aprender a leer en euskera y castellano**,
 
 ## ✨ Qué incluye
 
-### 6 mundos progresivos
+### 6 mundos progresivos + 2 modos abiertos
 Cada mundo se desbloquea al conseguir al menos **1 estrella** en el anterior:
 
 | # | Mundo | Se practica |
@@ -19,6 +19,13 @@ Cada mundo se desbloquea al conseguir al menos **1 estrella** en el anterior:
 | 4 | 🎵 Rimas y sonidos / Errimak eta soinuak | Rimas, pares mínimos y discriminación auditiva |
 | 5 | 💬 Frases que cobran vida / Bizirik dauden esaldiak | Completar, ordenar y escuchar frases |
 | 6 | 📖 El bosque de los cuentos / Ipuinen basoa | Cuentos breves con comprensión lectora |
+
+Y en el **🎠 Patio de juegos**, dos modos siempre abiertos (sin desbloqueo):
+
+| # | Modo | Se practica |
+|---|------|-------------|
+| 7 | 🔢 Números y colores / Zenbakiak eta koloreak | Contar objetos, numeral ↔ palabra, sucesiones, colores con muestras de color y objetos reales |
+| 8 | 🕹️ ¡Luma dice! / Lumak dio! | Seguir instrucciones de uno y dos pasos, movimiento, «señala el color / número / objeto» |
 
 ### Rutas de aprendizaje adaptadas
 - 👁️ **Visual**: dibujos, sílabas de colores, letras ocultas, piezas para construir palabras y frases.
@@ -35,8 +42,30 @@ La ruta se elige al empezar y **se puede cambiar en cualquier momento** desde el
 - **Voz**: Web Speech API (`eu-ES` / `es-ES`). Si el navegador no tiene voz en euskera, se usa la voz en español y se avisa con un cartelito.
 - **Efectos de sonido** sintetizados con Web Audio API (sin archivos de audio).
 
-### Diversión y accesibilidad
-Mascota animada en SVG, confeti, estrellas, XP, nivel lector, racha diaria, 8 insignias, práctica libre, atajos de teclado (`1`–`4` y `Enter`), modo «letras grandes», soporte de `prefers-reduced-motion` y diseño responsive móvil/escritorio.
+### ♿ Perfiles de apoyo (accesibilidad cognitiva y de lectura)
+En el **tercer paso del inicio** y en **Ajustes → Apoyos de aprendizaje** se pueden activar varios perfiles a la vez. No son una etiqueta para el alumno: son **interruptores que cambian la mecánica**. Se pueden quitar en cualquier momento y se guardan con el progreso.
+
+| Perfil | Qué cambia en la app |
+|---|---|
+| 🧠 Discapacidad cognitiva | 4 preguntas por sesión, **2 opciones**, dificultad mínima, vocabulario concreto, pictogramas, voz siempre, feedback sin fallo |
+| 📖 Dificultades de comprensión | Lectura fácil: instrucciones cortas, cuentos reducidos a **una frase**, actividades concretas en lugar de rimas/frases abstractas |
+| 💬 Dificultades comunicativas | Pictogramas en todas las opciones, rutina visual «primero → después», la voz **dice la respuesta elegida** (apoyo tipo SAAC) |
+| 🔠 Dislexia | **Atkinson Hyperlegible** (fuente hiperlegible), más espaciado entre letras y palabras, interlineado alto, fondo crema, sílabas coloreadas, voz siempre |
+| ⚡ Hiperactividad / TDAH | Sesiones de 4 actividades, **pausa de movimiento cada 3**, botones grandes, refuerzo inmediato |
+| 🧩 TEA / Autismo | Rutina predecible y literal, **sin confeti ni animaciones**, colores atenuados, voz siempre, sin reglas con truco ni sorpresas |
+| 🌈 Síndrome de Down | Más imagen, repetición, 2 opciones, botones grandes, sesiones cortas y refuerzo positivo |
+
+Detalles de diseño deliberados:
+- **Nunca hay tiempo límite, vidas ni penalización**; fallar muestra la respuesta con una pista, no un error.
+- **Los juegos imperativos no tienen respuesta incorrecta**: participar ya suma, y se puede repetir o saltar sin consecuencias.
+- Se evitó el «Simón dice» clásico (la regla de *no hacerlo si no dice "Simón dice"* excluye a quien tiene dificultades de comprensión): **siempre se hace lo que dice Luma**.
+- Instrucciones de un paso, literales, con pictograma + texto + voz (comunicación total); opcionalmente dos pasos con apoyo visual numerado.
+- Modo **«Menos estímulos»** independiente en Ajustes, además de `prefers-reduced-motion` del sistema.
+
+> ⚠️ Esto es una herramienta educativa de apoyo basada en pautas generales de diseño universal (lectura fácil, pictogramas, rutinas visuales, pausas de movimiento). **No es un producto sanitario, ni diagnostica, ni sustituye** a la valoración de profesionales (logopedia, pedagogía terapéutica, etc.).
+
+### Diversión y accesibilidad general
+Mascota animada en SVG, confeti, estrellas, XP, nivel lector, racha diaria, 10 insignias, práctica libre, atajos de teclado (`1`–`4` y `Enter`), modo «letras grandes», interfaz bilingüe es/eu, soporte de `prefers-reduced-motion` y diseño responsive móvil/escritorio.
 
 En **Ajustes → Desbloquear todos los mundos (demo)** se pueden explorar los 6 mundos sin completarlos.
 
@@ -55,7 +84,7 @@ Otros comandos:
 npm run build          # tsc --noEmit + build de producción en dist/
 npm run preview        # sirve dist/
 npm run typecheck      # solo comprobación de tipos
-npm run check:content  # valida 12.960 ejercicios generados (6 mundos × 3 rutas × 3 idiomas × 3 dificultades)
+npm run check:content  # valida 21.600 ejercicios (8 modos × 3 rutas × 3 idiomas × 3 dificultades × 5 perfiles)
 ```
 
 Requiere Node.js 18+.
@@ -104,8 +133,9 @@ src/
   App.tsx            estado global, pantallas y persistencia
   screens.tsx        onboarding, mapa, ajustes y resultados
   GameScreen.tsx     bucle de juego, feedback, pistas, adaptación y teclado
-  exercises.ts       generadores de ejercicios por mundo y selección por ruta
-  data.ts            banco bilingüe de ~50 palabras, sílabas, rimas, frases, cuentos, insignias
+  adaptations.ts     perfiles de apoyo y transformación de cada ejercicio
+  exercises.ts       generadores por mundo (1-8), selección por ruta y apoyos
+  data.ts            banco bilingüe de ~55 palabras, números, colores, rimas, frases, cuentos, instrucciones e insignias
   i18n.ts            todos los textos de interfaz en es/eu
   progress.ts        progreso en localStorage, estrellas, racha, insignias
   sound.ts           síntesis de voz (SpeechSynthesis) y efectos (Web Audio)
@@ -116,7 +146,7 @@ scripts/check-exercises.mjs
 ```
 
 ### Cómo se genera un ejercicio
-`pickExercise()` recibe `{ levelId, lang, ui, route, difficulty, slot, state }`, elige una fábrica del mundo según la modalidad preferida por la ruta (con un 16 % de actividades de la otra ruta para variar) y evita repetir contenido dentro de la sesión. Las fábricas devuelven ejercicios de cuatro tipos: `choice`, `tap`, `build` y `story`.
+`pickExercise()` recibe `{ levelId, lang, ui, route, difficulty, slot, state, adaptations }`, elige una fábrica del mundo según la modalidad preferida por la ruta (con un 16 % de la otra ruta para variar), filtra las actividades abstractas si hay lectura fácil, inserta pausas de movimiento y evita repetir contenido dentro de la sesión. Después `applyAdaptations()` recorta opciones, añade pictogramas, acorta textos y activa la voz. Las fábricas devuelven cinco tipos: `choice`, `tap`, `build`, `story` y `action` (juego imperativo sin fallo).
 
 ### Sobre el contenido
 El banco de palabras usa formas de diccionario (`katu`, `sagar`, `etxe`…) para mantener las sílabas claras en ambos idiomas. Las rimas en euskera son asonantes, como suele hacerse en material infantil. Los cuentos son originales y breves, con una pregunta de comprensión cada uno.

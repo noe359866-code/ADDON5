@@ -1,9 +1,10 @@
 import { useState } from 'react';
+import { adaptationsFor, computeAdaptations, supportProfiles, supportSummary } from './adaptations';
 import { Confetti, Mascot, Modal, ProgressBar, StarRow } from './components';
-import { badgeById, badges, levels } from './data';
+import { badgeById, badges, bonusModes, levels } from './data';
 import { t } from './i18n';
 import { isUnlocked, nextLevel, readerLevel } from './progress';
-import type { LearnLang, Progress, Route, SessionResult, UiLang } from './types';
+import type { LearnLang, Progress, Route, SessionResult, SupportId, UiLang } from './types';
 
 /* ------------------------------------------------------------------ */
 /* Piezas pequeñas                                                     */
@@ -59,6 +60,10 @@ export function Onboarding({ onDone }: { onDone: (patch: Partial<Progress>) => v
   const [learnLang, setLearnLang] = useState<LearnLang>('both');
   const [route, setRoute] = useState<Route>('mixta');
   const [ui, setUi] = useState<UiLang>('es');
+  const [supports, setSupports] = useState<SupportId[]>([]);
+
+  const toggleSupport = (id: SupportId) =>
+    setSupports((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
   const langCards: { value: LearnLang; icon: string; title: string; desc: string }[] = [
     { value: 'es', icon: '📖', title: t('langEs', ui), desc: t('langEsDesc', ui) },
@@ -98,8 +103,9 @@ export function Onboarding({ onDone }: { onDone: (patch: Partial<Progress>) => v
         </div>
 
         <div className="onb-steps" aria-hidden="true">
-          <i className={step === 0 ? 'on' : ''} />
-          <i className={step === 1 ? 'on' : ''} />
+          {[0, 1, 2].map((n) => (
+            <i key={n} className={step === n ? 'on' : ''} />
+          ))}
         </div>
 
         {step === 0 ? (
@@ -135,7 +141,7 @@ export function Onboarding({ onDone }: { onDone: (patch: Partial<Progress>) => v
               </button>
             </div>
           </>
-        ) : (
+        ) : step === 1 ? (
           <>
             <h1>{t('step2Title', ui)}</h1>
             <p className="onb-sub">{t('step2Sub', ui)}</p>
@@ -158,6 +164,42 @@ export function Onboarding({ onDone }: { onDone: (patch: Partial<Progress>) => v
               <button className="btn btn-quiet" onClick={() => setStep(0)}>
                 ← {t('back', ui)}
               </button>
+              <button className="btn btn-primary" onClick={() => setStep(2)}>
+                {t('next', ui)} →
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <h1>{t('step3Title', ui)}</h1>
+            <p className="onb-sub">{t('step3Sub', ui)}</p>
+            <div className="support-grid">
+              {supportProfiles.map((profile) => (
+                <button
+                  key={profile.id}
+                  className={`support-card ${supports.includes(profile.id) ? 'selected' : ''}`}
+                  onClick={() => toggleSupport(profile.id)}
+                  aria-pressed={supports.includes(profile.id)}
+                >
+                  <span className="support-emoji">{profile.emoji}</span>
+                  <strong>{profile[ui].name}</strong>
+                  <small>{profile[ui].desc}</small>
+                  {supports.includes(profile.id) && <span className="choice-check">✓</span>}
+                </button>
+              ))}
+            </div>
+            {supports.length > 0 && (
+              <div className="support-summary">
+                {supportSummary(adaptationsFor(supports), ui).map((s) => (
+                  <span key={s}>{s}</span>
+                ))}
+              </div>
+            )}
+            <p className="onb-note">💡 {t('supportsHint', ui)}</p>
+            <div className="onb-actions">
+              <button className="btn btn-quiet" onClick={() => setStep(1)}>
+                ← {t('back', ui)}
+              </button>
               <button
                 className="btn btn-primary"
                 onClick={() =>
@@ -167,12 +209,17 @@ export function Onboarding({ onDone }: { onDone: (patch: Partial<Progress>) => v
                     learnLang,
                     route,
                     uiLang: ui,
+                    supports,
+                    calmMode: supports.includes('tea'),
                   })
                 }
               >
                 {t('letsGo', ui)} 🚀
               </button>
             </div>
+            <button className="support-skip" onClick={() => onDone({ onboarded: true, name: name.trim() || 'Amigo', learnLang, route, uiLang: ui, supports: [], calmMode: false })}>
+              {t('supportSkip', ui)}
+            </button>
           </>
         )}
         <p className="onb-foot">{t('onboardNote', ui)}</p>
@@ -199,6 +246,8 @@ export function Home({ progress, setProgress, onStart, onToast, onSettings }: Ho
   const levelInfo = readerLevel(progress.xp);
   const currentDef = levels.find((l) => l.id === current)!;
   const name = progress.name || (ui === 'eu' ? 'Lagun' : 'Amigo');
+  const ad = computeAdaptations(progress);
+  const supportLabels = supportSummary(ad, ui);
 
   const setRoute = (route: Route) => {
     setProgress({ route });
@@ -294,6 +343,20 @@ export function Home({ progress, setProgress, onStart, onToast, onSettings }: Ho
         </div>
       </section>
 
+      {ad.active.length > 0 && (
+        <section className="support-active-card">
+          <strong>🧩 {t('supportsActive', ui)}</strong>
+          <div className="support-summary">
+            {supportLabels.map((label) => (
+              <span key={label}>{label}</span>
+            ))}
+          </div>
+          <button className="btn btn-tiny" onClick={onSettings}>
+            ⚙️ {t('settings', ui)}
+          </button>
+        </section>
+      )}
+
       <section className="map-section">
         <div className="section-head">
           <h2>🗺️ {t('mapTitle', ui)}</h2>
@@ -324,6 +387,26 @@ export function Home({ progress, setProgress, onStart, onToast, onSettings }: Ho
               </button>
             );
           })}
+        </div>
+      </section>
+
+      <section className="bonus-section">
+        <div className="section-head">
+          <h2>🎠 {t('bonusTitle', ui)}</h2>
+          <p>{t('bonusSub', ui)}</p>
+        </div>
+        <div className="bonus-grid">
+          {bonusModes.map((mode) => (
+            <button key={mode.id} className={`bonus-card theme-${mode.theme}`} onClick={() => onStart(mode.id)}>
+              <span className="bonus-emoji" aria-hidden="true">{mode.emoji}</span>
+              <span className="bonus-body">
+                <strong>{mode[ui].title}</strong>
+                <small>{mode[ui].sub}</small>
+                <em>🔓 {t('bonusFree', ui)}</em>
+              </span>
+              <span className="bonus-go">{t('playBonus', ui)} ▶</span>
+            </button>
+          ))}
         </div>
       </section>
 
@@ -394,6 +477,12 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
 export function Settings({ progress, setProgress, onClose, onReset, onToast }: SettingsProps) {
   const ui = progress.uiLang;
   const [confirmReset, setConfirmReset] = useState(false);
+  const activeSupports = progress.supports ?? [];
+  const summary = supportSummary(computeAdaptations(progress), ui);
+  const toggleSupport = (id: SupportId) =>
+    setProgress((prev) => ({
+      supports: prev.supports.includes(id) ? prev.supports.filter((x) => x !== id) : [...prev.supports, id],
+    }));
   return (
     <Modal onClose={onClose} labelledBy="settings-title">
       <div className="settings">
@@ -446,7 +535,31 @@ export function Settings({ progress, setProgress, onClose, onReset, onToast }: S
           <p className="settings-hint">{t('routeExplanation', ui)}</p>
         </div>
 
+        <div className="settings-field">
+          <span>🧩 {t('supportsTitle', ui)}</span>
+          <div className="support-grid support-grid-settings">
+            {supportProfiles.map((profile) => (
+              <button
+                key={profile.id}
+                className={`support-card compact ${activeSupports.includes(profile.id) ? 'selected' : ''}`}
+                onClick={() => toggleSupport(profile.id)}
+                aria-pressed={activeSupports.includes(profile.id)}
+                title={profile[ui].desc}
+              >
+                <span className="support-emoji">{profile.emoji}</span>
+                <strong>{profile[ui].name}</strong>
+                {activeSupports.includes(profile.id) && <span className="choice-check">✓</span>}
+              </button>
+            ))}
+          </div>
+          <p className="settings-hint">{t('supportsHint', ui)}</p>
+          <div className="support-summary">
+            {summary.length ? summary.map((s) => <span key={s}>{s}</span>) : <span>{t('supportsNone', ui)}</span>}
+          </div>
+        </div>
+
         <Toggle label={`🔊 ${t('sound', ui)}`} checked={progress.sound} onChange={(v) => setProgress({ sound: v })} />
+        <Toggle label={`🌿 ${t('calmModeLabel', ui)}`} checked={progress.calmMode} onChange={(v) => setProgress({ calmMode: v })} />
         <Toggle label={`🔠 ${t('bigText', ui)}`} checked={progress.bigText} onChange={(v) => setProgress({ bigText: v })} />
         <Toggle label={`🧪 ${t('unlockAll', ui)}`} checked={progress.unlockAll} onChange={(v) => setProgress({ unlockAll: v })} />
 
@@ -492,9 +605,10 @@ export function ResultScreen({ progress, result, newBadges, onNext, onRepeat, on
   const ui = progress.uiLang;
   const hasNext = result.mode === 'level' && (result.levelId ?? 0) < levels.length && result.stars >= 1;
   const allDone = levels.every((l) => progress.completed[l.id]);
+  const calm = computeAdaptations(progress).calm;
   return (
     <div className="result-screen">
-      <Confetti burstKey={1} count={50} />
+      {!calm && <Confetti burstKey={1} count={50} />}
       <div className="result-card">
         <Mascot mood="cheer" size={140} />
         <h1>{result.mode === 'practice' ? t('levelCompleted', ui) : t('resultTitle', ui)}</h1>

@@ -13,6 +13,8 @@ export const defaultProgress: Progress = {
   sound: true,
   bigText: false,
   unlockAll: false,
+  supports: [],
+  calmMode: false,
   xp: 0,
   stars: {},
   completed: {},
@@ -34,6 +36,7 @@ export function loadProgress(): Progress {
       stars: { ...(parsed.stars ?? {}) },
       completed: { ...(parsed.completed ?? {}) },
       badges: Array.isArray(parsed.badges) ? parsed.badges : [],
+      supports: Array.isArray(parsed.supports) ? parsed.supports : [],
     };
   } catch {
     return { ...defaultProgress };
@@ -82,6 +85,8 @@ export function badgesForResult(p: Progress, result: SessionResult): string[] {
   if (result.mode === 'level' && result.levelId === 1 && result.stars >= 1) add('explorer');
   if (result.langsUsed.includes('es') && result.langsUsed.includes('eu')) add('bilingual');
   if (result.mode === 'level' && result.levelId === 6 && result.stars >= 1) add('storyteller');
+  if (result.mode === 'level' && result.levelId === 7 && result.stars >= 1) add('counter');
+  if (result.mode === 'level' && result.levelId === 8 && result.stars >= 1) add('mover');
   const allDone = levels.every((l) => (p.completed[l.id] ?? false) || (result.mode === 'level' && result.levelId === l.id && result.stars >= 1));
   if (allDone) add('master');
   return [...new Set(earned)];

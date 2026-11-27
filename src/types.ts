@@ -3,13 +3,23 @@ export type LearnLang = Lang | 'both';
 export type UiLang = Lang;
 export type Route = 'visual' | 'auditivo' | 'mixta';
 export type Modality = 'visual' | 'auditivo' | 'any';
-export type ExerciseKind = 'choice' | 'build' | 'tap' | 'story';
+export type ExerciseKind = 'choice' | 'build' | 'tap' | 'story' | 'action';
+
+export type SupportId =
+  | 'cognitiva'
+  | 'comprension'
+  | 'comunicacion'
+  | 'dislexia'
+  | 'tdah'
+  | 'tea'
+  | 'down';
 
 export interface Option {
   id: string;
   label: string;
   emoji?: string;
   sub?: string;
+  color?: string;
 }
 
 export interface Tile {
@@ -26,11 +36,12 @@ export interface Exercise {
   eyebrow: string;
   prompt: string;
   display?: {
-    variant: 'emoji' | 'word' | 'blank' | 'chunks' | 'hidden' | 'number' | 'none';
+    variant: 'emoji' | 'word' | 'blank' | 'chunks' | 'hidden' | 'number' | 'objects' | 'swatch' | 'none';
     emoji?: string;
     text?: string;
     chunks?: string[];
     highlight?: string;
+    color?: string;
   };
   audio?: { text: string; lang: Lang };
   options?: Option[];
@@ -41,6 +52,7 @@ export interface Exercise {
   chips?: Tile[];
   correctChip?: string;
   story?: { title: string; text: string; emoji: string };
+  action?: { emoji: string; text: string; steps?: string[] };
   hint: string;
   explanation: string;
   autoAudio: boolean;
@@ -55,6 +67,8 @@ export interface Progress {
   sound: boolean;
   bigText: boolean;
   unlockAll: boolean;
+  supports: SupportId[];
+  calmMode: boolean;
   xp: number;
   stars: Record<number, number>;
   completed: Record<number, boolean>;

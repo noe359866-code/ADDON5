@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { computeAdaptations } from './adaptations';
 import { Toast } from './components';
 import { GameScreen } from './GameScreen';
 import { t } from './i18n';
@@ -37,11 +38,15 @@ export default function App() {
   }
 
   useEffect(() => {
+    const ad = computeAdaptations(progress);
     document.documentElement.lang = progress.uiLang === 'eu' ? 'eu' : 'es';
     document.body.dataset.route = progress.route;
     document.body.classList.toggle('big-text', progress.bigText);
+    document.body.classList.toggle('hyperlegible', ad.hyperlegible);
+    document.body.classList.toggle('calm', ad.calm);
+    document.body.classList.toggle('big-targets', ad.bigTargets);
     document.title = `HitzBidaia · ${t('appSub', progress.uiLang)}`;
-  }, [progress.uiLang, progress.route, progress.bigText]);
+  }, [progress]);
 
   useEffect(() => () => {
     if (toastTimer.current) window.clearTimeout(toastTimer.current);
