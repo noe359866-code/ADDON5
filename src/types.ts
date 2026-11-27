@@ -3,7 +3,21 @@ export type LearnLang = Lang | 'both';
 export type UiLang = Lang;
 export type Route = 'visual' | 'auditivo' | 'mixta';
 export type Modality = 'visual' | 'auditivo' | 'any';
-export type ExerciseKind = 'choice' | 'build' | 'tap' | 'story' | 'action';
+export type ExerciseKind = 'choice' | 'build' | 'tap' | 'story' | 'action' | 'pairs';
+export type SyllableStage = 1 | 2 | 3; // 1: Directas (CV), 2: Inversas (VC), 3: Trabadas (CCV)
+
+export type NavTab = 'learn' | 'letters' | 'stories' | 'practice' | 'leaderboard' | 'quests' | 'shop' | 'profile';
+
+export type OutfitId = 'classic' | 'explorer' | 'super' | 'royal' | 'cool';
+
+export type SessionMode =
+  | 'level'
+  | 'practice'
+  | 'legendary'
+  | 'timed'
+  | 'mistakes'
+  | 'listening'
+  | 'letters';
 
 export type SupportId =
   | 'cognitiva'
@@ -23,11 +37,21 @@ export interface Option {
   color?: string;
   pattern?: string;
   symbol?: string;
+  audioText?: string;
 }
 
 export interface Tile {
   id: string;
   label: string;
+}
+
+export interface PairCard {
+  id: string;
+  pairId: string;
+  side: 'left' | 'right';
+  label: string;
+  emoji?: string;
+  lang?: Lang;
 }
 
 export interface ActionItem {
@@ -70,45 +94,99 @@ export interface Exercise {
   unit?: 'syllable' | 'word';
   chips?: Tile[];
   correctChip?: string;
+  pairs?: PairCard[];
   story?: { title: string; text: string; shortText?: string; emoji: string };
   action?: { emoji: string; text: string; steps?: string[]; game?: ActionGame };
   hint: string;
   explanation: string;
   autoAudio: boolean;
+  isReview?: boolean;
+  syllableStage?: SyllableStage;
+}
+
+export interface MistakeEntry {
+  id: string;
+  prompt: string;
+  answer: string;
+  lang: Lang;
+  levelId: number;
+  addedAt: string;
+}
+
+export interface DoubleWager {
+  active: boolean;
+  startDate: string;
 }
 
 export interface Progress {
   onboarded: boolean;
   name: string;
+  joinedDate: string;
   uiLang: UiLang;
   learnLang: LearnLang;
   route: Route;
   sound: boolean;
   music: boolean;
+  darkMode: boolean;
   bigText: boolean;
   unlockAll: boolean;
   supports: SupportId[];
   calmMode: boolean;
+
+  /* Gamificación estilo Duolingo */
   xp: number;
+  gems: number;
+  hearts: number;
+  unlimitedHearts: boolean;
+  dailyGoal: number;
+  dailyXp: number;
+  dailyLessons: number;
+  dailyHighAcc: number;
+  dailyDate: string;
+  xpHistory: Record<string, number>;
+  streak: number;
+  bestStreak: number;
+  streakFreezes: number;
+  frozenDates: string[];
+  doubleOrNothing: DoubleWager | null;
+  xpBoostUntil: number;
+  leagueId: number;
+
+  /* Progreso del camino, cuentos, letras y tienda */
   stars: Record<number, number>;
   completed: Record<number, boolean>;
+  legendary: Record<number, boolean>;
+  nodeProgress: Record<string, number>;
+  chestsClaimed: string[];
+  questClaims: Record<string, boolean>;
+  storiesRead: string[];
+  lettersMastered: string[];
+  mistakes: MistakeEntry[];
+  outfits: OutfitId[];
+  equippedOutfit: OutfitId;
+
   badges: string[];
-  streak: number;
   lastPlayed: string;
   sessions: number;
+  perfectSessions: number;
   correctTotal: number;
 }
 
 export interface SessionResult {
-  mode: 'level' | 'practice';
+  mode: SessionMode;
   levelId: number | null;
+  nodeKey?: string;
   total: number;
   correct: number;
   xp: number;
+  gemsEarned: number;
+  durationSec: number;
+  xpBoosted?: boolean;
   stars: number;
   maxStreak: number;
   visualStreak: number;
   audioStreak: number;
   langsUsed: Lang[];
   perfect: boolean;
+  heartsRestored?: number;
 }

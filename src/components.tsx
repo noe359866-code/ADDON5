@@ -2,7 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { IconBolt, IconCheck, IconClose, IconEye, IconFlame, IconHeadphones, IconLayers, IconSparkles, IconStar } from './icons';
 import { sfx } from './sound';
-import type { Lang, Route } from './types';
+import type { Lang, OutfitId, Route } from './types';
 
 export type Mood = 'happy' | 'cheer' | 'think' | 'wave' | 'sad' | 'excited';
 
@@ -123,19 +123,21 @@ export function PatoMark({ size = 34 }: { size?: number }) {
   );
 }
 
-/** Pato Ventura: mascota estilo Duolingo dibujada en SVG vectorial (sin assets externos). */
+/** Pato Ventura: mascota estilo Duolingo dibujada en SVG vectorial (con trajes equipables). */
 export function Mascot({
   mood = 'happy',
   size = 120,
   className = '',
   interactive = false,
   sound = true,
+  outfit = 'classic',
 }: {
   mood?: Mood;
   size?: number;
   className?: string;
   interactive?: boolean;
   sound?: boolean;
+  outfit?: OutfitId;
 }) {
   const uid = useId().replace(/:/g, '');
   const bodyId = `${uid}-body`;
@@ -198,6 +200,16 @@ export function Mascot({
 
       {/* sombra suave en el suelo */}
       <ellipse className="mascot-shadow" cx="90" cy="176" rx="44" ry="8" fill="#2C3A57" opacity="0.12" />
+
+      {/* Capa Super Pato detrás del cuerpo */}
+      {outfit === 'super' && (
+        <path
+          d="M44 104 C20 128, 22 162, 42 170 Q90 158 138 170 C158 162, 160 128, 136 104 Z"
+          fill="#CE82FF"
+          stroke="#A568CC"
+          strokeWidth="3"
+        />
+      )}
 
       <g className="mascot-body">
         {/* patitas palmeadas de pato */}
@@ -403,6 +415,47 @@ export function Mascot({
             )}
           </g>
         )}
+
+        {/* Accesorios de la Boutique de Pato Ventura */}
+        {outfit === 'explorer' && (
+          <g className="mascot-hat">
+            <ellipse cx="90" cy="30" rx="48" ry="9" fill="#C97A2B" stroke="#8C4F12" strokeWidth="2.5" />
+            <path d="M56 29 C58 8, 122 8, 124 29 Z" fill="#E3963E" stroke="#8C4F12" strokeWidth="2.5" />
+            <rect x="57" y="23" width="66" height="5.5" rx="2.5" fill="#58CC02" />
+          </g>
+        )}
+        {outfit === 'royal' && (
+          <g className="mascot-crown">
+            <path
+              d="M62 28 L66 8 L79 19 L90 5 L101 19 L114 8 L118 28 Z"
+              fill="#FFC800"
+              stroke="#E09F00"
+              strokeWidth="2.4"
+              strokeLinejoin="round"
+            />
+            <circle cx="90" cy="19" r="3" fill="#FF4B4B" />
+            <circle cx="74" cy="21" r="2.3" fill="#1CB0F6" />
+            <circle cx="106" cy="21" r="2.3" fill="#58CC02" />
+          </g>
+        )}
+        {outfit === 'cool' && (
+          <g className="mascot-shades">
+            <rect x="49" y="51" width="36" height="21" rx="8" fill="#1E293B" stroke="#1CB0F6" strokeWidth="3" />
+            <rect x="95" y="51" width="36" height="21" rx="8" fill="#1E293B" stroke="#1CB0F6" strokeWidth="3" />
+            <line x1="85" y1="59" x2="95" y2="59" stroke="#1CB0F6" strokeWidth="3.5" />
+            <line x1="55" y1="56" x2="65" y2="66" stroke="#FFFFFF" strokeWidth="2.4" strokeLinecap="round" opacity="0.65" />
+            <line x1="101" y1="56" x2="111" y2="66" stroke="#FFFFFF" strokeWidth="2.4" strokeLinecap="round" opacity="0.65" />
+          </g>
+        )}
+        {outfit === 'super' && (
+          <g className="mascot-mask">
+            <path
+              d="M47 56 C47 45, 76 45, 90 55 C104 45, 133 45, 133 56 C133 70, 106 74, 90 64 C74 74, 47 70, 47 56 Z"
+              fill="#CE82FF"
+              opacity="0.42"
+            />
+          </g>
+        )}
       </g>
 
       {/* chispas de celebración */}
@@ -444,7 +497,7 @@ export function Mascot({
 
 export function Confetti({ burstKey, count = 34 }: { burstKey: number; count?: number }) {
   const pieces = useMemo(() => {
-    const colors = ['#0E8A7D', '#EFA600', '#2B5CD9', '#D96B27', '#17B8A6', '#F472B6'];
+    const colors = ['#58CC02', '#1CB0F6', '#FFC800', '#FF4B4B', '#CE82FF', '#FF9600'];
     return Array.from({ length: count }, (_, i) => {
       const style: CSSProperties = {
         left: `${(i * 37 + Math.random() * 60) % 100}%`,
@@ -463,6 +516,65 @@ export function Confetti({ burstKey, count = 34 }: { burstKey: number; count?: n
       {pieces.map((style, i) => (
         <span key={i} style={style} />
       ))}
+    </div>
+  );
+}
+
+/** Búho amigo lector en Feather Green (#58CC02) que acompaña a Pato Ventura en el camino. */
+export function DuoOwlBuddy({ size = 86, locked = false }: { size?: number; locked?: boolean }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 120 120"
+      className={`duo-owl-buddy ${locked ? 'is-locked' : ''}`}
+      aria-hidden="true"
+    >
+      <ellipse cx="60" cy="110" rx="32" ry="6" fill="rgba(0,0,0,0.10)" />
+      {/* Patitas naranja */}
+      <rect x="42" y="98" width="12" height="8" rx="4" fill={locked ? '#BDBDBD' : '#FF9600'} />
+      <rect x="66" y="98" width="12" height="8" rx="4" fill={locked ? '#BDBDBD' : '#FF9600'} />
+      {/* Cuerpo Feather Green */}
+      <path
+        d="M32 28 L44 36 Q60 28 76 36 L88 28 C96 42, 96 76, 88 92 C80 103, 40 103, 32 92 C24 76, 24 42, 32 28 Z"
+        fill={locked ? '#D6D6D6' : '#58CC02'}
+      />
+      {/* Alas */}
+      <path d="M28 56 C14 62, 16 84, 30 86 Z" fill={locked ? '#C2C2C2' : '#43C000'} />
+      <path d="M92 56 C106 62, 104 84, 90 86 Z" fill={locked ? '#C2C2C2' : '#43C000'} />
+      {/* Máscara clara Mask Green */}
+      <ellipse cx="47" cy="55" rx="14" ry="15" fill={locked ? '#EBEBEB' : '#89E219'} />
+      <ellipse cx="73" cy="55" rx="14" ry="15" fill={locked ? '#EBEBEB' : '#89E219'} />
+      {/* Plumas del pecho */}
+      <path d="M46 78 Q53 84 60 78 Q67 84 74 78" stroke={locked ? '#EBEBEB' : '#89E219'} strokeWidth="4" strokeLinecap="round" fill="none" />
+      <path d="M50 87 Q60 93 70 87" stroke={locked ? '#EBEBEB' : '#89E219'} strokeWidth="4" strokeLinecap="round" fill="none" />
+      {/* Ojos grandes */}
+      <circle cx="47" cy="55" r="10.5" fill="#FFFFFF" />
+      <circle cx="73" cy="55" r="10.5" fill="#FFFFFF" />
+      <circle cx="48.5" cy="55.5" r="5.5" fill={locked ? '#8E8E8E' : '#4B4B4B'} />
+      <circle cx="71.5" cy="55.5" r="5.5" fill={locked ? '#8E8E8E' : '#4B4B4B'} />
+      <circle cx="50.5" cy="53" r="2.2" fill="#FFFFFF" />
+      <circle cx="73.5" cy="53" r="2.2" fill="#FFFFFF" />
+      {/* Pico */}
+      <path d="M54 62 Q60 58 66 62 L60 71 Z" fill={locked ? '#B0B0B0' : '#FFC800'} />
+    </svg>
+  );
+}
+
+/** Barra continua brillante estilo lección de Duolingo con tubo de luz interior. */
+export function DuoLessonProgress({ current, total, streak = 0 }: { current: number; total: number; streak?: number }) {
+  const pct = total > 0 ? Math.min(100, Math.max(4, Math.round((current / total) * 100))) : 0;
+  return (
+    <div
+      className={`duo-lesson-bar ${streak >= 3 ? 'is-hot' : ''}`}
+      role="progressbar"
+      aria-valuenow={current}
+      aria-valuemin={0}
+      aria-valuemax={total}
+    >
+      <div className="duo-lesson-bar-fill" style={{ width: `${pct}%` }}>
+        <span className="duo-lesson-bar-shine" />
+      </div>
     </div>
   );
 }
