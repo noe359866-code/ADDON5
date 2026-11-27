@@ -1,5 +1,7 @@
 # 🦆 HitzBidaia · Viaje de Palabras
 
+[![CI](https://github.com/noe359866-code/ADDON5/actions/workflows/ci.yml/badge.svg)](https://github.com/noe359866-code/ADDON5/actions/workflows/ci.yml)
+
 Una app **progresiva y divertida para aprender a leer en euskera, castellano e inglés**, pensada para niños y niñas que empiezan a leer (y para cualquier persona que quiera practicar). No hay cuentas, ni anuncios, ni servidor: todo funciona en el navegador y el progreso se guarda en `localStorage`.
 
 > *Laburpena euskaraz: euskaraz eta gaztelaniaz irakurtzen ikasteko app progresiboa eta jolasgarria, ikusizko eta entzunezko ibilbideekin.*
@@ -69,6 +71,8 @@ Detalles de diseño deliberados:
 ### Diversión y accesibilidad general
 Mascota animada en SVG, confeti, estrellas, XP, nivel lector, racha diaria, 10 insignias, práctica libre, atajos de teclado (`1`–`4` y `Enter`), modo «letras grandes», interfaz bilingüe es/eu, soporte de `prefers-reduced-motion` y diseño responsive móvil/escritorio.
 
+**Estructura estilo Duolingo:** mapa de unidades con ruta serpentina y coronas por nodo, guías de unidad, ligas semanales con rivales simulados (sin otros niños conectados), gemas, corazones (ilimitados por defecto), misiones diarias, tienda de aspectos para Pato Ventura, niveles «legendario» y contrarreloj opcional, y cofres en el camino. Todo el progreso vive en el navegador.
+
 **Microinteracciones de estilo Duolingo:** botones con profundidad 3D y hundimiento al pulsar, entrada escalonada de tarjetas/opciones, transición entre preguntas, barra de progreso con brillo, mapa con burbujas flotantes, **Pato Ventura** con reacciones de ánimo y bocadillo en cada pregunta (y ¡cuac! interactivo al tocarlo), `+XP` flotante, píldoras de racha, estrellas que aparecen una a una, contador de XP animado, insignias escalonadas y celebración al subir de nivel. Todo usa `transform`/`opacity` para no bloquear el renderizado; los efectos nuevos de sonido (`combo` y `levelup`) se omiten en modo calmo. El modo **«Menos estímulos»** y `prefers-reduced-motion` desactivan animaciones, flotantes y confeti.
 
 **Orden y profesionalismo:** tokens de diseño (`--surface`, `--border-soft`, radios y sombras), barra superior estable, onboarding con paso numérico y progreso explícito, secciones del panel numeradas y agrupadas en tarjetas neutras, mapa de mundos alineado como *timeline*, selector de ruta/idioma con jerarquía tipográfica, tarjetas de resultados y ajustes con bordes coherentes, e insignias en cuadrícula. Los componentes `SectionHead`, `StepProgress` y el helper `staggerStyle` centralizan la estructura visual y evitan estilos repetidos.
@@ -115,11 +119,11 @@ npm run dev        # http://localhost:5173
 Otros comandos:
 
 ```bash
-npm test               # pruebas de idiomas, voz y copias de progreso
+npm test               # pruebas de idiomas, voz, progreso, PWA y lógica de sesión
 npm run build          # tsc --noEmit + build de producción en dist/
 npm run preview        # sirve dist/
 npm run typecheck      # solo comprobación de tipos
-npm run check:content  # valida 30.240 ejercicios (8 modos × 3 rutas × 3 idiomas × 3 dificultades × 7 perfiles)
+npm run check:content  # valida 114.300 ejercicios (8 modos × 3 rutas × ES/EU/EN/ES+EU × bajo/medio/alto × 5 etapas × 5 fases de lectura)
 ```
 
 Requiere Node.js 18+.
@@ -164,21 +168,41 @@ El archivo [`render.yaml`](./render.yaml) ya define todo:
 ```
 index.html
 src/
-  main.tsx           arranque React + fuentes
-  App.tsx            estado global, pantallas y persistencia
-  screens.tsx        onboarding, mapa, ajustes y resultados
-  GameScreen.tsx     bucle de juego, feedback, pistas, adaptación y teclado
-  adaptations.ts     perfiles de apoyo y transformación de cada ejercicio
-  exercises.ts       generadores por mundo (1-8), selección por ruta y apoyos
-  data.ts            banco bilingüe de ~55 palabras, números, colores, rimas, frases, cuentos, instrucciones e insignias
-  i18n.ts            todos los textos de interfaz en es/eu
-  progress.ts        progreso en localStorage, estrellas, racha, insignias
-  sound.ts           síntesis de voz (SpeechSynthesis) y efectos (Web Audio)
-  music.ts           música ambiental relajante generada con Web Audio
-  components.tsx     mascota SVG, confeti, estrellas, barras, contadores, flotantes, encabezados, progreso y modal
+  main.tsx            arranque React + fuentes
+  App.tsx             estado global, pantallas y persistencia
+  session.ts          applySessionResult(): progreso tras una sesión (puro, probado)
+  screens/            pantallas de la app, una por archivo
+    index.ts          barrel de exportación (`./screens`)
+    shared.tsx        Segmented, DuoWordmark, RouteIcon, syncMusic
+    Onboarding.tsx    primer arranque (ruta, idioma, apoyos)
+    LearnPathView.tsx mapa serpentino de unidades con nodos y cofres
+    Home.tsx          mapa principal de tres columnas + pestañas
+    Settings.tsx      ajustes y apoyos de aprendizaje
+    ResultScreen.tsx  celebración y resumen al terminar
+  DuoViews.tsx        vistas Duolingo: letras, cuentos, tienda, ligas, misiones, perfil
+  duoData.ts          unidades, nodos, ligas, logros, cuentos, aspectos, guías
+  GameScreen.tsx      bucle de juego, feedback, pistas, adaptación y teclado
+  adaptations.ts      perfiles de apoyo y transformación de cada ejercicio
+  exercises.ts        generadores por mundo (1-8), selección por ruta y apoyos
+  data.ts             banco bilingüe de ~55 palabras, números, colores, rimas, frases, cuentos, instrucciones e insignias
+  icons.tsx           iconografía SVG propia
+  i18n.ts             todos los textos de interfaz en es/eu
+  progress.ts         progreso en localStorage, estrellas, racha, insignias
+  sound.ts            síntesis de voz (SpeechSynthesis) y efectos (Web Audio)
+  music.ts            música ambiental relajante generada con Web Audio
+  components.tsx      mascota SVG, confeti, estrellas, barras, contadores, flotantes, encabezados, progreso y modal
+  PatoPlay.tsx        minijuego táctil con Pato Ventura
+  InstallApp.tsx      instalación PWA
+  pwa.ts              registro del service worker
+  maider.ts           voz local de euskera (Maider): worker, caché y estado
+  maider.worker.ts    síntesis ONNX + eSpeak NG fuera del hilo principal
   types.ts
   styles.css
-scripts/check-exercises.mjs
+scripts/
+  check-exercises.mjs validación del banco generado (~114 mil combinaciones)
+  pwa.mjs             generación del service worker en el build
+tests/                pruebas de idiomas, sesión, progreso, PWA y voz
+.github/workflows/     CI: typecheck + tests + check:content + build
 ```
 
 ### Cómo se genera un ejercicio
@@ -191,7 +215,27 @@ El banco de palabras usa formas de diccionario (`katu`, `sagar`, `etxe`…) para
 
 ## 🙌 Créditos
 
-by;**++Iñigo++**
+by **Iñigo**
+
+---
+
+## 📄 Licencia
+
+HitzBidaia es software libre: **GNU General Public License v3.0 o posterior** (GPL-3.0-or-later). El texto completo está en [`LICENSE`](./LICENSE).
+
+La razón es deliberada: la app **redistribuye eSpeak NG compilado a WebAssembly** (`espeak-ng.wasm`, GPL-3.0-or-later) como parte del paquete estático, así que el proyecto en su conjunto debe ofrecerse bajo una licencia compatible. El resto de componentes mantienen sus licencias:
+
+| Componente | Licencia |
+|---|---|
+| eSpeak NG (fonemizador de Maider) | GPL-3.0-or-later |
+| [phoonnx.js](https://github.com/TigreGotico/phoonnx.js) (motor de voz) | Apache-2.0 |
+| ONNX Runtime Web | MIT |
+| Voz «Maider» (descarga puntual del usuario, no se redistribuye) | CC-BY 4.0 |
+| Datos de voz [itzune/maider-dataset](https://huggingface.co/datasets/itzune/maider-dataset) | CC-BY 4.0 |
+| Fuentes Atkinson Hyperlegible y Nunito | SIL OFL 1.1 |
+| Código del propio proyecto | GPL-3.0-or-later |
+
+Si en el futuro se quisiera publicar bajo una licencia permisiva (MIT/Apache-2.0) o propietaria, habría que **eliminar o sustituir eSpeak NG** por un fonemizador compatible. Esto no es asesoría legal; ante una distribución comercial, consulta con un profesional.
 
 ---
 

@@ -30,6 +30,12 @@
     "@vitejs/plugin-react": "^4.3.4",
     "react-test-renderer": "^18.3.1",
     "typescript": "^5.6.3",
-    "vite": "^5.4.11"
+    "vite": "^6.4.6"
+  },
+  "license": "GPL-3.0-or-later",
+  "author": "Iñigo",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/noe359866-code/ADDON5.git"
   }
 }
