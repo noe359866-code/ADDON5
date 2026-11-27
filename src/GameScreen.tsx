@@ -71,6 +71,7 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
   const [index, setIndex] = useState(0);
   const [difficulty, setDifficulty] = useState(startDifficulty);
   const [streak, setStreak] = useState(0);
+  const [hearts, setHearts] = useState(5);
   const [wrongStreak, setWrongStreak] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [picks, setPicks] = useState<string[]>([]);
@@ -131,6 +132,28 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
       if (window.speechSynthesis) window.speechSynthesis.removeEventListener('voiceschanged', check);
     };
   }, []);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (showExit) return;
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (feedback !== 'none') {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          advance();
+        }
+        return;
+      }
+      if (e.key.toLowerCase() === 'r' && current.audio && progress.sound) {
+        e.preventDefault();
+        speak(current.audio.text, current.audio.lang, true, 0.86);
+        return;
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  });
 
   // La ruta auditiva escucha cada pregunta automáticamente; la visual solo si lo pide.
   useEffect(() => {
@@ -291,6 +314,7 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
     if (newWrong >= 2) nextDifficulty = Math.max(1, difficulty - 1);
     setStreak(newStreak);
     setWrongStreak(newWrong);
+    if (!wasOk) setHearts((h) => Math.max(0, h - 1));
     setDifficulty(nextDifficulty);
     const lang: Lang = progress.learnLang === 'both' ? (nextIndex % 2 === 0 ? 'es' : 'eu') : progress.learnLang;
     clearPendingTimers();
@@ -407,6 +431,13 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
           </div>
           <SessionProgress current={index} total={total} />
         </div>
+        <span
+          className={`hearts-pill ${hearts <= 1 ? 'low' : ''}`}
+          title={ui === 'eu' ? 'Bihotzak' : 'Vidas'}
+          aria-label={`${hearts} ${ui === 'eu' ? 'bihotz' : 'vidas'}`}
+        >
+          ❤️ {hearts}
+        </span>
         <LangChip lang={current.lang} />
       </header>
 
@@ -424,6 +455,11 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
           <IconBolt size={13} />
           <span>{xpRef.current} {t('xp', ui)}</span>
         </span>
+        {streak >= 1 && (
+          <span className="streak-pill-live" title={ui === 'eu' ? 'Segida' : 'Racha'}>
+            🔥 {streak}
+          </span>
+        )}
         {ad.active.length > 0 && (
           <span className="support-pill">
             <IconAccessibility size={14} />
