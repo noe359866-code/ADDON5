@@ -1,10 +1,18 @@
-export type Lang = 'es' | 'eu';
-export type LearnLang = Lang | 'both';
-export type UiLang = Lang;
+export type Lang = 'es' | 'eu' | 'en';
+export type LearnLang = Lang | 'both'; // 'both' = solo Euskera + Español
+export type DifficultyLevel = 'bajo' | 'medio' | 'alto';
+export type SchoolStage = 'general' | 'infantil' | 'prim12' | 'prim34' | 'prim56';
+export type UiLang = 'es' | 'eu';
 export type Route = 'visual' | 'auditivo' | 'mixta';
 export type Modality = 'visual' | 'auditivo' | 'any';
-export type ExerciseKind = 'choice' | 'build' | 'tap' | 'story' | 'action' | 'pairs';
+export type ExerciseKind = 'choice' | 'build' | 'tap' | 'story' | 'action' | 'pairs' | 'dictation';
 export type SyllableStage = 1 | 2 | 3; // 1: Directas (CV), 2: Inversas (VC), 3: Trabadas (CCV)
+
+/**
+ * Las 4 fases del aprendizaje de la lectura (de la pre-lectura a la lectura madura).
+ * Un lector experto no abandona la fase alfabética: usa ambas rutas en paralelo (modelo de doble ruta).
+ */
+export type ReadingPhase = 'fonologica' | 'logográfica' | 'alfabética' | 'ortográfica';
 
 export type NavTab = 'learn' | 'letters' | 'stories' | 'practice' | 'leaderboard' | 'quests' | 'shop' | 'profile';
 
@@ -18,16 +26,6 @@ export type SessionMode =
   | 'mistakes'
   | 'listening'
   | 'letters';
-
-export type SupportId =
-  | 'cognitiva'
-  | 'comprension'
-  | 'comunicacion'
-  | 'dislexia'
-  | 'tdah'
-  | 'tea'
-  | 'down'
-  | 'daltonismo';
 
 export interface Option {
   id: string;
@@ -86,12 +84,14 @@ export interface Exercise {
     pattern?: string;
     symbol?: string;
   };
-  audio?: { text: string; lang: Lang };
+  audio?: { text: string; lang: Lang; syllables?: string[] };
   options?: Option[];
   correctId?: string;
   tiles?: Tile[];
   correctOrder?: string[];
-  unit?: 'syllable' | 'word';
+  unit?: 'letter' | 'syllable' | 'word';
+  dictationTarget?: string;
+  dictationPlaceholder?: string;
   chips?: Tile[];
   correctChip?: string;
   pairs?: PairCard[];
@@ -124,13 +124,16 @@ export interface Progress {
   joinedDate: string;
   uiLang: UiLang;
   learnLang: LearnLang;
+  difficultyLevel: DifficultyLevel;
+  schoolStage: SchoolStage;
+  readingPhase: ReadingPhase;
+  speechRate: number;
   route: Route;
   sound: boolean;
   music: boolean;
   darkMode: boolean;
   bigText: boolean;
   unlockAll: boolean;
-  supports: SupportId[];
   calmMode: boolean;
 
   /* Gamificación estilo Duolingo */

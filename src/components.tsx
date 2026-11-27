@@ -657,7 +657,7 @@ export function LangChip({ lang }: { lang: Lang }) {
   return (
     <span className={`lang-chip lang-${lang}`}>
       <strong>{lang.toUpperCase()}</strong>
-      <span>{lang === 'eu' ? 'euskara' : 'castellano'}</span>
+      <span>{lang === 'eu' ? 'euskara' : lang === 'en' ? 'english' : 'castellano'}</span>
     </span>
   );
 }

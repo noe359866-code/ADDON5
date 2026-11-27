@@ -1,73 +1,9 @@
 import { colors, words } from './data';
 import { t } from './i18n';
-import type { Exercise, Progress, SupportId, UiLang } from './types';
+import type { Exercise, Progress, UiLang } from './types';
 
 /* ------------------------------------------------------------------ */
-/* Perfiles de apoyo (se pueden combinar entre sí)                     */
-/* ------------------------------------------------------------------ */
-
-export interface SupportProfile {
-  id: SupportId;
-  emoji: string;
-  es: { name: string; desc: string };
-  eu: { name: string; desc: string };
-}
-
-export const supportProfiles: SupportProfile[] = [
-  {
-    id: 'cognitiva',
-    emoji: '🧠',
-    es: { name: 'Discapacidad cognitiva', desc: 'Sesiones cortas, 2 opciones, palabras concretas y repetición.' },
-    eu: { name: 'Desgaitasun kognitiboa', desc: 'Saio laburrak, 2 aukera, hitz zehatzak eta errepikapena.' },
-  },
-  {
-    id: 'comprension',
-    emoji: '📖',
-    es: { name: 'Dificultades de comprensión', desc: 'Frases cortas, cuentos de una sola frase y apoyo visual.' },
-    eu: { name: 'Ulermen zailtasunak', desc: 'Esaldi laburrak, esaldi bateko ipuinak eta laguntza bisuala.' },
-  },
-  {
-    id: 'comunicacion',
-    emoji: '💬',
-    es: { name: 'Dificultades comunicativas', desc: 'Pictogramas, la voz dice la respuesta y rutina visual.' },
-    eu: { name: 'Komunikazio zailtasunak', desc: 'Piktogramak, erantzuna esaten duen ahotsa eta errutina bisuala.' },
-  },
-  {
-    id: 'dislexia',
-    emoji: '🔠',
-    es: { name: 'Dislexia', desc: 'Letra hiperlegible, sílabas de colores, espaciado y voz siempre.' },
-    eu: { name: 'Dislexia', desc: 'Letra hiperlegigarria, koloretako silabak, tarteak eta ahotsa beti.' },
-  },
-  {
-    id: 'tdah',
-    emoji: '⚡',
-    es: { name: 'Hiperactividad / TDAH', desc: 'Sesiones muy cortas con pausas de movimiento cada 3 actividades.' },
-    eu: { name: 'Hiperaktibitatea / TDAH', desc: 'Saio oso laburrak, 3 jardueratik behin mugimendu-pausak.' },
-  },
-  {
-    id: 'tea',
-    emoji: '🧩',
-    es: { name: 'TEA / Autismo', desc: 'Rutina predecible, lenguaje literal, sin sorpresas ni confeti.' },
-    eu: { name: 'TEA / Autismoa', desc: 'Errutina aurreikusgarria, hizkuntza literala, ustekaberik eta konfetirik gabe.' },
-  },
-  {
-    id: 'down',
-    emoji: '🌈',
-    es: { name: 'Síndrome de Down', desc: 'Más imágenes, repetición, botones grandes y refuerzo positivo.' },
-    eu: { name: 'Down sindromea', desc: 'Irudi gehiago, errepikapena, botoi handiak eta indarpen positiboa.' },
-  },
-  {
-    id: 'daltonismo',
-    emoji: '🎨',
-    es: { name: 'Daltonismo', desc: 'Paleta de alto contraste, patrones y símbolos en los colores y sin pruebas de solo color.' },
-    eu: { name: 'Daltonismoa', desc: 'Kontraste handiko paleta, patroiak eta ikurrak koloreetan, eta kolore hutseko probarik gabe.' },
-  },
-];
-
-export const supportById: Record<string, SupportProfile> = Object.fromEntries(supportProfiles.map((p) => [p.id, p]));
-
-/* ------------------------------------------------------------------ */
-/* Qué cambia exactamente en la app                                    */
+/* Ajustes de accesibilidad (sin diagnosticos: solo toggles del usuario) */
 /* ------------------------------------------------------------------ */
 
 export interface Adaptations {
@@ -87,7 +23,6 @@ export interface Adaptations {
   movement: boolean;
   shortPrompts: boolean;
   colorblind: boolean;
-  active: SupportId[];
 }
 
 export const defaultAdaptations: Adaptations = {
@@ -107,65 +42,30 @@ export const defaultAdaptations: Adaptations = {
   movement: false,
   shortPrompts: false,
   colorblind: false,
-  active: [],
 };
 
-export function adaptationsFor(supports: SupportId[], extra: { calmMode?: boolean; bigText?: boolean } = {}): Adaptations {
-  const a: Adaptations = { ...defaultAdaptations, active: [...supports] };
-  const has = (id: SupportId) => supports.includes(id);
-
-  // Lectura fácil / apoyo cognitivo: menos carga, más imagen, más voz.
-  if (has('cognitiva') || has('comprension') || has('down') || has('comunicacion')) {
-    a.optionCount = 2;
-    a.sessionLength = 4;
-    a.practiceLength = 5;
-    a.difficultyCap = 1;
-    a.autoRead = true;
-    a.simpleOnly = true;
-    a.pictograms = true;
-    a.gentle = true;
-    a.firstThen = true;
-    a.bigTargets = true;
-    a.speakAnswer = true;
-    a.shortPrompts = true;
-  }
-  if (has('dislexia')) {
-    a.hyperlegible = true;
-    a.autoRead = true;
-    a.gentle = true;
-    a.bigTargets = true;
-    a.shortPrompts = true;
-    a.optionCount = Math.min(a.optionCount, 3);
-    a.difficultyCap = Math.min(a.difficultyCap, 2);
-  }
-  if (has('tdah')) {
-    a.sessionLength = 4;
-    a.practiceLength = 5;
-    a.movement = true;
-    a.bigTargets = true;
-    a.firstThen = true;
-    a.gentle = true;
-  }
-  if (has('tea')) {
+/** Ajustes derivados solo de los toggles del usuario (sin diagnosticos). */
+export function adaptationsFor(extra: { calmMode?: boolean; bigText?: boolean } = {}): Adaptations {
+  const a: Adaptations = { ...defaultAdaptations };
+  if (extra.calmMode) {
     a.calm = true;
-    a.firstThen = true;
+    a.gentle = true;
     a.shortPrompts = true;
     a.autoRead = true;
-    a.gentle = true;
-    a.optionCount = Math.min(a.optionCount, 3);
+    a.firstThen = true;
   }
-  if (has('daltonismo')) {
-    a.colorblind = true;
+  if (extra.bigText) {
+    a.bigTargets = true;
+    a.hyperlegible = true;
   }
-  if (extra.calmMode) a.calm = true;
-  if (extra.bigText) a.bigTargets = true;
   return a;
 }
 
 export function computeAdaptations(p: Progress): Adaptations {
-  return adaptationsFor(p.supports ?? [], { calmMode: p.calmMode, bigText: p.bigText });
+  return adaptationsFor({ calmMode: p.calmMode, bigText: p.bigText });
 }
 
+/** Resumen visible de los ajustes activos (sin etiquetas diagnosticas). */
 export function supportSummary(a: Adaptations, ui: UiLang): string[] {
   const out: string[] = [];
   if (a.sessionLength <= 4) out.push(t('adaptShort', ui));
@@ -199,13 +99,16 @@ const pictograms = new Map<string, string>();
 for (const w of words) {
   pictograms.set(norm(w.es), w.emoji);
   pictograms.set(norm(w.eu), w.emoji);
+  pictograms.set(norm(w.en), w.emoji);
 }
 const colorMeta = new Map<string, { hex: string; pattern: string; symbol: string }>();
 for (const c of colors) {
   pictograms.set(norm(c.es), c.emoji);
   pictograms.set(norm(c.eu), c.emoji);
+  pictograms.set(norm(c.en), c.emoji);
   colorMeta.set(norm(c.es), { hex: c.hex, pattern: c.pattern, symbol: c.symbol });
   colorMeta.set(norm(c.eu), { hex: c.hex, pattern: c.pattern, symbol: c.symbol });
+  colorMeta.set(norm(c.en), { hex: c.hex, pattern: c.pattern, symbol: c.symbol });
 }
 
 function shuffle<T>(arr: T[]): T[] {

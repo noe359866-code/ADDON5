@@ -20,7 +20,7 @@ import {
   DuoGemSvg,
   DuoHeartSvg,
   DuoTurtleSvg,
-  IconAccessibility,
+  IconBook,
   IconCheck,
   IconClose,
   IconLock,
@@ -132,6 +132,31 @@ export function GuidebookModal({
                     <DuoTurtleSvg size={16} />
                   </button>
                 </div>
+                <div className="duo-gb-lang-line">
+                  <span className="duo-mini-tag tag-en">EN</span>
+                  <strong>{ph.en}</strong>
+                  <small>({ph.sylEn})</small>
+                  <button
+                    className="duo-audio-mini"
+                    onClick={() => {
+                      sfx('click', sound);
+                      speak(ph.en, 'en', sound, 0.88);
+                    }}
+                    title="Listen EN"
+                  >
+                    <IconVolume size={15} />
+                  </button>
+                  <button
+                    className="duo-audio-mini slow"
+                    onClick={() => {
+                      sfx('click', sound);
+                      speak(ph.en, 'en', sound, 0.58);
+                    }}
+                    title={t('slowAudio', ui)}
+                  >
+                    <DuoTurtleSvg size={16} />
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -161,7 +186,7 @@ export function LettersView({
   onStartSyllableStage?: (stage?: SyllableStage) => void;
 }) {
   const ui = progress.uiLang;
-  const activeLang: Lang = progress.learnLang === 'eu' ? 'eu' : 'es';
+  const activeLang: Lang = progress.learnLang === 'eu' ? 'eu' : progress.learnLang === 'en' ? 'en' : 'es';
   const [listenLang, setListenLang] = useState<Lang>(activeLang);
 
   const stage1Done = (progress.nodeProgress['u2-n0'] ?? 0) >= 1 || !!progress.completed[2];
@@ -171,9 +196,10 @@ export function LettersView({
   const stage2Unlocked = progress.unlockAll || stage1Done;
   const stage3Unlocked = progress.unlockAll || stage2Done;
 
-  function handleCardTap(id: string, audioEs: string, audioEu: string) {
+  function handleCardTap(id: string, audioEs: string, audioEu: string, audioEn: string) {
     sfx('pop', progress.sound);
-    speak(listenLang === 'eu' ? audioEu : audioEs, listenLang, progress.sound, 0.86);
+    const audioText = listenLang === 'eu' ? audioEu : listenLang === 'en' ? audioEn : audioEs;
+    speak(audioText, listenLang, progress.sound, progress.speechRate);
     if (!progress.lettersMastered.includes(id)) {
       setProgress((prev) => ({
         lettersMastered: prev.lettersMastered.includes(id) ? prev.lettersMastered : [...prev.lettersMastered, id],
@@ -195,7 +221,12 @@ export function LettersView({
       stage: 1,
       title: t('sylStage1Short', ui),
       sub: t('sylStage1Sub', ui),
-      chips: listenLang === 'eu' ? ['ma', 'ka', 'lu', 'zo', 'pi'] : ['ma', 'pa', 'lu', 'so', 'pe'],
+      chips:
+        listenLang === 'eu'
+          ? ['ma', 'ka', 'lu', 'zo', 'pi']
+          : listenLang === 'en'
+            ? ['ba', 'na', 'to', 'ma', 'so']
+            : ['ma', 'pa', 'lu', 'so', 'pe'],
       color: 'green',
       done: stage1Done,
       unlocked: true,
@@ -204,7 +235,12 @@ export function LettersView({
       stage: 2,
       title: t('sylStage2Short', ui),
       sub: t('sylStage2Sub', ui),
-      chips: listenLang === 'eu' ? ['ir', 'es', 'ar', 'ez', 'in'] : ['is', 'es', 'ar', 'an', 'in'],
+      chips:
+        listenLang === 'eu'
+          ? ['ir', 'es', 'ar', 'ez', 'in']
+          : listenLang === 'en'
+            ? ['is', 'an', 'in', 'ar', 'am']
+            : ['is', 'es', 'ar', 'an', 'in'],
       color: 'blue',
       done: stage2Done,
       unlocked: stage2Unlocked,
@@ -213,7 +249,12 @@ export function LettersView({
       stage: 3,
       title: t('sylStage3Short', ui),
       sub: t('sylStage3Sub', ui),
-      chips: listenLang === 'eu' ? ['pla', 'tre', 'dra', 'kle', 'bra'] : ['pla', 'tre', 'dra', 'cle', 'bra'],
+      chips:
+        listenLang === 'eu'
+          ? ['pla', 'tre', 'dra', 'kle', 'bra']
+          : listenLang === 'en'
+            ? ['pla', 'tra', 'dra', 'cle', 'fru']
+            : ['pla', 'tre', 'dra', 'cle', 'bra'],
       color: 'purple',
       done: stage3Done,
       unlocked: stage3Unlocked,
@@ -250,6 +291,30 @@ export function LettersView({
               >
                 🔊 EU
               </button>
+              <button
+                className={listenLang === 'en' ? 'active' : ''}
+                onClick={() => setListenLang('en')}
+              >
+                🔊 EN
+              </button>
+            </div>
+            <div className="duo-speed-bar duo-letters-speed">
+              <div className="duo-speed-bar-head">
+                <span>🎚️ {t('audioSpeedLabel', ui)}</span>
+                <span className="duo-speed-value">
+                  {progress.speechRate <= 0.72 ? `🐢 ${t('audioSpeedSlowHint', ui)}` : `🐇 ${t('audioSpeedNormalHint', ui)}`}
+                </span>
+              </div>
+              <input
+                type="range"
+                className="duo-speed-range"
+                min={0.45}
+                max={1}
+                step={0.05}
+                value={progress.speechRate}
+                onChange={(e) => setProgress({ speechRate: Number(e.target.value) })}
+                aria-label={t('audioSpeedLabel', ui)}
+              />
             </div>
           </div>
         </div>
@@ -329,12 +394,12 @@ export function LettersView({
                 <button
                   key={card.id}
                   className={`duo-phonetic-card ${mastered ? 'mastered' : ''}`}
-                  onClick={() => handleCardTap(card.id, card.audioEs, card.audioEu)}
+                  onClick={() => handleCardTap(card.id, card.audioEs, card.audioEu, card.audioEn)}
                 >
                   <span className="duo-phonetic-emoji" aria-hidden="true">{card.emoji}</span>
                   <strong className="duo-phonetic-sym">{card.symbol}</strong>
                   <small className="duo-phonetic-ex">
-                    {listenLang === 'eu' ? card.exampleEu : card.exampleEs}
+                    {listenLang === 'eu' ? card.exampleEu : listenLang === 'en' ? card.exampleEn : card.exampleEs}
                   </small>
                   <span className="duo-phonetic-bar">
                     <i style={{ width: mastered ? '100%' : '22%' }} />
@@ -365,7 +430,7 @@ export function StoryPlayerModal({
   onClose: () => void;
 }) {
   const ui = progress.uiLang;
-  const primaryLang: Lang = progress.learnLang === 'eu' ? 'eu' : 'es';
+  const primaryLang: Lang = progress.learnLang === 'eu' ? 'eu' : progress.learnLang === 'en' ? 'en' : 'es';
   const [readLang, setReadLang] = useState<Lang>(primaryLang);
   const [showDual, setShowDual] = useState(progress.learnLang === 'both');
   const [visibleSteps, setVisibleSteps] = useState(1);
@@ -377,6 +442,14 @@ export function StoryPlayerModal({
   const activeStep = story.steps[activeStepIndex];
   const needsQuiz = !!activeStep?.quiz && !quizAnswered[activeStepIndex];
   const isLastStep = visibleSteps >= story.steps.length && !needsQuiz;
+
+  function storyTitleFor(l: Lang): string {
+    return l === 'eu' ? story.titleEu : l === 'en' ? story.titleEn : story.titleEs;
+  }
+
+  function stepTextFor(step: DuoStory['steps'][number], l: Lang): string {
+    return l === 'eu' ? step.eu : l === 'en' ? step.en : step.es;
+  }
 
   function speakLine(text: string, lang: Lang, rate = 0.88) {
     speak(text, lang, progress.sound, rate);
@@ -390,7 +463,7 @@ export function StoryPlayerModal({
       setVisibleSteps(nextIdx + 1);
       setWrongPick(null);
       sfx('pop', progress.sound);
-      speakLine(readLang === 'eu' ? nextStep.eu : nextStep.es, readLang);
+      speakLine(stepTextFor(nextStep, readLang), readLang);
     } else {
       setDone(true);
       sfx('levelup', progress.sound);
@@ -445,9 +518,15 @@ export function StoryPlayerModal({
             EU
           </button>
           <button
+            className={`duo-chip-btn ${readLang === 'en' ? 'on' : ''}`}
+            onClick={() => setReadLang('en')}
+          >
+            EN
+          </button>
+          <button
             className={`duo-chip-btn ${showDual ? 'on' : ''}`}
             onClick={() => setShowDual((v) => !v)}
-            title="Subtítulo bilingüe"
+            title="Subtítulo bilingüe ES+EU"
           >
             ES+EU
           </button>
@@ -462,14 +541,14 @@ export function StoryPlayerModal({
                 {story.emoji}
               </span>
               <div>
-                <h2>{readLang === 'eu' ? story.titleEu : story.titleEs}</h2>
+                <h2>{storyTitleFor(readLang)}</h2>
                 {showDual && (
                   <p className="duo-story-dual-sub">{readLang === 'eu' ? story.titleEs : story.titleEu}</p>
                 )}
               </div>
               <button
                 className="duo-audio-circle"
-                onClick={() => speakLine(readLang === 'eu' ? story.titleEu : story.titleEs, readLang)}
+                onClick={() => speakLine(storyTitleFor(readLang), readLang)}
                 aria-label={t('listen', ui)}
               >
                 <IconVolume size={18} />
@@ -478,8 +557,8 @@ export function StoryPlayerModal({
 
             <div className="duo-story-lines">
               {story.steps.slice(0, visibleSteps).map((step, idx) => {
-                const mainText = readLang === 'eu' ? step.eu : step.es;
-                const subText = readLang === 'eu' ? step.es : step.eu;
+                const mainText = stepTextFor(step, readLang);
+                const subText = readLang === 'eu' ? step.es : readLang === 'en' ? (ui === 'eu' ? step.eu : step.es) : step.eu;
                 return (
                   <div key={idx} className="duo-story-block">
                     <div className="duo-story-line">
@@ -511,7 +590,13 @@ export function StoryPlayerModal({
 
                     {step.quiz && (
                       <div className="duo-story-quiz">
-                        <h4>{ui === 'eu' ? step.quiz.questionEu : step.quiz.questionEs}</h4>
+                        <h4>
+                          {readLang === 'en'
+                            ? step.quiz.questionEn
+                            : ui === 'eu'
+                              ? step.quiz.questionEu
+                              : step.quiz.questionEs}
+                        </h4>
                         <div className="duo-story-quiz-opts">
                           {step.quiz.options.map((opt, oIdx) => {
                             const answered = !!quizAnswered[idx];
@@ -523,7 +608,7 @@ export function StoryPlayerModal({
                                 className={`duo-story-opt ${answered && opt.ok ? 'is-correct' : ''} ${isWrong ? 'is-wrong' : ''}`}
                                 onClick={() => answerQuiz(idx, oIdx, opt.ok)}
                               >
-                                <span>{readLang === 'eu' ? opt.eu : opt.es}</span>
+                                <span>{readLang === 'eu' ? opt.eu : readLang === 'en' ? opt.en : opt.es}</span>
                                 {answered && opt.ok && <IconCheck size={16} />}
                               </button>
                             );
@@ -540,7 +625,7 @@ export function StoryPlayerModal({
           <div className="duo-story-done-card">
             <Mascot mood="cheer" size={140} outfit={progress.equippedOutfit} interactive sound={progress.sound} />
             <h2>{ui === 'eu' ? 'Ipuina amaituta!' : '¡Cuento completado!'}</h2>
-            <p>{readLang === 'eu' ? story.titleEu : story.titleEs}</p>
+            <p>{storyTitleFor(readLang)}</p>
             <div className="duo-result-boxes two-cols">
               <div className="duo-rbox yellow">
                 <span className="duo-rbox-head">{t('statTotalXp', ui)}</span>
@@ -584,9 +669,11 @@ export function StoryPlayerModal({
 
 export function StoriesView({
   progress,
+  setProgress,
   onOpenStory,
 }: {
   progress: Progress;
+  setProgress: (patch: Partial<Progress> | ((prev: Progress) => Partial<Progress>)) => void;
   onOpenStory: (story: DuoStory) => void;
 }) {
   const ui = progress.uiLang;
@@ -598,6 +685,24 @@ export function StoriesView({
         <div>
           <h1>{t('storiesTitle', ui)}</h1>
           <p>{t('storiesSub', ui)}</p>
+          <div className="duo-speed-bar duo-letters-speed">
+            <div className="duo-speed-bar-head">
+              <span>🎚️ {t('audioSpeedLabel', ui)}</span>
+              <span className="duo-speed-value">
+                {progress.speechRate <= 0.72 ? `🐢 ${t('audioSpeedSlowHint', ui)}` : `🐇 ${t('audioSpeedNormalHint', ui)}`}
+              </span>
+            </div>
+            <input
+              type="range"
+              className="duo-speed-range"
+              min={0.45}
+              max={1}
+              step={0.05}
+              value={progress.speechRate}
+              onChange={(e) => setProgress({ speechRate: Number(e.target.value) })}
+              aria-label={t('audioSpeedLabel', ui)}
+            />
+          </div>
         </div>
         <Mascot mood="excited" size={106} outfit={progress.equippedOutfit} interactive sound={progress.sound} />
       </div>
@@ -627,7 +732,9 @@ export function StoriesView({
                       </span>
                     )}
                   </div>
-                  <strong>{ui === 'eu' ? st.titleEu : st.titleEs}</strong>
+                  <strong>
+                    {progress.learnLang === 'en' ? st.titleEn : ui === 'eu' ? st.titleEu : st.titleEs}
+                  </strong>
                   <span className="duo-story-xp-tag">
                     {isRead ? t('storyReplayBtn', ui) : t('storyStartBtn', ui)}
                   </span>
@@ -769,7 +876,7 @@ export function LeaderboardView({
         bg: '#d7ffb8',
         xp: progress.xp,
         streak: progress.streak,
-        flag: (progress.learnLang === 'both' ? 'ES+EU' : progress.learnLang.toUpperCase()) as 'ES' | 'EU' | 'ES+EU',
+        flag: (progress.learnLang === 'both' ? 'ES+EU' : progress.learnLang.toUpperCase()) as 'ES' | 'EU' | 'EN' | 'ES+EU',
         isMe: true,
       },
     ];
@@ -1224,15 +1331,15 @@ export function ProfileView({
                   ? 'ES + EU'
                   : progress.learnLang === 'eu'
                     ? 'Euskara'
-                    : 'Castellano'}
+                    : progress.learnLang === 'en'
+                      ? 'English'
+                      : 'Castellano'}
               </strong>
             </span>
-            {progress.supports.length > 0 && (
-              <span className="duo-flag-pill support">
-                <IconAccessibility size={15} />
-                <strong>{progress.supports.length} {ui === 'eu' ? 'laguntza' : 'apoyos'}</strong>
-              </span>
-            )}
+            <span className="duo-flag-pill support">
+              <IconBook size={15} />
+              <strong>{t('phase' + (progress.readingPhase[0]!.toUpperCase() + progress.readingPhase.slice(1)), ui)}</strong>
+            </span>
           </div>
         </div>
         <div className="duo-profile-actions">

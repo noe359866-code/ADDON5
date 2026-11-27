@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { adaptationsFor, computeAdaptations, supportProfiles, supportSummary } from './adaptations';
+import { computeAdaptations, supportSummary } from './adaptations';
 import {
   Confetti,
   DuoOwlBuddy,
@@ -59,6 +59,7 @@ import {
   IconMusic,
   IconPlay,
   IconRepeat,
+  IconSchool,
   IconSettings,
   IconStar,
   IconUser,
@@ -69,7 +70,7 @@ import { t, tf } from './i18n';
 import { startAmbientMusic, stopAmbientMusic } from './music';
 import { getRecentWeekStats, isUnlocked, isXpBoostActive, nextLevel, todayString, xpBoostMinutesLeft } from './progress';
 import { sfx } from './sound';
-import type { LearnLang, NavTab, Progress, Route, SessionMode, SessionResult, SupportId, UiLang } from './types';
+import type { DifficultyLevel, LearnLang, NavTab, Progress, ReadingPhase, Route, SchoolStage, SessionMode, SessionResult, UiLang } from './types';
 
 function syncMusic(enabled: boolean) {
   if (enabled) startAmbientMusic();
@@ -130,36 +131,56 @@ export function Onboarding({ onDone }: { onDone: (patch: Partial<Progress>) => v
   const [step, setStep] = useState(0);
   const [name, setName] = useState('');
   const [learnLang, setLearnLang] = useState<LearnLang>('both');
+  const [difficultyLevel, setDifficultyLevel] = useState<DifficultyLevel>('medio');
+  const [schoolStage, setSchoolStage] = useState<SchoolStage>('general');
   const [route, setRoute] = useState<Route>('mixta');
   const [dailyGoal, setDailyGoal] = useState<number>(20);
   const [ui, setUi] = useState<UiLang>('es');
-  const [supports, setSupports] = useState<SupportId[]>([]);
+  const [readingPhase, setReadingPhase] = useState<ReadingPhase>('alfabética');
 
-  const toggleSupport = (id: SupportId) =>
-    setSupports((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-
-  const langCards: { value: LearnLang; flag: 'es' | 'eu' | 'both'; title: string; desc: string }[] = [
+  const langCards: { value: LearnLang; flag: 'es' | 'eu' | 'en' | 'both'; title: string; desc: string }[] = [
     { value: 'es', flag: 'es', title: t('langEs', ui), desc: t('langEsDesc', ui) },
     { value: 'eu', flag: 'eu', title: t('langEu', ui), desc: t('langEuDesc', ui) },
+    { value: 'en', flag: 'en', title: t('langEn', ui), desc: t('langEnDesc', ui) },
     { value: 'both', flag: 'both', title: t('langBoth', ui), desc: t('langBothDesc', ui) },
+  ];
+  const diffCards: { value: DifficultyLevel; emoji: string; title: string; desc: string }[] = [
+    { value: 'bajo', emoji: '🌱', title: t('diffLow', ui), desc: t('diffLowDesc', ui) },
+    { value: 'medio', emoji: '⭐', title: t('diffMed', ui), desc: t('diffMedDesc', ui) },
+    { value: 'alto', emoji: '🚀', title: t('diffHigh', ui), desc: t('diffHighDesc', ui) },
+  ];
+  const stageCards: { value: SchoolStage; emoji: string; title: string; desc: string }[] = [
+    { value: 'general', emoji: '🧩', title: t('stageGeneral', ui), desc: t('stageGeneralDesc', ui) },
+    { value: 'infantil', emoji: '🧸', title: t('stageInfantil', ui), desc: t('stageInfantilDesc', ui) },
+    { value: 'prim12', emoji: '📖', title: t('stagePrim12', ui), desc: t('stagePrim12Desc', ui) },
+    { value: 'prim34', emoji: '📅', title: t('stagePrim34', ui), desc: t('stagePrim34Desc', ui) },
+    { value: 'prim56', emoji: '🏆', title: t('stagePrim56', ui), desc: t('stagePrim56Desc', ui) },
   ];
   const routeCards: { value: Route; title: string; desc: string }[] = [
     { value: 'visual', title: t('routeVisual', ui), desc: t('routeVisualDesc', ui) },
     { value: 'auditivo', title: t('routeAuditivo', ui), desc: t('routeAuditivoDesc', ui) },
     { value: 'mixta', title: t('routeMixta', ui), desc: t('routeMixtaDesc', ui) },
   ];
+  const phaseCards: { value: ReadingPhase; emoji: string; title: string; desc: string }[] = [
+    { value: 'fonologica', emoji: '🎵', title: t('phaseFonologica', ui), desc: t('phaseFonologicaDesc', ui) },
+    { value: 'logográfica', emoji: '👀', title: t('phaseLogografica', ui), desc: t('phaseLogograficaDesc', ui) },
+    { value: 'alfabética', emoji: '🔤', title: t('phaseAlfabetica', ui), desc: t('phaseAlfabeticaDesc', ui) },
+    { value: 'ortográfica', emoji: '📖', title: t('phaseOrtografica', ui), desc: t('phaseOrtograficaDesc', ui) },
+  ];
 
-  function completeOnboarding(chosenSupports: SupportId[]) {
+  function completeOnboarding() {
     onDone({
       onboarded: true,
       name: name.trim() || (ui === 'eu' ? 'Lagun' : 'Amigo'),
       learnLang,
+      difficultyLevel,
+      schoolStage,
+      readingPhase,
       route,
       dailyGoal,
       uiLang: ui,
-      supports: chosenSupports,
-      calmMode: chosenSupports.includes('tea'),
-      unlimitedHearts: chosenSupports.length > 0,
+      calmMode: false,
+      unlimitedHearts: false,
     });
   }
 
@@ -239,6 +260,56 @@ export function Onboarding({ onDone }: { onDone: (patch: Partial<Progress>) => v
           <>
             <h1>{t('step2Title', ui)}</h1>
             <p className="onb-sub">{t('step2Sub', ui)}</p>
+
+            <div className="duo-onb-goal" style={{ marginBottom: 16 }}>
+              <span className="field-label">📊 {t('diffLevelLabel', ui)}</span>
+              <div className="choice-grid">
+                {diffCards.map((dc, i) => (
+                  <button
+                    key={dc.value}
+                    style={staggerStyle(i)}
+                    className={`choice-card ${difficultyLevel === dc.value ? 'selected' : ''}`}
+                    onClick={() => setDifficultyLevel(dc.value)}
+                    aria-pressed={difficultyLevel === dc.value}
+                  >
+                    <span className="choice-icon" aria-hidden="true">{dc.emoji}</span>
+                    <strong>{dc.title}</strong>
+                    <small>{dc.desc}</small>
+                    {difficultyLevel === dc.value && (
+                      <span className="choice-check" aria-hidden="true">
+                        <IconCheck size={13} />
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="duo-onb-goal" style={{ marginBottom: 16 }}>
+              <span className="field-label">🏫 {t('stageLabel', ui)}</span>
+              <div className="choice-grid">
+                {stageCards.map((sc, i) => (
+                  <button
+                    key={sc.value}
+                    style={staggerStyle(i)}
+                    className={`choice-card ${schoolStage === sc.value ? 'selected' : ''}`}
+                    onClick={() => setSchoolStage(sc.value)}
+                    aria-pressed={schoolStage === sc.value}
+                  >
+                    <span className="choice-icon" aria-hidden="true">{sc.emoji}</span>
+                    <strong>{sc.title}</strong>
+                    <small>{sc.desc}</small>
+                    {schoolStage === sc.value && (
+                      <span className="choice-check" aria-hidden="true">
+                        <IconCheck size={13} />
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <span className="field-label" style={{ display: 'flex', marginBottom: 8 }}>🧭 {t('routeLabel', ui)}</span>
             <div className="choice-grid">
               {routeCards.map((card, i) => (
                 <button
@@ -296,23 +367,23 @@ export function Onboarding({ onDone }: { onDone: (patch: Partial<Progress>) => v
           </>
         ) : (
           <>
-            <h1>{t('step3Title', ui)}</h1>
-            <p className="onb-sub">{t('step3Sub', ui)}</p>
+            <h1>{t('phaseTitle', ui)}</h1>
+            <p className="onb-sub">{t('phaseSub', ui)}</p>
             <div className="support-grid">
-              {supportProfiles.map((profile, i) => (
+              {phaseCards.map((card, i) => (
                 <button
-                  key={profile.id}
+                  key={card.value}
                   style={staggerStyle(i)}
-                  className={`support-card ${supports.includes(profile.id) ? 'selected' : ''}`}
-                  onClick={() => toggleSupport(profile.id)}
-                  aria-pressed={supports.includes(profile.id)}
+                  className={`support-card ${readingPhase === card.value ? 'selected' : ''}`}
+                  onClick={() => setReadingPhase(card.value)}
+                  aria-pressed={readingPhase === card.value}
                 >
-                  <span className="support-emoji" aria-hidden="true">{profile.emoji}</span>
+                  <span className="support-emoji" aria-hidden="true">{card.emoji}</span>
                   <span className="support-text">
-                    <strong>{profile[ui].name}</strong>
-                    <small>{profile[ui].desc}</small>
+                    <strong>{card.title}</strong>
+                    <small>{card.desc}</small>
                   </span>
-                  {supports.includes(profile.id) && (
+                  {readingPhase === card.value && (
                     <span className="choice-check" aria-hidden="true">
                       <IconCheck size={13} />
                     </span>
@@ -320,16 +391,9 @@ export function Onboarding({ onDone }: { onDone: (patch: Partial<Progress>) => v
                 </button>
               ))}
             </div>
-            {supports.length > 0 && (
-              <div className="support-summary">
-                {supportSummary(adaptationsFor(supports), ui).map((s) => (
-                  <span key={s}>{s}</span>
-                ))}
-              </div>
-            )}
             <p className="onb-note">
               <IconLightbulb size={16} />
-              <span>{t('supportsHint', ui)}</span>
+              <span>{t('phaseHint', ui)}</span>
             </p>
             <div className="onb-actions split">
               <button className="duo-btn duo-btn-outline" onClick={() => setStep(1)}>
@@ -338,15 +402,12 @@ export function Onboarding({ onDone }: { onDone: (patch: Partial<Progress>) => v
               </button>
               <button
                 className="duo-btn duo-btn-green duo-btn-lg"
-                onClick={() => completeOnboarding(supports)}
+                onClick={() => completeOnboarding()}
               >
                 <IconPlay size={16} />
                 <span>{t('letsGo', ui).toUpperCase()}</span>
               </button>
             </div>
-            <button className="support-skip" onClick={() => completeOnboarding([])}>
-              {t('supportSkip', ui)}
-            </button>
           </>
         )}
         <p className="onb-foot">{t('onboardNote', ui)}</p>
@@ -892,7 +953,7 @@ export function Home({ progress, setProgress, onStart, onToast, onSettings }: Ho
           <div className="duo-top-popover">
             <h4>{t('learningLabel', ui)}</h4>
             <div className="duo-pop-course-list">
-              {(['es', 'eu', 'both'] as LearnLang[]).map((code) => (
+              {(['es', 'eu', 'en', 'both'] as LearnLang[]).map((code) => (
                 <button
                   key={code}
                   className={`duo-pop-course-item ${progress.learnLang === code ? 'selected' : ''}`}
@@ -904,12 +965,48 @@ export function Home({ progress, setProgress, onStart, onToast, onSettings }: Ho
                 >
                   <DuoFlagSvg code={code} size={26} />
                   <strong>
-                    {code === 'es' ? t('langEs', ui) : code === 'eu' ? t('langEu', ui) : t('langBoth', ui)}
+                    {code === 'es'
+                      ? t('langEs', ui)
+                      : code === 'eu'
+                        ? t('langEu', ui)
+                        : code === 'en'
+                          ? t('langEn', ui)
+                          : t('langBoth', ui)}
                   </strong>
                   {progress.learnLang === code && <IconCheck size={15} />}
                 </button>
               ))}
             </div>
+            <div className="duo-pop-sep" />
+            <h4>{t('diffLevelLabel', ui)}</h4>
+            <Segmented<DifficultyLevel>
+              value={progress.difficultyLevel}
+              options={[
+                { value: 'bajo', label: t('diffLow', ui) },
+                { value: 'medio', label: t('diffMed', ui) },
+                { value: 'alto', label: t('diffHigh', ui) },
+              ]}
+              onChange={(difficultyLevel) => {
+                setProgress({ difficultyLevel });
+                onToast(t('diffChanged', ui));
+              }}
+            />
+            <div className="duo-pop-sep" />
+            <h4>{t('stageLabel', ui)}</h4>
+            <Segmented<SchoolStage>
+              value={progress.schoolStage}
+              options={[
+                { value: 'general', label: t('stageGeneral', ui) },
+                { value: 'infantil', label: t('stageInfantil', ui) },
+                { value: 'prim12', label: t('stagePrim12', ui) },
+                { value: 'prim34', label: t('stagePrim34', ui) },
+                { value: 'prim56', label: t('stagePrim56', ui) },
+              ]}
+              onChange={(schoolStage) => {
+                setProgress({ schoolStage });
+                onToast(t('stageChanged', ui));
+              }}
+            />
             <div className="duo-pop-sep" />
             <h4>{t('routeLabel', ui)}</h4>
             <Segmented<Route>
@@ -1150,7 +1247,7 @@ export function Home({ progress, setProgress, onStart, onToast, onSettings }: Ho
           />
         )}
         {activeTab === 'stories' && (
-          <StoriesView progress={progress} onOpenStory={(st) => setActiveStory(st)} />
+          <StoriesView progress={progress} setProgress={setProgress} onOpenStory={(st) => setActiveStory(st)} />
         )}
         {activeTab === 'practice' && (
           <PracticeHubView
@@ -1259,15 +1356,31 @@ export function Home({ progress, setProgress, onStart, onToast, onSettings }: Ho
           </div>
         </div>
 
-        {/* Widget de Ruta Pedagógica, Accesibilidad y Créditos */}
+        {/* Widget de Nivel (Bajo/Medio/Alto), Ruta Pedagógica y Accesibilidad */}
         <div className="duo-rail-card">
           <div className="duo-rail-head">
             <h3>
-              <IconAccessibility size={16} /> {t('supportsTitle', ui)}
+              <IconAccessibility size={16} /> {t('diffLevelLabel', ui)}
             </h3>
             <button className="duo-link-btn" onClick={onSettings}>
               {t('configureSupports', ui).toUpperCase()}
             </button>
+          </div>
+          <div className="duo-rail-route-pills" style={{ marginBottom: 8 }}>
+            {(['bajo', 'medio', 'alto'] as DifficultyLevel[]).map((dl) => (
+              <button
+                key={dl}
+                className={`duo-route-mini ${progress.difficultyLevel === dl ? 'active' : ''}`}
+                onClick={() => {
+                  setProgress({ difficultyLevel: dl });
+                  onToast(t('diffChanged', ui));
+                }}
+              >
+                <span>
+                  {dl === 'bajo' ? `🌱 ${t('diffLow', ui)}` : dl === 'medio' ? `⭐ ${t('diffMed', ui)}` : `🚀 ${t('diffHigh', ui)}`}
+                </span>
+              </button>
+            ))}
           </div>
           <div className="duo-rail-route-pills">
             {(['visual', 'auditivo', 'mixta'] as Route[]).map((r) => (
@@ -1286,7 +1399,7 @@ export function Home({ progress, setProgress, onStart, onToast, onSettings }: Ho
               </button>
             ))}
           </div>
-          {ad.active.length > 0 && (
+          {supportSummary(ad, ui).length > 0 && (
             <div className="support-summary" style={{ marginTop: 10 }}>
               {supportSummary(ad, ui).map((lbl) => (
                 <span key={lbl}>{lbl}</span>
@@ -1371,12 +1484,7 @@ function Toggle({
 export function Settings({ progress, setProgress, onClose, onReset, onToast }: SettingsProps) {
   const ui = progress.uiLang;
   const [confirmReset, setConfirmReset] = useState(false);
-  const activeSupports = progress.supports ?? [];
   const summary = supportSummary(computeAdaptations(progress), ui);
-  const toggleSupport = (id: SupportId) =>
-    setProgress((prev) => ({
-      supports: prev.supports.includes(id) ? prev.supports.filter((x) => x !== id) : [...prev.supports, id],
-    }));
   return (
     <Modal onClose={onClose} labelledBy="settings-title">
       <div className="settings">
@@ -1411,15 +1519,52 @@ export function Settings({ progress, setProgress, onClose, onReset, onToast }: S
               options={[
                 { value: 'es', label: t('langEs', ui) },
                 { value: 'eu', label: t('langEu', ui) },
+                { value: 'en', label: t('langEn', ui) },
                 { value: 'both', label: t('langBoth', ui) },
               ]}
               onChange={(value) => setProgress({ learnLang: value })}
             />
+            <p className="settings-hint">{t('langBothDesc', ui)}</p>
           </div>
         </div>
 
         <div className="settings-group">
           <h3 className="settings-group-title">{t('settingsGroupMethod', ui)}</h3>
+          <div className="settings-field">
+            <span className="field-label"><IconBolt size={15} /> {t('diffLevelLabel', ui)}</span>
+            <Segmented<DifficultyLevel>
+              value={progress.difficultyLevel}
+              options={[
+                { value: 'bajo', label: `🌱 ${t('diffLow', ui)}` },
+                { value: 'medio', label: `⭐ ${t('diffMed', ui)}` },
+                { value: 'alto', label: `🚀 ${t('diffHigh', ui)}` },
+              ]}
+              onChange={(difficultyLevel) => {
+                setProgress({ difficultyLevel });
+                onToast(t('diffChanged', ui));
+              }}
+            />
+            <p className="settings-hint">{t('diffLevelHint', ui)}</p>
+          </div>
+
+          <div className="settings-field">
+            <span className="field-label"><IconSchool size={15} /> {t('stageLabel', ui)}</span>
+            <Segmented<SchoolStage>
+              value={progress.schoolStage}
+              options={[
+                { value: 'general', label: t('stageGeneral', ui) },
+                { value: 'infantil', label: t('stageInfantil', ui) },
+                { value: 'prim12', label: t('stagePrim12', ui) },
+                { value: 'prim34', label: t('stagePrim34', ui) },
+                { value: 'prim56', label: t('stagePrim56', ui) },
+              ]}
+              onChange={(schoolStage) => {
+                setProgress({ schoolStage });
+                onToast(t('stageChanged', ui));
+              }}
+            />
+            <p className="settings-hint">{t('stageHint', ui)}</p>
+          </div>
           <div className="settings-field">
             <span className="field-label"><IconCompass size={15} /> {t('routeLabel', ui)}</span>
             <Segmented<Route>
@@ -1441,27 +1586,50 @@ export function Settings({ progress, setProgress, onClose, onReset, onToast }: S
         <div className="settings-group">
           <h3 className="settings-group-title">{t('settingsGroupAccess', ui)}</h3>
           <div className="settings-field">
-            <span className="field-label"><IconAccessibility size={15} /> {t('supportsTitle', ui)}</span>
+            <span className="field-label"><IconAccessibility size={15} /> {t('phaseTitle', ui)}</span>
             <div className="support-grid support-grid-settings">
-              {supportProfiles.map((profile) => (
-                <button
-                  key={profile.id}
-                  className={`support-card compact ${activeSupports.includes(profile.id) ? 'selected' : ''}`}
-                  onClick={() => toggleSupport(profile.id)}
-                  aria-pressed={activeSupports.includes(profile.id)}
-                  title={profile[ui].desc}
-                >
-                  <span className="support-emoji" aria-hidden="true">{profile.emoji}</span>
-                  <strong>{profile[ui].name}</strong>
-                  {activeSupports.includes(profile.id) && (
-                    <span className="choice-check" aria-hidden="true">
-                      <IconCheck size={12} />
-                    </span>
-                  )}
-                </button>
-              ))}
+              <button
+                className={`support-card compact ${progress.readingPhase === 'fonologica' ? 'selected' : ''}`}
+                onClick={() => { setProgress({ readingPhase: 'fonologica' }); onToast(t('phaseChanged', ui)); }}
+                aria-pressed={progress.readingPhase === 'fonologica'}
+                title={t('phaseFonologicaDesc', ui)}
+              >
+                <span className="support-emoji" aria-hidden="true">🎵</span>
+                <strong>{t('phaseFonologica', ui)}</strong>
+                {progress.readingPhase === 'fonologica' && (<span className="choice-check" aria-hidden="true"><IconCheck size={12} /></span>)}
+              </button>
+              <button
+                className={`support-card compact ${progress.readingPhase === 'logográfica' ? 'selected' : ''}`}
+                onClick={() => { setProgress({ readingPhase: 'logográfica' }); onToast(t('phaseChanged', ui)); }}
+                aria-pressed={progress.readingPhase === 'logográfica'}
+                title={t('phaseLogograficaDesc', ui)}
+              >
+                <span className="support-emoji" aria-hidden="true">👀</span>
+                <strong>{t('phaseLogografica', ui)}</strong>
+                {progress.readingPhase === 'logográfica' && (<span className="choice-check" aria-hidden="true"><IconCheck size={12} /></span>)}
+              </button>
+              <button
+                className={`support-card compact ${progress.readingPhase === 'alfabética' ? 'selected' : ''}`}
+                onClick={() => { setProgress({ readingPhase: 'alfabética' }); onToast(t('phaseChanged', ui)); }}
+                aria-pressed={progress.readingPhase === 'alfabética'}
+                title={t('phaseAlfabeticaDesc', ui)}
+              >
+                <span className="support-emoji" aria-hidden="true">🔤</span>
+                <strong>{t('phaseAlfabetica', ui)}</strong>
+                {progress.readingPhase === 'alfabética' && (<span className="choice-check" aria-hidden="true"><IconCheck size={12} /></span>)}
+              </button>
+              <button
+                className={`support-card compact ${progress.readingPhase === 'ortográfica' ? 'selected' : ''}`}
+                onClick={() => { setProgress({ readingPhase: 'ortográfica' }); onToast(t('phaseChanged', ui)); }}
+                aria-pressed={progress.readingPhase === 'ortográfica'}
+                title={t('phaseOrtograficaDesc', ui)}
+              >
+                <span className="support-emoji" aria-hidden="true">📖</span>
+                <strong>{t('phaseOrtografica', ui)}</strong>
+                {progress.readingPhase === 'ortográfica' && (<span className="choice-check" aria-hidden="true"><IconCheck size={12} /></span>)}
+              </button>
             </div>
-            <p className="settings-hint">{t('supportsHint', ui)}</p>
+            <p className="settings-hint">{t('phaseHint', ui)}</p>
             <div className="support-summary">
               {summary.length ? summary.map((s) => <span key={s}>{s}</span>) : <span className="summary-muted">{t('supportsNone', ui)}</span>}
             </div>
@@ -1476,6 +1644,35 @@ export function Settings({ progress, setProgress, onClose, onReset, onToast }: S
             checked={progress.sound}
             onChange={(v) => setProgress({ sound: v })}
           />
+          <div className="settings-field">
+            <span className="field-label">🎚️ {t('audioSpeedLabel', ui)}</span>
+            <div className="duo-speed-bar">
+              <div className="duo-speed-bar-head">
+                <span>
+                  {progress.speechRate <= 0.72
+                    ? `🐢 ${t('audioSpeedSlowHint', ui)}`
+                    : `🐇 ${t('audioSpeedNormalHint', ui)}`}
+                </span>
+                <span className="duo-speed-value">{progress.speechRate.toFixed(2)}</span>
+              </div>
+              <input
+                type="range"
+                className="duo-speed-range"
+                min={0.45}
+                max={1}
+                step={0.05}
+                value={progress.speechRate}
+                onChange={(e) => setProgress({ speechRate: Number(e.target.value) })}
+                aria-label={t('audioSpeedLabel', ui)}
+              />
+              <div className="duo-speed-ticks">
+                <span>🐢 0.45</span>
+                <span>0.70</span>
+                <span>1.00 🐇</span>
+              </div>
+            </div>
+            <p className="settings-hint">{t('hintDictation', ui)}</p>
+          </div>
           <Toggle
             icon={<IconMusic size={16} />}
             label={t('music', ui)}

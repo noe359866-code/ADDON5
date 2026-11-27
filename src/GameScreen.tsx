@@ -27,7 +27,8 @@ import {
 } from './icons';
 import { t, tf } from './i18n';
 import { isXpBoostActive, starsFor } from './progress';
-import { sfx, speak, stopSpeaking, voicesFor } from './sound';
+import { isSpeechRecognitionSupported, listenOnceFromMic, matchesSpokenTarget, sfx, speak, stopSpeaking, voicesFor } from './sound';
+import { startAmbientMusic, stopAmbientMusic } from './music';
 import type { Exercise, Lang, MistakeEntry, Modality, Progress, SessionMode, SessionResult, SyllableStage } from './types';
 
 interface Props {
@@ -60,6 +61,18 @@ function longestStreak(history: HistoryEntry[], filter?: (m: Modality) => boolea
   return best;
 }
 
+/** Normaliza texto para comparar respuestas de dictado (diacríticos, espacios, ñ y h silenciosa del euskara). */
+function normalizeForDictation(s: string, lang: Lang): string {
+  const base = lang === 'eu' ? s.replace(/h/g, '') : s;
+  return base
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9ñ\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export function GameScreen({ progress, setProgress, mode, levelId, nodeKey, onExit, onFinish }: Props) {
   const ad = computeAdaptations(progress);
   const effectiveUnlimited = progress.unlimitedHearts || ad.gentle || mode === 'practice' || mode === 'mistakes';
@@ -74,8 +87,10 @@ export function GameScreen({ progress, setProgress, mode, levelId, nodeKey, onEx
           ? ad.practiceLength
           : ad.sessionLength;
 
+  const userDiffNum =
+    progress.difficultyLevel === 'bajo' ? 1 : progress.difficultyLevel === 'alto' ? 3 : 2;
   const startDifficulty =
-    mode === 'legendary' ? Math.min(3, ad.difficultyCap) : levelId === 2 || levelId === 3 ? 1 : Math.min(2, ad.difficultyCap);
+    mode === 'legendary' ? Math.min(3, ad.difficultyCap) : Math.min(userDiffNum, ad.difficultyCap);
   const bonus = bonusModes.find((b) => b.id === levelId);
   const gen = useRef<GenState | null>(null);
   if (!gen.current) gen.current = createGenState();
@@ -98,6 +113,7 @@ export function GameScreen({ progress, setProgress, mode, levelId, nodeKey, onEx
     return undefined;
   };
 
+  // Cuando se elige "both" (todos los idiomas combinados), alterna únicamente Euskera y Español (nunca Inglés)
   const initialLang: Lang = progress.learnLang === 'both' ? 'es' : progress.learnLang;
 
   const makeExercise = (slot: number, difficulty: number, lang: Lang): Exercise => {
@@ -127,12 +143,15 @@ export function GameScreen({ progress, setProgress, mode, levelId, nodeKey, onEx
         state: gen.current!,
         adaptations: ad,
         syllableStage: sylStage,
+        schoolStage: progress.schoolStage,
+        simpleOnly: ad.simpleOnly,
       });
     }
 
     return pickExercise({
       levelId: targetLevel,
       lang,
+      learnLang: progress.learnLang,
       ui: progress.uiLang,
       route: mode === 'listening' ? 'auditivo' : progress.route,
       difficulty,
@@ -140,6 +159,9 @@ export function GameScreen({ progress, setProgress, mode, levelId, nodeKey, onEx
       state: gen.current!,
       adaptations: ad,
       syllableStage: sylStage,
+      schoolStage: progress.schoolStage,
+      readingPhase: progress.readingPhase,
+      simpleOnly: ad.simpleOnly,
     });
   };
 
@@ -175,6 +197,11 @@ export function GameScreen({ progress, setProgress, mode, levelId, nodeKey, onEx
   const [fiveToast, setFiveToast] = useState<number | null>(null);
   const [reviewBanner, setReviewBanner] = useState(false);
   const [stageUpToast, setStageUpToast] = useState<SyllableStage | null>(null);
+
+  // Barra de velocidad del audio, verificación con micrófono y dictado
+  const [micStatus, setMicStatus] = useState<'idle' | 'listening' | 'ok' | 'ko' | 'unsupported' | 'denied'>('idle');
+  const [micHeard, setMicHeard] = useState('');
+  const [dictationText, setDictationText] = useState('');
 
   // Temporizador para modo Contrarreloj (90s)
   const [timeLeft, setTimeLeft] = useState(90);
@@ -234,9 +261,15 @@ export function GameScreen({ progress, setProgress, mode, levelId, nodeKey, onEx
 
   // Reproducción automática en ruta auditiva o cuando el ejercicio lo requiere
   useEffect(() => {
+    setMicStatus('idle');
+    setMicHeard('');
+    setDictationText('');
     if (!current.audio || !progress.sound) return;
     if (progress.route !== 'auditivo' && mode !== 'listening' && !current.autoAudio) return;
-    const id = window.setTimeout(() => speak(current.audio!.text, current.audio!.lang, true, 0.88), 380);
+    const id = window.setTimeout(
+      () => speak(current.audio!.text, current.audio!.lang, true, progress.speechRate, current.audio!.syllables),
+      380,
+    );
     return () => window.clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current.id]);
@@ -249,6 +282,8 @@ export function GameScreen({ progress, setProgress, mode, levelId, nodeKey, onEx
     if (current.kind === 'tap') return current.chips?.find((c) => c.id === current.correctChip)?.label ?? '';
     return current.options?.find((o) => o.id === current.correctId)?.label ?? '';
   }, [current]);
+
+  const micTarget = current.dictationTarget ?? correctLabel;
 
   function recordMistakeItem() {
     if (!correctLabel) return;
@@ -418,8 +453,9 @@ export function GameScreen({ progress, setProgress, mode, levelId, nodeKey, onEx
     if (current.kind === 'choice' || current.kind === 'story') return selected !== null;
     if (current.kind === 'tap') return chip !== null;
     if (current.kind === 'build') return !!current.tiles && picks.length === current.tiles.length;
+    if (current.kind === 'dictation') return dictationText.trim().length > 0;
     return false;
-  }, [feedback, current, selected, chip, picks]);
+  }, [feedback, current, selected, chip, picks, dictationText]);
 
   function checkCurrentAnswer() {
     if (feedback !== 'none') return;
@@ -432,6 +468,8 @@ export function GameScreen({ progress, setProgress, mode, levelId, nodeKey, onEx
     } else if (current.kind === 'build' && current.correctOrder) {
       if (picks.length !== current.correctOrder.length) return;
       submitAnswer(picks.every((id, i) => id === current.correctOrder![i]));
+    } else if (current.kind === 'dictation') {
+      checkDictation();
     }
   }
 
@@ -518,9 +556,10 @@ export function GameScreen({ progress, setProgress, mode, levelId, nodeKey, onEx
     const wasOk = okOverride ?? lastOk;
     const newStreak = wasOk ? streak + 1 : 0;
     const newWrong = wasOk ? 0 : wrongStreak + 1;
-    let nextDifficulty = difficulty;
-    if (newStreak >= 3) nextDifficulty = Math.min(ad.difficultyCap, difficulty + 1);
-    if (newWrong >= 2) nextDifficulty = Math.max(1, difficulty - 1);
+    // Se respeta el nivel elegido por el usuario (Bajo=1, Medio=2, Alto=3); solo se suaviza temporalmente si hay fallos seguidos
+    let nextDifficulty = Math.min(userDiffNum, ad.difficultyCap);
+    if (mode === 'legendary') nextDifficulty = Math.min(3, ad.difficultyCap);
+    else if (newWrong >= 2) nextDifficulty = Math.max(1, nextDifficulty - 1);
 
     setStreak(newStreak);
     setWrongStreak(newWrong);
@@ -530,6 +569,7 @@ export function GameScreen({ progress, setProgress, mode, levelId, nodeKey, onEx
     let nextEx: Exercise | null = null;
 
     if (!inReviewPhaseRef.current && nextSlot < baseTotal) {
+      // 'both' alterna exclusivamente Español y Euskera
       const lang: Lang = progress.learnLang === 'both' ? (nextSlot % 2 === 0 ? 'es' : 'eu') : progress.learnLang;
       nextEx = makeExercise(nextSlot, nextDifficulty, lang);
       setSlotIndex(nextSlot);
@@ -581,14 +621,59 @@ export function GameScreen({ progress, setProgress, mode, levelId, nodeKey, onEx
     actionTokenRef.current += 1;
   }
 
-  function listen(rate = 0.88) {
+  function listen(rate?: number) {
     if (!current.audio) return;
     if (!progress.sound) {
       setSoundNotice(true);
       return;
     }
     sfx('click', true);
-    speak(current.audio.text, current.audio.lang, true, rate);
+    speak(current.audio.text, current.audio.lang, true, rate ?? progress.speechRate, current.audio.syllables);
+  }
+
+  function setSpeechRate(value: number) {
+    setProgress({ speechRate: Math.max(0.45, Math.min(1.0, value)) });
+  }
+
+  function toggleMusic() {
+    if (progress.music) {
+      stopAmbientMusic();
+      setProgress({ music: false });
+    } else {
+      startAmbientMusic();
+      setProgress({ music: true });
+    }
+  }
+
+  // Verificación de pronunciación con el micrófono del dispositivo
+  const micSupported = isSpeechRecognitionSupported();
+  function verifyWithMic() {
+    if (!micTarget || !micSupported) {
+      setMicStatus('unsupported');
+      return;
+    }
+    setMicStatus('listening');
+    const cancel = listenOnceFromMic(current.lang, {
+      onResult: (transcripts) => {
+        const { ok, bestHeard } = matchesSpokenTarget(transcripts, micTarget, current.lang);
+        setMicHeard(bestHeard);
+        setMicStatus(ok ? 'ok' : 'ko');
+        if (ok) sfx('correct', progress.sound);
+        else sfx('wrong', progress.sound);
+      },
+      onError: (code) => {
+        setMicHeard('');
+        setMicStatus(code === 'not-allowed' || code === 'service-not-allowed' || code === 'denied' ? 'denied' : 'ko');
+      },
+      onEnd: () => {},
+    });
+    void cancel;
+  }
+
+  function checkDictation() {
+    if (feedback !== 'none' || !current.dictationTarget) return;
+    const normalized = normalizeForDictation(dictationText, current.lang);
+    submitAnswer(normalized === normalizeForDictation(current.dictationTarget, current.lang));
   }
 
   function showHint() {
@@ -653,7 +738,8 @@ export function GameScreen({ progress, setProgress, mode, levelId, nodeKey, onEx
     (current.display?.variant === 'none' || current.modality === 'auditivo') &&
     !current.story &&
     current.kind !== 'action' &&
-    current.kind !== 'pairs';
+    current.kind !== 'pairs' &&
+    current.kind !== 'dictation';
 
   const voiceNoteVisible = !euVoice && current.lang === 'eu' && progress.sound && !noteDismissed;
   const titleCorrect = ad.gentle ? t('gentleGreat', ui) : t('correctTitle', ui);
@@ -711,6 +797,28 @@ export function GameScreen({ progress, setProgress, mode, levelId, nodeKey, onEx
             <DuoHeartSvg size={24} unlimited={effectiveUnlimited} />
             <strong>{effectiveUnlimited ? '∞' : progress.hearts}</strong>
           </span>
+
+          <button
+            className={`duo-music-btn ${progress.music ? 'is-on' : ''}`}
+            onClick={toggleMusic}
+            aria-label={t('musicQuickOn', ui)}
+            title={progress.music ? t('musicQuickOff', ui) : t('musicQuickOn', ui)}
+          >
+            🎵
+          </button>
+
+          <div className="duo-speed-slider" role="group" aria-label={t('audioSpeedLabel', ui)}>
+            <span className="duo-speed-emoji">{progress.speechRate <= 0.72 ? '🐢' : '🐇'}</span>
+            <input
+              type="range"
+              min={0.45}
+              max={1}
+              step={0.05}
+              value={progress.speechRate}
+              onChange={(e) => setSpeechRate(Number(e.target.value))}
+              aria-label={t('audioSpeedLabel', ui)}
+            />
+          </div>
 
           <LangChip lang={current.lang} />
         </div>
@@ -893,19 +1001,78 @@ export function GameScreen({ progress, setProgress, mode, levelId, nodeKey, onEx
           <div className="duo-listening-pair">
             <button
               className="duo-big-speaker"
-              onClick={() => listen(0.9)}
+              onClick={() => listen()}
               aria-label={t('listenAgain', ui)}
             >
               <IconVolume size={40} />
             </button>
             <button
               className="duo-big-turtle"
-              onClick={() => listen(0.56)}
+              onClick={() => listen(Math.max(0.45, Math.min(0.62, progress.speechRate * 0.7)))}
               aria-label={t('slowAudio', ui)}
               title={t('slowAudio', ui)}
             >
               <DuoTurtleSvg size={32} />
             </button>
+          </div>
+        )}
+
+        {/* Barra de velocidad del audio (sílabas marcadas) y verificación con micrófono */}
+        {current.audio && (
+          <div className="duo-audio-controls">
+            <div className="duo-speed-bar">
+              <div className="duo-speed-bar-head">
+                <span>🎚️ {t('audioSpeedLabel', ui)}</span>
+                <span className="duo-speed-value">
+                  {progress.speechRate <= 0.72
+                    ? `🐢 ${t('audioSpeedSlowHint', ui)}`
+                    : `🐇 ${t('audioSpeedNormalHint', ui)}`}
+                </span>
+                {current.audio.syllables && progress.speechRate <= 0.72 && (
+                  <span className="duo-syl-badge">🎵 {t('audioSpeedMarkedBadge', ui)}</span>
+                )}
+              </div>
+              <input
+                type="range"
+                className="duo-speed-range"
+                min={0.45}
+                max={1}
+                step={0.05}
+                value={progress.speechRate}
+                onChange={(e) => setSpeechRate(Number(e.target.value))}
+                aria-label={t('audioSpeedLabel', ui)}
+              />
+              <div className="duo-speed-ticks">
+                <span>🐢 0.45</span>
+                <span>0.70</span>
+                <span>1.00 🐇</span>
+              </div>
+            </div>
+
+            {micSupported && (
+              <div className="duo-mic-bar">
+                <button
+                  className="duo-btn duo-btn-outline duo-btn-sm"
+                  onClick={verifyWithMic}
+                  disabled={!micTarget || micStatus === 'listening'}
+                >
+                  🎤 {t('micRepeatBtn', ui)}
+                </button>
+                {micStatus === 'listening' && <span className="duo-mic-status">{tf('micListening', ui, { target: micTarget })}</span>}
+                {micStatus === 'ok' && (
+                  <span className="duo-mic-status ok">{tf('micSuccess', ui, { heard: micHeard || micTarget })}</span>
+                )}
+                {micStatus === 'ko' && (
+                  <span className="duo-mic-status ko">
+                    {tf('micTryAgain', ui, { heard: micHeard || t('micEmpty', ui), target: micTarget })}
+                  </span>
+                )}
+                {micStatus === 'denied' && <span className="duo-mic-status ko">{t('micDenied', ui)}</span>}
+              </div>
+            )}
+            {!micSupported && current.kind !== 'action' && current.kind !== 'pairs' && (
+              <p className="duo-mic-note">🎤 {t('micUnsupported', ui)}</p>
+            )}
           </div>
         )}
 
@@ -1197,6 +1364,69 @@ export function GameScreen({ progress, setProgress, mode, levelId, nodeKey, onEx
                   {t('actionDo', ui)}
                 </button>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Dictado con audio: escribir lo que se escucha (con banco de letras de ayuda) */}
+        {current.kind === 'dictation' && current.dictationTarget && (
+          <div className="duo-dictation">
+            <label className="duo-dictation-label" htmlFor="dictation-input">
+              {t('eyebrowDictation', ui)}
+            </label>
+            <input
+              id="dictation-input"
+              type="text"
+              className="duo-dictation-input"
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              value={dictationText}
+              onChange={(e) => setDictationText(e.target.value)}
+              placeholder={current.dictationPlaceholder}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && canCheck) {
+                  e.preventDefault();
+                  checkCurrentAnswer();
+                }
+              }}
+            />
+            {current.tiles && (
+              <div className="duo-dictation-bank" aria-label={t('dictationHelperBank', ui)}>
+                {current.tiles.map((tile, i) => (
+                  <button
+                    key={tile.id}
+                    style={staggerStyle(i)}
+                    className="duo-wb-tile tile-letter"
+                    onClick={() => {
+                      if (feedback === 'none') setDictationText((prev) => `${prev}${tile.label}`);
+                    }}
+                    disabled={feedback !== 'none'}
+                  >
+                    {tile.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="duo-dictation-actions">
+              <button className="duo-btn duo-btn-outline duo-btn-sm" onClick={() => listen()}>
+                <IconVolume size={15} />
+                <span>{t('listen', ui)}</span>
+              </button>
+              <button
+                className="duo-btn duo-btn-outline duo-btn-sm"
+                onClick={() => listen(Math.max(0.45, Math.min(0.62, progress.speechRate * 0.7)))}
+              >
+                <DuoTurtleSvg size={17} />
+                <span>{t('slowAudio', ui)}</span>
+              </button>
+              <button
+                className="duo-btn duo-btn-yellow-ghost duo-btn-sm"
+                onClick={verifyWithMic}
+                disabled={!micTarget || micStatus === 'listening'}
+              >
+                🎤 {t('micRepeatBtn', ui)}
+              </button>
             </div>
           </div>
         )}

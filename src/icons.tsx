@@ -144,6 +144,15 @@ export function IconBook(props: IconProps) {
   );
 }
 
+export function IconSchool(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 3L1 9l11 6 9-4.9V17h2V9L12 3z" />
+      <path d="M5 13.2V17c0 1.7 3.1 3 7 3s7-1.3 7-3v-3.8l-7 3.8-7-3.8z" />
+    </Svg>
+  );
+}
+
 export function IconCompass(props: IconProps) {
   return (
     <Svg {...props}>
@@ -296,7 +305,7 @@ export function IconMap(props: IconProps) {
 /* Iconografía plana multicolor estilo Duolingo                        */
 /* ================================================================== */
 
-export function DuoFlagSvg({ code, size = 28 }: { code: 'es' | 'eu' | 'both'; size?: number }) {
+export function DuoFlagSvg({ code, size = 28 }: { code: 'es' | 'eu' | 'en' | 'both'; size?: number }) {
   const h = Math.round(size * 0.76);
   if (code === 'es') {
     return (
@@ -319,7 +328,20 @@ export function DuoFlagSvg({ code, size = 28 }: { code: 'es' | 'eu' | 'both'; si
       </svg>
     );
   }
-  // Bilingüe ES + EU diagonal
+  if (code === 'en') {
+    // Bandera inglesa/británica estilizada estilo Duolingo
+    return (
+      <svg width={size} height={h} viewBox="0 0 36 26" aria-hidden="true" className="duo-flag-svg">
+        <rect width="36" height="26" rx="6" fill="#1E549E" />
+        <path d="M0 0 L36 26 M36 0 L0 26" stroke="#FFFFFF" strokeWidth="5.2" />
+        <path d="M0 0 L36 26 M36 0 L0 26" stroke="#FF4B4B" strokeWidth="2.4" />
+        <path d="M18 0 V26 M0 13 H36" stroke="#FFFFFF" strokeWidth="7.4" />
+        <path d="M18 0 V26 M0 13 H36" stroke="#FF4B4B" strokeWidth="4.2" />
+        <rect x="1" y="1" width="34" height="24" rx="5" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="1.5" />
+      </svg>
+    );
+  }
+  // Bilingüe ES + EU diagonal (solo Euskera + Español)
   return (
     <svg width={size} height={h} viewBox="0 0 36 26" aria-hidden="true" className="duo-flag-svg">
       <defs>
