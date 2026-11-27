@@ -27,6 +27,7 @@ import {
 } from './icons';
 import { t, tf } from './i18n';
 import { isXpBoostActive, starsFor } from './progress';
+import { getMaiderState, subscribeMaider } from './maider';
 import { isSpeechRecognitionSupported, listenOnceFromMic, matchesSpokenTarget, sfx, speak, stopSpeaking, voicesFor } from './sound';
 import { startAmbientMusic, stopAmbientMusic } from './music';
 import type { Exercise, Lang, MistakeEntry, Modality, Progress, SessionMode, SessionResult, SyllableStage } from './types';
@@ -192,6 +193,8 @@ export function GameScreen({ progress, setProgress, mode, levelId, nodeKey, onEx
   const [noteDismissed, setNoteDismissed] = useState(false);
   const [soundNotice, setSoundNotice] = useState(false);
   const [euVoice, setEuVoice] = useState(true);
+  const [maider, setMaider] = useState(getMaiderState);
+  useEffect(() => subscribeMaider(setMaider), []);
   const [xpPop, setXpPop] = useState<{ id: number; amount: number } | null>(null);
   const [combo, setCombo] = useState<{ id: number; count: number } | null>(null);
   const [fiveToast, setFiveToast] = useState<number | null>(null);
@@ -220,6 +223,7 @@ export function GameScreen({ progress, setProgress, mode, levelId, nodeKey, onEx
   const aliveRef = useRef(true);
   const actionDoneRef = useRef(false);
   const actionTokenRef = useRef(0);
+  const promptRef = useRef<HTMLHeadingElement>(null);
 
   const ui = progress.uiLang;
 
@@ -272,6 +276,19 @@ export function GameScreen({ progress, setProgress, mode, levelId, nodeKey, onEx
     );
     return () => window.clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current.id]);
+
+  // Accesibilidad: al cambiar de pregunta, el foco va al encabezado para que
+  // lectores de pantalla y teclado no se queden en un botón desmontado.
+  useEffect(() => {
+    promptRef.current?.focus({ preventScroll: true });
+    return () => {
+      // No leer la respuesta de la pregunta anterior después de avanzar rápido.
+      if (speakAnswerTimerRef.current !== null) {
+        window.clearTimeout(speakAnswerTimerRef.current);
+        speakAnswerTimerRef.current = null;
+      }
+    };
   }, [current.id]);
 
   const correctLabel = useMemo(() => {
@@ -741,7 +758,7 @@ export function GameScreen({ progress, setProgress, mode, levelId, nodeKey, onEx
     current.kind !== 'pairs' &&
     current.kind !== 'dictation';
 
-  const voiceNoteVisible = !euVoice && current.lang === 'eu' && progress.sound && !noteDismissed;
+  const voiceNoteVisible = ((!euVoice && !maider.enabled) || (maider.enabled && maider.status === 'error')) && current.lang === 'eu' && progress.sound && !noteDismissed;
   const titleCorrect = ad.gentle ? t('gentleGreat', ui) : t('correctTitle', ui);
   const titleWrong = ad.gentle ? t('gentleAlmost', ui) : t('wrongTitle', ui);
   const actionGame = current.kind === 'action' ? current.action?.game : undefined;
@@ -889,7 +906,7 @@ export function GameScreen({ progress, setProgress, mode, levelId, nodeKey, onEx
         </div>
 
         {/* Instrucción principal + Pato Ventura + Bocadillo con Audio Normal y Tortuga Lenta */}
-        <h1 className="duo-ex-headline">{current.prompt}</h1>
+        <h1 className="duo-ex-headline" ref={promptRef} tabIndex={-1}>{current.prompt}</h1>
 
         <div className="duo-character-prompt-row">
           <Mascot
@@ -1078,7 +1095,7 @@ export function GameScreen({ progress, setProgress, mode, levelId, nodeKey, onEx
 
         {voiceNoteVisible && (
           <div className="voice-note">
-            <span>{t('voiceFallback', ui)}</span>
+            <span>{t(maider.enabled && maider.status === 'error' ? 'maiderError' : 'voiceFallback', ui)}</span>
             <button onClick={() => setNoteDismissed(true)} aria-label={t('close', ui)}>
               <IconClose size={14} />
             </button>
@@ -1516,17 +1533,33 @@ export function GameScreen({ progress, setProgress, mode, levelId, nodeKey, onEx
         </div>
       </footer>
 
-      {/* Modal "¡Te quedaste sin vidas!" estilo Duolingo */}
+      {/* Modal "¡Te quedaste sin vidas!": nunca bloquea el aprendizaje.
+          La opción gratuita va primera; cerrar el modal también activa vidas ilimitadas. */}
       {outOfHearts && (
-        <Modal onClose={() => setOutOfHearts(false)}>
+        <Modal
+          onClose={() => {
+            setProgress({ unlimitedHearts: true, hearts: 5 });
+            setOutOfHearts(false);
+          }}
+        >
           <div className="duo-hearts-modal">
             <Mascot mood="sad" size={118} outfit={progress.equippedOutfit} />
             <h2>{t('outOfHeartsTitle', ui)}</h2>
-            <p>{t('outOfHeartsSub', ui)}</p>
+            <p>{t('heartsFreeSub', ui)}</p>
             <div className="duo-hearts-modal-gems">
               <DuoGemSvg size={22} /> <strong>{progress.gems}</strong>
             </div>
             <div className="duo-pop-btn-col">
+              <button
+                className="duo-btn duo-btn-green duo-btn-full"
+                onClick={() => {
+                  sfx('star', progress.sound);
+                  setProgress({ unlimitedHearts: true, hearts: 5 });
+                  setOutOfHearts(false);
+                }}
+              >
+                ♾️ {t('heartsFree', ui)}
+              </button>
               <button
                 className="duo-btn duo-btn-blue duo-btn-full"
                 disabled={progress.gems < 100}
@@ -1539,16 +1572,6 @@ export function GameScreen({ progress, setProgress, mode, levelId, nodeKey, onEx
                 }}
               >
                 {t('refillGemsBtn', ui)}
-              </button>
-              <button
-                className="duo-btn duo-btn-purple duo-btn-full"
-                onClick={() => {
-                  sfx('star', progress.sound);
-                  setProgress({ unlimitedHearts: true, hearts: 5 });
-                  setOutOfHearts(false);
-                }}
-              >
-                ♾️ {t('enableUnlimitedBtn', ui)}
               </button>
               <button
                 className="duo-btn duo-btn-outline duo-btn-full"

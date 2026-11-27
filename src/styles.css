@@ -2659,3 +2659,128 @@ body.calm .confetti, body.calm .xp-float, body.calm .combo-pill { display: none 
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ================================================================== */
+/* Mejoras: informe familiar, accesibilidad           */
+/* ================================================================== */
+
+/* El encabezado de la pregunta recibe el foco programáticamente al avanzar:
+   no necesita anillo visible (no está en el orden de tabulación). */
+.duo-ex-headline:focus { outline: none; }
+
+/* Tamaño táctil mínimo para los botones principales.
+   No se aplica a botones de icono pequeños (p. ej. cerrar), que tienen su propio tamaño. */
+.duo-btn, .duo-practice-row, .letter-chip, .option, .duo-speaker-btn, .duo-turtle-btn { min-height: 44px; }
+
+/* Informe de progreso para familias y docentes */
+.progress-report {
+  background: var(--surface); border: 2px solid var(--border-soft);
+  border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 10px;
+}
+.report-title { font-weight: 900; margin: 0; color: var(--duo-eel); }
+.report-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; margin: 0; }
+.report-grid > div { display: flex; justify-content: space-between; gap: 8px; }
+.report-grid dt { color: var(--duo-eel); opacity: 0.75; }
+.report-grid dd { margin: 0; font-weight: 800; color: var(--duo-eel); }
+.report-mistakes-title { font-weight: 800; margin: 0; color: var(--duo-eel); }
+.report-mistakes { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.report-mistakes li { display: flex; justify-content: space-between; gap: 12px; color: var(--duo-eel); }
+.family-actions { flex-wrap: wrap; }
+
+/* Input de archivo oculto pero accesible */
+.sr-only-input {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* Nota bajo el modo contrarreloj */
+.duo-practice-note { font-size: 0.8rem; opacity: 0.8; margin-top: 4px; }
+
+/* Diseño adaptable: navegación desplazable, controles táctiles y barras seguras. */
+.duo-left-sidebar { overflow-y: auto; }
+.modal-card { overscroll-behavior: contain; }
+.duo-btn { white-space: normal; text-align: center; }
+
+@media (max-width: 720px) {
+  .duo-left-sidebar { overflow: visible; }
+  .duo-nav-list {
+    justify-content: flex-start;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  .duo-nav-item { flex: 0 0 52px; min-width: 52px; min-height: 48px; }
+  .duo-left-sidebar .desktop-only-nav { display: flex; }
+  .duo-center-main, .duo-child-mode .duo-center-main {
+    padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px));
+  }
+  .duo-top-stats { flex-wrap: wrap; justify-content: center; }
+  .duo-lesson-topbar { padding: 12px 12px 8px; }
+  .duo-lesson-topbar-inner { flex-wrap: wrap; gap: 8px; }
+  .duo-lesson-bar { min-width: 64px; }
+  .duo-lesson-bottombar {
+    position: sticky;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+  .duo-exercise-stage { padding: 12px 14px 24px; }
+  .duo-lesson-bottom-inner { flex-wrap: wrap; gap: 8px; }
+  .duo-bottom-left-btns { flex-wrap: wrap; }
+  .duo-feedback-left { flex: 1 1 200px; }
+  .modal-backdrop { padding: max(12px, env(safe-area-inset-top, 0px)) 12px max(12px, env(safe-area-inset-bottom, 0px)); }
+  .modal-card { max-height: 85vh; max-height: 85dvh; padding: 20px 16px; }
+  .modal-actions { flex-wrap: wrap; }
+  .modal-actions > button { min-width: min(100%, 160px); }
+  input, select, textarea { font-size: max(16px, 1em); }
+}
+
+@media (max-width: 460px) {
+  .duo-lesson-bottom-inner > .duo-btn-lg { flex: 1 1 100%; }
+  .duo-bottom-left-btns { width: 100%; }
+  .duo-bottom-left-btns > button { flex: 1 1 0; min-width: 0; }
+  .duo-fb-circle { width: 42px; height: 42px; }
+  .report-grid { grid-template-columns: 1fr; }
+}
+
+/* En pantallas de poca altura, la barra de lección permanece en el flujo. */
+@media (max-height: 500px) {
+  .duo-lesson-bottombar { position: static; }
+  .duo-exercise-stage { padding-bottom: 24px; }
+  .duo-left-sidebar { overflow-y: auto; }
+}
+.maider-status { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; color: var(--duo-eel); font-size: 0.85rem; }
+
+/* Rincón de Pato: reacciones breves, sin obligar a jugar ni interrumpir la lección. */
+.pato-play { border: 2px solid var(--duo-swan); border-radius: 20px; background: var(--surface); overflow: hidden; }
+.pato-play-summary { display: flex; align-items: center; gap: 12px; padding: 14px 16px; cursor: pointer; color: var(--duo-eel); list-style: none; }
+.pato-play-summary::-webkit-details-marker { display: none; }
+.pato-play-summary > span:first-child { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 15px; background: var(--duo-yellow-soft); font-size: 1.7rem; flex: 0 0 auto; }
+.pato-play-summary strong, .pato-play-summary small { display: block; }
+.pato-play-summary strong { font-size: 1rem; }
+.pato-play-summary small { color: var(--duo-wolf); font-size: .8rem; margin-top: 2px; }
+.pato-play-chevron { margin-left: auto; font-size: 1.5rem; }
+.pato-play[open] .pato-play-chevron { transform: rotate(180deg); }
+.pato-play-content { padding: 0 16px 16px; }
+.pato-play-intro { color: var(--duo-wolf); font-weight: 700; margin: 0 0 8px; }
+.pato-play-stage { display: flex; justify-content: center; align-items: center; gap: 16px; padding: 8px; }
+.pato-play-duck { border: 0; background: transparent; padding: 0; border-radius: 24px; cursor: pointer; flex: 0 0 auto; touch-action: manipulation; }
+.pato-play-figure { display: block; transform-origin: 50% 85%; }
+.pato-play-figure .mascot { animation: none; }
+.pato-react-hello { animation: pato-hello .6s ease; }
+.pato-react-tickle { animation: pato-tickle .65s ease; }
+.pato-react-hug { animation: pato-hug .75s ease; }
+.pato-react-dance { animation: pato-dance 1.1s ease; }
+.pato-play-bubble { max-width: 220px; padding: 12px 14px; margin: 0; background: var(--duo-blue-soft); border: 2px solid var(--duo-blue-border); border-radius: 16px; color: var(--duo-eel); font-weight: 800; overflow-wrap: anywhere; }
+.pato-play-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.pato-play-action { min-height: 48px; border: 2px solid var(--duo-swan); border-bottom-width: 4px; border-radius: 14px; background: var(--surface); color: var(--duo-eel); font-weight: 800; padding: 8px 5px; cursor: pointer; touch-action: manipulation; }
+.pato-play-action:hover { background: var(--duo-polar); }
+.pato-play-action:active { transform: translateY(2px); }
+@keyframes pato-hello { 0%, 100% { transform: rotate(0); } 30% { transform: rotate(-10deg); } 65% { transform: rotate(9deg); } }
+@keyframes pato-tickle { 0%, 100% { transform: rotate(0); } 20%, 60% { transform: rotate(-7deg) scale(1.04); } 40%, 80% { transform: rotate(7deg) scale(1.04); } }
+@keyframes pato-hug { 0%, 100% { transform: scale(1); } 45% { transform: scale(1.12); } }
+@keyframes pato-dance { 0%, 100% { transform: rotate(0); } 20%, 60% { transform: rotate(-13deg) translateY(-5px); } 40%, 80% { transform: rotate(13deg) translateY(-5px); } }
+@media (max-width: 380px) { .pato-play-stage { flex-direction: column; gap: 6px; } .pato-play-actions { grid-template-columns: 1fr; } }
+
+.install-app { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; border: 2px solid var(--duo-swan); border-radius: 18px; background: var(--surface); color: var(--duo-eel); padding: 14px 16px; }
+.install-app > span { font-size: 1.6rem; }
+.install-app > div { flex: 1 1 160px; }
+.install-app p { margin: 3px 0 0; color: var(--duo-wolf); font-size: .82rem; }

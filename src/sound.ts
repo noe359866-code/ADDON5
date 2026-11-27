@@ -1,4 +1,5 @@
 import type { Lang } from './types';
+import { cancelMaider, getMaiderState, speakMaider } from './maider';
 
 let ctx: AudioContext | null = null;
 
@@ -115,7 +116,16 @@ export function voicesFor(lang: Lang): SpeechSynthesisVoice[] {
     .sort((a, b) => voiceScore(b, lang) - voiceScore(a, lang));
 }
 
+let pendingSpeech: ReturnType<typeof setTimeout> | null = null;
+let speechGeneration = 0;
+
 export function stopSpeaking() {
+  speechGeneration++;
+  cancelMaider();
+  if (pendingSpeech !== null) {
+    clearTimeout(pendingSpeech);
+    pendingSpeech = null;
+  }
   if (typeof window !== 'undefined' && window.speechSynthesis) window.speechSynthesis.cancel();
 }
 
@@ -166,10 +176,22 @@ export function prepareSpeechText(text: string, lang: Lang, syllables?: string[]
 
 /** Lee un texto en voz alta. En euskera silencia la «h» muda; si rate es lento marca sílabas. */
 export function speak(text: string, lang: Lang, enabled = true, rate = 0.88, syllables?: string[]): void {
-  if (!enabled) return;
-  if (typeof window === 'undefined' || !window.speechSynthesis) return;
+  if (!enabled || typeof window === 'undefined') return;
   stopSpeaking();
   const clampedRate = Math.min(1.15, Math.max(0.35, rate));
+  if (lang === 'eu' && getMaiderState().enabled && getMaiderState().status !== 'error') {
+    const spoken = syllables && syllables.length >= 2 && clampedRate <= 0.72
+      ? `${syllables.join(', ')}. ${text}` : text;
+    // La síntesis local recibe la ortografía original: eSpeak conoce la h vasca.
+    const generation = speechGeneration;
+    void speakMaider(spoken, clampedRate).catch(() => {
+      if (generation === speechGeneration && getMaiderState().enabled && getMaiderState().status === 'error') {
+        speak(text, lang, enabled, rate, syllables);
+      }
+    });
+    return;
+  }
+  if (!window.speechSynthesis) return;
   const spokenText = prepareSpeechText(text, lang, syllables, clampedRate);
   const utter = new SpeechSynthesisUtterance(spokenText);
   const own = voicesFor(lang);
@@ -185,7 +207,8 @@ export function speak(text: string, lang: Lang, enabled = true, rate = 0.88, syl
   utter.pitch = 1.05;
   utter.volume = 1;
   // Algunos navegadores necesitan un pequeño retardo tras cancel().
-  window.setTimeout(() => {
+  pendingSpeech = setTimeout(() => {
+    pendingSpeech = null;
     try {
       window.speechSynthesis.speak(utter);
     } catch {

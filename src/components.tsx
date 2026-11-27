@@ -733,7 +733,7 @@ export function Modal({ children, onClose, labelledBy }: { children: ReactNode; 
         aria-labelledby={labelledBy}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <button className="icon-btn modal-close" onClick={onClose} aria-label="Cerrar">
+        <button className="icon-btn modal-close" onClick={onClose} aria-label={typeof document !== 'undefined' && document.documentElement.lang === 'eu' ? 'Itxi' : 'Cerrar'}>
           <IconClose size={18} />
         </button>
         {children}

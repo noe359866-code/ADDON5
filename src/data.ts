@@ -95,7 +95,7 @@ export const words: Word[] = [
   { id: 'nino', es: 'niño', eu: 'haur', en: 'child', emoji: '🧒', sylEs: ['ni', 'ño'], sylEu: ['haur'], sylEn: ['child'], cat: 'adj' },
   { id: 'grande', es: 'grande', eu: 'handi', en: 'big', emoji: '🐘', sylEs: ['gran', 'de'], sylEu: ['han', 'di'], sylEn: ['big'], cat: 'adj' },
   { id: 'pequeno', es: 'pequeño', eu: 'txiki', en: 'little', emoji: '🐭', sylEs: ['pe', 'que', 'ño'], sylEu: ['txi', 'ki'], sylEn: ['lit', 'tle'], cat: 'adj' },
-  { id: 'bonito', es: 'bonito', eu: 'polit', en: 'happy', emoji: '✨', sylEs: ['bo', 'ni', 'to'], sylEu: ['po', 'lit'], sylEn: ['hap', 'py'], cat: 'adj' },
+  { id: 'bonito', es: 'bonito', eu: 'polit', en: 'pretty', emoji: '✨', sylEs: ['bo', 'ni', 'to'], sylEu: ['po', 'lit'], sylEn: ['pret', 'ty'], cat: 'adj' },
 
   /* Etapa 1 · Sílabas directas puras (CV: consonante + vocal) */
   { id: 'pato', es: 'pato', eu: 'ahate', en: 'duck', emoji: '🦆', sylEs: ['pa', 'to'], sylEu: ['a', 'ha', 'te'], sylEn: ['duck'], cat: 'animales' },
@@ -103,14 +103,14 @@ export const words: Word[] = [
   { id: 'mono', es: 'mono', eu: 'tximino', en: 'monkey', emoji: '🐒', sylEs: ['mo', 'no'], sylEu: ['txi', 'mi', 'no'], sylEn: ['mon', 'key'], cat: 'animales' },
   { id: 'sopa', es: 'sopa', eu: 'zopa', en: 'soup', emoji: '🥣', sylEs: ['so', 'pa'], sylEu: ['zo', 'pa'], sylEn: ['soup'], cat: 'comida' },
   { id: 'tomate', es: 'tomate', eu: 'tomate', en: 'tomato', emoji: '🍅', sylEs: ['to', 'ma', 'te'], sylEu: ['to', 'ma', 'te'], sylEn: ['to', 'ma', 'to'], cat: 'comida' },
-  { id: 'seta', es: 'seta', eu: 'perretxiko', en: 'potato', emoji: '🍄', sylEs: ['se', 'ta'], sylEu: ['pe', 'rre', 'txi', 'ko'], sylEn: ['po', 'ta', 'to'], cat: 'naturaleza' },
-  { id: 'pelota', es: 'pelota', eu: 'pilota', en: 'banana', emoji: '⚽', sylEs: ['pe', 'lo', 'ta'], sylEu: ['pi', 'lo', 'ta'], sylEn: ['ba', 'na', 'na'], cat: 'casa' },
-  { id: 'cama', es: 'cama', eu: 'ohe', en: 'sofa', emoji: '🛏️', sylEs: ['ca', 'ma'], sylEu: ['o', 'he'], sylEn: ['so', 'fa'], cat: 'casa' },
+  { id: 'seta', es: 'seta', eu: 'perretxiko', en: 'mushroom', emoji: '🍄', sylEs: ['se', 'ta'], sylEu: ['pe', 'rre', 'txi', 'ko'], sylEn: ['mush', 'room'], cat: 'naturaleza' },
+  { id: 'pelota', es: 'pelota', eu: 'pilota', en: 'ball', emoji: '⚽', sylEs: ['pe', 'lo', 'ta'], sylEu: ['pi', 'lo', 'ta'], sylEn: ['ball'], cat: 'casa' },
+  { id: 'cama', es: 'cama', eu: 'ohe', en: 'bed', emoji: '🛏️', sylEs: ['ca', 'ma'], sylEu: ['o', 'he'], sylEn: ['bed'], cat: 'casa' },
 
   /* Etapa 2 · Sílabas inversas (VC: vocal + consonante) */
   { id: 'isla', es: 'isla', eu: 'irla', en: 'island', emoji: '🏝️', sylEs: ['is', 'la'], sylEu: ['ir', 'la'], sylEn: ['is', 'land'], cat: 'naturaleza' },
   { id: 'espejo', es: 'espejo', eu: 'ispilu', en: 'mirror', emoji: '🪞', sylEs: ['es', 'pe', 'jo'], sylEu: ['is', 'pi', 'lu'], sylEn: ['mir', 'ror'], cat: 'casa' },
-  { id: 'arco', es: 'arco', eu: 'arku', en: 'arrow', emoji: '🏹', sylEs: ['ar', 'co'], sylEu: ['ar', 'ku'], sylEn: ['ar', 'row'], cat: 'casa' },
+  { id: 'arco', es: 'arco', eu: 'arku', en: 'bow', emoji: '🏹', sylEs: ['ar', 'co'], sylEu: ['ar', 'ku'], sylEn: ['bow'], cat: 'casa' },
   { id: 'espada', es: 'espada', eu: 'ezpata', en: 'sword', emoji: '⚔️', sylEs: ['es', 'pa', 'da'], sylEu: ['ez', 'pa', 'ta'], sylEn: ['sword'], cat: 'casa' },
   { id: 'antena', es: 'antena', eu: 'antena', en: 'antenna', emoji: '📡', sylEs: ['an', 'te', 'na'], sylEu: ['an', 'te', 'na'], sylEn: ['an', 'ten', 'na'], cat: 'casa' },
   { id: 'ardilla', es: 'ardilla', eu: 'urtxintxa', en: 'squirrel', emoji: '🐿️', sylEs: ['ar', 'di', 'lla'], sylEu: ['ur', 'txin', 'txa'], sylEn: ['squir', 'rel'], cat: 'animales' },
@@ -139,7 +139,7 @@ export const words: Word[] = [
   { id: 'enfadado', es: 'enfadado', eu: 'haserre', en: 'angry', emoji: '😠', sylEs: ['en', 'fa', 'da', 'do'], sylEu: ['ha', 'se', 'rre'], sylEn: ['an', 'gry'], cat: 'emociones', stages: ['infantil', 'prim12', 'prim34'] },
   { id: 'cansado', es: 'cansado', eu: 'nekatuta', en: 'tired', emoji: '🥱', sylEs: ['can', 'sa', 'do'], sylEu: ['ne', 'ka', 'tu', 'ta'], sylEn: ['ti', 'red'], cat: 'emociones', stages: ['infantil', 'prim12', 'prim34'] },
   { id: 'tranquilo', es: 'tranquilo', eu: 'lasai', en: 'calm', emoji: '😌', sylEs: ['tran', 'qui', 'lo'], sylEu: ['la', 'sai'], sylEn: ['calm'], cat: 'emociones', stages: ['prim12', 'prim34', 'prim56'] },
-  { id: 'asustado', es: 'asustado', eu: 'beldurtuta', en: 'scared', emoji: '😨', sylEs: ['a', 'sus', 'ta', 'do'], sylEu: ['bel', 'dur', 'tu', 'ta'], sylEn: ['sca', 'red'], cat: 'emociones', stages: ['prim12', 'prim34', 'prim56'] },
+  { id: 'asustado', es: 'asustado', eu: 'beldurtuta', en: 'scared', emoji: '😨', sylEs: ['a', 'sus', 'ta', 'do'], sylEu: ['bel', 'dur', 'tu', 'ta'], sylEn: ['scared'], cat: 'emociones', stages: ['prim12', 'prim34', 'prim56'] },
   { id: 'sorprendido', es: 'sorpresa', eu: 'harrituta', en: 'surprised', emoji: '😮', sylEs: ['sor', 'pre', 'sa'], sylEu: ['ha', 'rri', 'tu', 'ta'], sylEn: ['sur', 'prised'], cat: 'emociones', stages: ['prim34', 'prim56'] },
 
   /* Tema nuevo · Ropa cotidiana */
@@ -164,7 +164,7 @@ export const words: Word[] = [
   /* Tema nuevo · Días de la semana */
   { id: 'lunes', es: 'lunes', eu: 'astelehena', en: 'monday', emoji: '📅', sylEs: ['lu', 'nes'], sylEu: ['as', 'te', 'le', 'he', 'na'], sylEn: ['mon', 'day'], cat: 'dias', stages: ['prim12', 'prim34', 'prim56'] },
   { id: 'martes', es: 'martes', eu: 'asteartea', en: 'tuesday', emoji: '🗓️', sylEs: ['mar', 'tes'], sylEu: ['as', 'te', 'ar', 'te', 'a'], sylEn: ['tues', 'day'], cat: 'dias', stages: ['prim12', 'prim34', 'prim56'] },
-  { id: 'miercoles', es: 'miércoles', eu: 'asteazkena', en: 'wednesday', emoji: '🌤️', sylEs: ['miér', 'co', 'les'], sylEu: ['as', 'te', 'az', 'ke', 'na'], sylEn: ['wed', 'nes', 'day'], cat: 'dias', stages: ['prim12', 'prim34', 'prim56'] },
+  { id: 'miercoles', es: 'miércoles', eu: 'asteazkena', en: 'wednesday', emoji: '🌤️', sylEs: ['miér', 'co', 'les'], sylEu: ['as', 'te', 'az', 'ke', 'na'], sylEn: ['wednes', 'day'], cat: 'dias', stages: ['prim12', 'prim34', 'prim56'] },
   { id: 'jueves', es: 'jueves', eu: 'osteguna', en: 'thursday', emoji: '⛅', sylEs: ['jue', 'ves'], sylEu: ['os', 'te', 'gu', 'na'], sylEn: ['thurs', 'day'], cat: 'dias', stages: ['prim12', 'prim34', 'prim56'] },
   { id: 'viernes', es: 'viernes', eu: 'ostirala', en: 'friday', emoji: '🎉', sylEs: ['vier', 'nes'], sylEu: ['os', 'ti', 'ra', 'la'], sylEn: ['fri', 'day'], cat: 'dias', stages: ['prim12', 'prim34', 'prim56'] },
   { id: 'sabado', es: 'sábado', eu: 'larunbata', en: 'saturday', emoji: '🏞️', sylEs: ['sá', 'ba', 'do'], sylEu: ['la', 'run', 'ba', 'ta'], sylEn: ['sa', 'tur', 'day'], cat: 'dias', stages: ['prim12', 'prim34', 'prim56'] },
