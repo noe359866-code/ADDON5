@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { computeAdaptations, supportSummary } from './adaptations';
 import {
@@ -68,8 +68,11 @@ import {
 } from './icons';
 import { t, tf } from './i18n';
 import { startAmbientMusic, stopAmbientMusic } from './music';
-import { getRecentWeekStats, isUnlocked, isXpBoostActive, nextLevel, todayString, xpBoostMinutesLeft } from './progress';
+import { PatoPlay } from './PatoPlay';
+import { InstallApp } from './InstallApp';
+import { downloadProgress, getRecentWeekStats, isUnlocked, isXpBoostActive, nextLevel, parseImportedProgress, readerLevel, todayString, xpBoostMinutesLeft } from './progress';
 import { sfx } from './sound';
+import { getMaiderState, setMaiderEnabled, subscribeMaider } from './maider';
 import type { DifficultyLevel, LearnLang, NavTab, Progress, ReadingPhase, Route, SchoolStage, SessionMode, SessionResult, UiLang } from './types';
 
 function syncMusic(enabled: boolean) {
@@ -463,6 +466,8 @@ function LearnPathView({
   return (
     <div className="duo-learn-column" onClick={() => setSelectedPop(null)}>
       {chestBurst > 0 && !progress.calmMode && <Confetti burstKey={chestBurst} count={36} />}
+      <PatoPlay ui={ui} sound={progress.sound} calm={computeAdaptations(progress).calm} outfit={progress.equippedOutfit} />
+      <InstallApp ui={ui} />
 
       {levels.map((unit) => {
         const theme = UNIT_THEMES[unit.id] ?? UNIT_THEMES[1]!;
@@ -1203,11 +1208,14 @@ export function Home({ progress, setProgress, onStart, onToast, onSettings }: Ho
           <DuoWordmark ui={ui} />
         </button>
 
-        <nav className="duo-nav-list" aria-label="Navegación principal">
+        <nav className="duo-nav-list" aria-label={t('mainNavigation', ui)}>
           {navItems.map((item) => (
             <button
               key={item.id}
               className={`duo-nav-item ${activeTab === item.id ? 'active' : ''}`}
+              aria-label={item.label}
+              aria-current={activeTab === item.id ? 'page' : undefined}
+              title={item.label}
               onClick={() => {
                 sfx('click', progress.sound);
                 setActiveTab(item.id);
@@ -1226,13 +1234,14 @@ export function Home({ progress, setProgress, onStart, onToast, onSettings }: Ho
             className={`duo-nav-item duo-mode-toggle ${childMode ? 'active' : ''}`}
             onClick={() => setChildMode((value) => !value)}
             aria-pressed={childMode}
+            aria-label={childMode ? (ui === 'eu' ? 'Ikuspegi osoa' : 'Vista completa') : (ui === 'eu' ? 'Haurrentzako ikuspegia' : 'Modo infantil')}
             title={childMode ? (ui === 'eu' ? 'Ikuspegi osoa' : 'Vista completa') : (ui === 'eu' ? 'Haurrentzako ikuspegia' : 'Modo infantil')}
           >
             <span className="duo-nav-icon-wrap" aria-hidden="true">🧸</span>
             <span className="duo-nav-label">{childMode ? (ui === 'eu' ? 'Ikuspegi osoa' : 'Vista completa') : (ui === 'eu' ? 'Haurrentzako modua' : 'Modo infantil')}</span>
           </button>
 
-          <button className="duo-nav-item desktop-only-nav" onClick={onSettings}>
+          <button className="duo-nav-item desktop-only-nav" onClick={onSettings} aria-label={t('navMore', ui)} title={t('navMore', ui)}>
             <span className="duo-nav-icon-wrap">
               <DuoNavIcon tab="more" size={28} />
             </span>
@@ -1509,7 +1518,31 @@ function Toggle({
 export function Settings({ progress, setProgress, onClose, onReset, onToast }: SettingsProps) {
   const ui = progress.uiLang;
   const [confirmReset, setConfirmReset] = useState(false);
+  const [maider, setMaider] = useState(getMaiderState);
+  useEffect(() => subscribeMaider(setMaider), []);
+  const importInputRef = useRef<HTMLInputElement>(null);
   const summary = supportSummary(computeAdaptations(progress), ui);
+  const report = readerLevel(progress.xp);
+  const worldsDone = levels.filter((l) => progress.completed[l.id]).length;
+  const totalStars = levels.reduce((acc, l) => acc + (progress.stars[l.id] ?? 0), 0);
+
+  function handleImportFile(file: File | undefined) {
+    if (!file || !window.confirm(t('importConfirm', ui))) return;
+    if (file.size > 1_000_000) { onToast(t('importError', ui)); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const imported = parseImportedProgress(String(reader.result ?? ''));
+      if (imported) {
+        setProgress(imported);
+        onToast(t('importOk', ui));
+      } else {
+        onToast(t('importError', ui));
+      }
+    };
+    reader.onerror = () => onToast(t('importError', ui));
+    reader.readAsText(file);
+  }
+
   return (
     <Modal onClose={onClose} labelledBy="settings-title">
       <div className="settings">
@@ -1669,6 +1702,23 @@ export function Settings({ progress, setProgress, onClose, onReset, onToast }: S
             checked={progress.sound}
             onChange={(v) => setProgress({ sound: v })}
           />
+          <Toggle
+            label={t('maiderLabel', ui)}
+            checked={maider.enabled}
+            onChange={setMaiderEnabled}
+          />
+          <p className="settings-hint">{t('maiderInfo', ui)}</p>
+          {maider.enabled && (
+            <div className="maider-status" role="status" aria-live="polite">
+              {maider.status === 'loading' && <span>{t('maiderLoading', ui)} {maider.progress > 0 && `${maider.progress}%`}</span>}
+              {maider.status === 'ready' && <span>{t('maiderReady', ui)}</span>}
+              {maider.status === 'error' && <>
+                <span>{t('maiderError', ui)}</span>
+                <button className="duo-btn duo-btn-outline duo-btn-sm" onClick={() => setMaiderEnabled(true)}>{t('maiderRetry', ui)}</button>
+              </>}
+              {maider.status === 'ready' && <button className="duo-btn duo-btn-outline duo-btn-sm" onClick={() => { setMaiderEnabled(true); }}>{t('maiderTest', ui)}</button>}
+            </div>
+          )}
           <div className="settings-field">
             <span className="field-label">🎚️ {t('audioSpeedLabel', ui)}</span>
             <div className="duo-speed-bar">
@@ -1714,7 +1764,7 @@ export function Settings({ progress, setProgress, onClose, onReset, onToast }: S
             onChange={(v) => setProgress({ darkMode: v })}
           />
           <Toggle
-            label={`♾️ ${t('superActive', ui)}`}
+            label={t('unlimitedHeartsLabel', ui)}
             checked={progress.unlimitedHearts}
             onChange={(v) => setProgress({ unlimitedHearts: v, hearts: 5 })}
           />
@@ -1733,6 +1783,55 @@ export function Settings({ progress, setProgress, onClose, onReset, onToast }: S
             checked={progress.unlockAll}
             onChange={(v) => setProgress({ unlockAll: v })}
           />
+        </div>
+
+        <div className="settings-group">
+          <h3 className="settings-group-title">👨‍👩‍👧 {t('settingsGroupFamily', ui)}</h3>
+          <div className="progress-report" aria-label={t('reportTitle', ui)}>
+            <p className="report-title">📊 {t('reportTitle', ui)}</p>
+            <dl className="report-grid">
+              <div><dt>{t('reportName', ui)}</dt><dd>{progress.name || '—'}</dd></div>
+              <div><dt>{t('reportLevel', ui)}</dt><dd>{report.level}</dd></div>
+              <div><dt>{t('reportXp', ui)}</dt><dd>{progress.xp}</dd></div>
+              <div><dt>{t('reportStreak', ui)}</dt><dd>{progress.streak} 🔥</dd></div>
+              <div><dt>{t('reportWorlds', ui)}</dt><dd>{worldsDone}/{levels.length}</dd></div>
+              <div><dt>{t('reportStars', ui)}</dt><dd>{totalStars} ⭐</dd></div>
+              <div><dt>{t('reportSessions', ui)}</dt><dd>{progress.sessions}</dd></div>
+            </dl>
+            <p className="report-mistakes-title">{t('reportMistakes', ui)} ({progress.mistakes.length})</p>
+            {progress.mistakes.length === 0 ? (
+              <p className="settings-hint">{t('reportMistakesEmpty', ui)}</p>
+            ) : (
+              <ul className="report-mistakes">
+                {progress.mistakes.slice(0, 8).map((m) => (
+                  <li key={m.id}>
+                    <span>{m.prompt}</span>
+                    <strong>→ {m.answer}</strong>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div className="modal-actions family-actions">
+            <button className="duo-btn duo-btn-outline" onClick={() => downloadProgress(progress)}>
+              ⬇️ {t('exportProgress', ui)}
+            </button>
+            <button className="duo-btn duo-btn-outline" onClick={() => importInputRef.current?.click()}>
+              ⬆️ {t('importProgress', ui)}
+            </button>
+            <input
+              ref={importInputRef}
+              type="file"
+              accept="application/json,.json"
+              className="sr-only-input"
+              onChange={(e) => {
+                handleImportFile(e.target.files?.[0]);
+                e.target.value = '';
+              }}
+              aria-label={t('importProgress', ui)}
+            />
+          </div>
+          <p className="settings-hint">🎙️ {t('micPrivacy', ui)}</p>
         </div>
 
         {confirmReset ? (

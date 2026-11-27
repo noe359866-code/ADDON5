@@ -22,6 +22,12 @@ services:
       - path: /index.html
         name: Cache-Control
         value: no-cache
+      - path: /sw.js
+        name: Cache-Control
+        value: no-cache
+      - path: /manifest.webmanifest
+        name: Cache-Control
+        value: no-cache
     routes:
       # Fallback para SPA (la app no usa rutas, pero evita 404 en recargas).
       - type: rewrite

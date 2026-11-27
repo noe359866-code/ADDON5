@@ -30,8 +30,10 @@ export const defaultProgress: Progress = {
 
   xp: 0,
   gems: 500,
+  // Vidas ilimitadas por defecto: en una app para peques que aprenden a leer,
+  // bloquear el juego por fallar es contraproducente. Se puede desactivar en Ajustes.
   hearts: 5,
-  unlimitedHearts: false,
+  unlimitedHearts: true,
   dailyGoal: 20,
   dailyXp: 0,
   dailyLessons: 0,
@@ -65,14 +67,16 @@ export const defaultProgress: Progress = {
   correctTotal: 0,
 };
 
-export function loadProgress(): Progress {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return { ...defaultProgress };
-    const parsed = JSON.parse(raw) as Partial<Progress>;
-    const today = todayString();
-    const isSameDay = parsed.dailyDate === today;
-    return {
+/**
+ * Valida y completa un objeto de progreso (desde localStorage o desde un archivo
+ * importado por familias/docentes). Nunca lanza: ante datos inválidos devuelve
+ * el progreso por defecto.
+ */
+export function sanitizeProgress(rawParsed: unknown): Progress {
+  const parsed = (rawParsed && typeof rawParsed === 'object' ? rawParsed : {}) as Partial<Progress>;
+  const today = todayString();
+  const isSameDay = parsed.dailyDate === today;
+  return {
       ...defaultProgress,
       ...parsed,
       difficultyLevel:
@@ -121,9 +125,71 @@ export function loadProgress(): Progress {
       frozenDates: Array.isArray(parsed.frozenDates) ? parsed.frozenDates : [],
       badges: Array.isArray(parsed.badges) ? parsed.badges : [],
     };
+}
+
+export function loadProgress(): Progress {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return { ...defaultProgress };
+    return sanitizeProgress(JSON.parse(raw) as Partial<Progress>);
   } catch {
     return { ...defaultProgress };
   }
+}
+
+/** Descarga el progreso como JSON (copia de seguridad para familias y docentes). */
+export function downloadProgress(p: Progress): void {
+  const payload = JSON.stringify({ app: 'hitzbidaia', version: 1, exportedAt: new Date().toISOString(), progress: p }, null, 2);
+  const blob = new Blob([payload], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `hitzbidaia-progreso-${todayString()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/** Acepta únicamente copias completas de esta aplicación para evitar sobrescribir
+ * el progreso actual con archivos incompletos o tipos incompatibles. */
+export function parseImportedProgress(text: string): Progress | null {
+  try {
+    const payload: unknown = JSON.parse(text);
+    if (!isRecord(payload) || payload.app !== 'hitzbidaia' || payload.version !== 1 || !isRecord(payload.progress)) return null;
+    const candidate = payload.progress;
+    for (const [key, defaultValue] of Object.entries(defaultProgress)) {
+      const value = candidate[key];
+      if (key === 'doubleOrNothing') {
+        if (value !== null && (!isRecord(value) || typeof value.active !== 'boolean' || typeof value.startDate !== 'string')) return null;
+      } else if (Array.isArray(defaultValue)) {
+        if (!Array.isArray(value)) return null;
+        if (key === 'mistakes') {
+          if (!value.every((m: unknown) => isRecord(m) && typeof m.id === 'string' && typeof m.prompt === 'string' && typeof m.answer === 'string' && ['es', 'eu', 'en'].includes(String(m.lang)) && typeof m.levelId === 'number' && Number.isFinite(m.levelId) && typeof m.addedAt === 'string')) return null;
+        } else if (!value.every((item: unknown) => typeof item === 'string')) return null;
+      } else if (typeof defaultValue === 'object') {
+        if (!isRecord(value)) return null;
+        const booleanMap = ['completed', 'legendary', 'questClaims'].includes(key);
+        if (!Object.values(value).every((item) => booleanMap ? typeof item === 'boolean' : typeof item === 'number' && Number.isFinite(item) && item >= 0)) return null;
+      } else if (typeof value !== typeof defaultValue || (typeof value === 'number' && (!Number.isFinite(value) || value < 0))) return null;
+    }
+    const enums: Record<string, string[]> = {
+      uiLang: ['es', 'eu'], learnLang: ['es', 'eu', 'en', 'both'],
+      route: ['visual', 'auditivo', 'mixta'], difficultyLevel: ['bajo', 'medio', 'alto'],
+      schoolStage: ['general', 'infantil', 'prim12', 'prim34', 'prim56'],
+      readingPhase: ['fonologica', 'logográfica', 'alfabética', 'ortográfica'],
+      equippedOutfit: ['classic', 'explorer', 'super', 'royal', 'cool'],
+    };
+    if (Object.entries(enums).some(([key, values]) => !values.includes(String(candidate[key])))) return null;
+    if (!(candidate.outfits as unknown[]).every((item) => enums.equippedOutfit!.includes(String(item)))) return null;
+    return sanitizeProgress(candidate);
+  } catch {
+    return null;
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 export function isUnlocked(p: Progress, levelId: number): boolean {

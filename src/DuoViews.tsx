@@ -526,7 +526,9 @@ export function StoryPlayerModal({
           <button
             className={`duo-chip-btn ${showDual ? 'on' : ''}`}
             onClick={() => setShowDual((v) => !v)}
-            title="Subtítulo bilingüe ES+EU"
+            title={t('bilingualSubtitles', ui)}
+            aria-label={t('bilingualSubtitles', ui)}
+            aria-pressed={showDual}
           >
             ES+EU
           </button>
@@ -804,6 +806,7 @@ export function PracticeHubView({
           <div className="duo-practice-copy">
             <strong>{t('timedTitle', ui)}</strong>
             <p>{t('timedDesc', ui)}</p>
+            <p className="duo-practice-note">{t('timedNote', ui)}</p>
           </div>
           <span className="duo-practice-cta">+20 XP</span>
         </button>

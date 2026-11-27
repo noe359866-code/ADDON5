@@ -1,6 +1,6 @@
 # 🦆 HitzBidaia · Viaje de Palabras
 
-Una app **progresiva y divertida para aprender a leer en euskera y castellano**, pensada para niños y niñas que empiezan a leer (y para cualquier persona que quiera practicar). No hay cuentas, ni anuncios, ni servidor: todo funciona en el navegador y el progreso se guarda en `localStorage`.
+Una app **progresiva y divertida para aprender a leer en euskera, castellano e inglés**, pensada para niños y niñas que empiezan a leer (y para cualquier persona que quiera practicar). No hay cuentas, ni anuncios, ni servidor: todo funciona en el navegador y el progreso se guarda en `localStorage`.
 
 > *Laburpena euskaraz: euskaraz eta gaztelaniaz irakurtzen ikasteko app progresiboa eta jolasgarria, ikusizko eta entzunezko ibilbideekin.*
 
@@ -36,7 +36,7 @@ La ruta se elige al empezar y **se puede cambiar en cualquier momento** desde el
 
 ### Adaptación además de la ruta
 - **Dificultad viva**: 3 aciertos seguidos → más opciones y distractores más parecidos; 2 fallos seguidos → baja la dificultad.
-- **Dos idiomas**: castellano, euskera o alternando una pregunta de cada (`¡Los dos!`). Cada pregunta muestra su chip `ES` / `EU`.
+- **Idiomas de aprendizaje**: castellano, euskera o inglés; `¡Los dos!` alterna castellano y euskera. Cada pregunta muestra su idioma. La interfaz está disponible en castellano y euskera, no en inglés.
 - **Interfaz bilingüe**: todos los textos de la app en español o en euskera.
 - **Pistas** de Pato Ventura (con repetición lenta del audio), sin castigo más allá de algo menos de XP.
 - **Voz**: Web Speech API (`eu-ES` / `es-ES`). Si el navegador no tiene voz en euskera, se usa la voz en español y se avisa con un cartelito.
@@ -58,7 +58,7 @@ En el **tercer paso del inicio** y en **Ajustes → Apoyos de aprendizaje** se p
 
 Detalles de diseño deliberados:
 - **Nunca se comunica información solo con color** (WCAG 1.4.1): todas las opciones y fichas de letras muestran iconos `✓` / `✕` y bordes sólidos frente a discontinuos incluso sin activar el perfil de daltonismo.
-- **Nunca hay tiempo límite, vidas ni penalización**; fallar muestra la respuesta con una pista, no un error.
+- **Los mundos normales no tienen límite de tiempo y las vidas son ilimitadas por defecto**. Se pueden activar vidas limitadas en Ajustes; si se agotan, siempre se puede seguir gratis con vidas ilimitadas. El modo contrarreloj es opcional. Los fallos y las pistas pueden afectar a los puntos de la sesión.
 - **Los juegos imperativos no tienen respuesta incorrecta**: participar ya suma, y se puede repetir o saltar sin consecuencias.
 - Se evitó el «Simón dice» clásico (la regla de *no hacerlo si no dice "Simón dice"* excluye a quien tiene dificultades de comprensión): **siempre se hace lo que dice Pato Ventura**.
 - Instrucciones de un paso, literales, con pictograma + texto + voz (comunicación total); opcionalmente dos pasos con apoyo visual numerado.
@@ -74,11 +74,34 @@ Mascota animada en SVG, confeti, estrellas, XP, nivel lector, racha diaria, 10 i
 **Orden y profesionalismo:** tokens de diseño (`--surface`, `--border-soft`, radios y sombras), barra superior estable, onboarding con paso numérico y progreso explícito, secciones del panel numeradas y agrupadas en tarjetas neutras, mapa de mundos alineado como *timeline*, selector de ruta/idioma con jerarquía tipográfica, tarjetas de resultados y ajustes con bordes coherentes, e insignias en cuadrícula. Los componentes `SectionHead`, `StepProgress` y el helper `staggerStyle` centralizan la estructura visual y evitan estilos repetidos.
 
 ### 🧸 Minijuegos y música relajante
+En el mapa, **Juega con Pato Ventura** abre un rincón opcional donde se puede tocar al pato, hacerle cosquillas, darle un abrazo o invitarlo a bailar. Responde con gestos y mensajes en castellano o euskera. Respeta el sonido desactivado y el modo tranquilo, y reduce el movimiento cuando lo pide el sistema. No usa el micrófono ni graba o repite lo que dice el niño.
+
 Además de las instrucciones de «¡Pato Ventura dice!», el modo 8 incluye **minijuegos sin fallo** pensados para niños: explotar burbujas, contar palmadas, respirar con Pato Ventura, tocar un pictograma elegido libremente e imitar un gesto. Todos mantienen voz, pictograma, «Otra vez» y «Siguiente»; participar siempre suma.
 
 La **música relajante** se genera con Web Audio en el navegador (acordes suaves, sin voces, sin archivos externos ni servicios de terceros). Se controla con el botón 🎵 de la cabecera y desde Ajustes, se guarda en `localStorage` y **no se inicia automáticamente**: los navegadores bloquean el autoplay, así que arranca con el gesto del usuario o en la primera interacción si ya estaba activada. Es independiente de los efectos y la voz; en modo calmo permanece apagada salvo que se encienda explícitamente.
 
-En **Ajustes → Desbloquear todos los mundos (demo)** se pueden explorar los 6 mundos sin completarlos.
+En **Ajustes → Desbloquear todos los mundos (demo)** se pueden explorar los 6 mundos sin completarlos. La clasificación muestra rivales simulados, no otros niños conectados.
+
+### Voz local opcional en euskera: Maider
+
+En **Ajustes → Audio y entorno** se puede activar Maider. La primera vez se descargan el modelo (~63 MB) desde Hugging Face y los componentes de síntesis (~33 MB) desde la propia app; puede tardar y requiere conexión, espacio y un dispositivo compatible. La síntesis se ejecuta en el dispositivo, sin enviar los textos al proveedor. Los archivos descargados pueden permanecer en la caché del navegador, pero el navegador puede borrarlos y no se garantiza su disponibilidad sin conexión. La velocidad varía según el dispositivo. Si falla, se muestra un aviso y se utiliza la voz del navegador; castellano e inglés siguen usando las voces del navegador. La preferencia es local a este dispositivo.
+
+La voz [Maider](https://huggingface.co/rhasspy/piper-voices/tree/main/eu/eu_ES/maider/medium) utiliza datos de [itzune/maider-dataset](https://huggingface.co/datasets/itzune/maider-dataset), Creative Commons Attribution 4.0. Motor: [phoonnx.js](https://github.com/TigreGotico/phoonnx.js) (Apache-2.0), [ONNX Runtime Web](https://github.com/microsoft/onnxruntime) (MIT) y [eSpeak NG](https://github.com/ianmarmour/espeak-ng.js) (GPL-3.0-or-later); revisa las obligaciones de licencia antes de redistribuir la app. La descarga desde Hugging Face expone la dirección IP al proveedor del modelo.
+
+### Familias y docentes: progreso y privacidad
+En Ajustes hay un resumen del progreso y opciones para exportarlo e importarlo como archivo JSON. Importar **sustituye** el progreso actual tras una confirmación; guarda primero una copia si deseas conservarlo. El archivo puede contener el nombre y los ejercicios pendientes: guárdalo en un lugar seguro y compártelo solo con personas de confianza. El almacenamiento del navegador puede perderse al borrar sus datos o cambiar de dispositivo.
+
+El modo infantil simplifica la interfaz, pero **no es un control parental ni impide cambiar ajustes**. La lectura con micrófono es opcional: el reconocimiento de voz depende del navegador y puede enviar audio a un proveedor externo. Consulta su política de privacidad y solicita supervisión adulta antes de usarlo. La disponibilidad de voces y reconocimiento depende del navegador y del dispositivo.
+
+---
+
+## 📱 Instalar y usar sin conexión
+
+HitzBidaia es una aplicación web progresiva (PWA): en Android y ordenadores compatibles se puede usar «Instalar» cuando el navegador lo ofrezca; en iPhone/iPad, desde Safari usa **Compartir → Añadir a pantalla de inicio**. La opción depende del navegador y requiere HTTPS (o localhost). No es una aplicación publicada en tiendas.
+
+Abre la versión publicada con conexión y espera a que termine de cargar antes de desconectarte: el navegador guarda los recursos esenciales y las actividades integradas pueden funcionar sin red. El guardado sin conexión depende del espacio y de que el navegador no borre sus datos. La voz del navegador y el reconocimiento de voz pueden depender del dispositivo o de Internet; Maider requiere una descarga inicial independiente y su disponibilidad sin conexión depende de su caché. Las actualizaciones se activan cuando se cierran las pestañas que usan la versión anterior.
+
+El progreso permanece en el almacenamiento local del navegador y puede ser independiente entre navegadores, dispositivos o la app instalada (especialmente en iOS). Antes de cambiar o borrar datos, exporta una copia desde Ajustes. Para comprobar la PWA en local usa `npm run build` seguido de `npm run preview`; el modo `npm run dev` no registra el service worker.
 
 ---
 
@@ -92,6 +115,7 @@ npm run dev        # http://localhost:5173
 Otros comandos:
 
 ```bash
+npm test               # pruebas de idiomas, voz y copias de progreso
 npm run build          # tsc --noEmit + build de producción en dist/
 npm run preview        # sirve dist/
 npm run typecheck      # solo comprobación de tipos
