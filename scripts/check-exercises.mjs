@@ -1,6 +1,7 @@
 /**
  * Comprueba que los generadores producen preguntas válidas en los 8 modos,
- * las 3 rutas, ambos idiomas, 3 dificultades y varios perfiles de apoyo.
+ * las 3 rutas, los 4 modos lingüísticos (es, eu, en y both=es+eu), los 3 niveles
+ * (Bajo=1, Medio=2, Alto=3), la fonética muda de la H en euskera y los perfiles de apoyo.
  *
  * Uso: npm run check:content
  * No necesita dependencias extra: usa esbuild (ya incluido con Vite) para
@@ -10,7 +11,8 @@ import { build } from 'esbuild';
 
 const result = await build({
   stdin: {
-    contents: "export * from './src/exercises'; export * from './src/adaptations'; export * from './src/data';",
+    contents:
+      "export * from './src/exercises'; export * from './src/adaptations'; export * from './src/data'; export * from './src/sound'; export * from './src/i18n';",
     resolveDir: process.cwd(),
     loader: 'ts',
   },
@@ -22,7 +24,20 @@ const result = await build({
 });
 const code = result.outputFiles[0].text;
 const mod = await import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`);
-const { createGenState, pickExercise, makePairsExercise, adaptationsFor, words, colors, stories, specialSounds, wordSyllables } = mod;
+const {
+  createGenState,
+  pickExercise,
+  makePairsExercise,
+  adaptationsFor,
+  words,
+  colors,
+  stories,
+  specialSounds,
+  wordSyllables,
+  phoneticBasqueText,
+  prepareSpeechText,
+  t,
+} = mod;
 
 const norm = (s) =>
   s
@@ -35,10 +50,12 @@ const norm = (s) =>
 const colorLabels = {
   es: new Set(colors.map((c) => norm(c.es))),
   eu: new Set(colors.map((c) => norm(c.eu))),
+  en: new Set(colors.map((c) => norm(c.en))),
 };
 const wordByNorm = {
   es: new Map(words.map((w) => [norm(w.es), w])),
   eu: new Map(words.map((w) => [norm(w.eu), w])),
+  en: new Map(words.map((w) => [norm(w.en), w])),
 };
 
 const routes = ['visual', 'auditivo', 'mixta'];
@@ -48,37 +65,138 @@ const problems = [];
 let total = 0;
 const gameKinds = new Set();
 
-// 0 · Integridad estática del banco de datos.
+// 0a · Integridad fonética de la H muda en euskera.
+const basqueHChecks = [
+  ['hiru', 'iru'],
+  ['hori', 'ori'],
+  ['haur', 'aur'],
+  ['handi', 'andi'],
+  ['harri', 'arri'],
+  ['haize', 'aize'],
+  ['mahai', 'maai'],
+  ['leiho', 'leio'],
+  ['bihotz', 'biotz'],
+  ['ahate', 'aate'],
+  ['behi', 'bei'],
+  ['ohe', 'oe'],
+  ['zuhaitz', 'zuaitz'],
+  ['Hiru ahate handi', 'iru aate andi'],
+];
+for (const [raw, expected] of basqueHChecks) {
+  const actual = phoneticBasqueText(raw).toLowerCase();
+  if (actual !== expected) {
+    problems.push(`phoneticBasqueText("${raw}") = "${actual}", se esperaba "${expected}"`);
+  }
+}
+for (const w of words) {
+  if (/h/i.test(w.eu)) {
+    const spoken = prepareSpeechText(w.eu, 'eu');
+    if (/h/i.test(spoken)) {
+      problems.push(`prepareSpeechText("${w.eu}", "eu") conservó una H sonora: "${spoken}"`);
+    }
+  }
+  // En inglés la H sí se pronuncia: nunca debe eliminarse.
+  if (/h/i.test(w.en)) {
+    const spokenEn = prepareSpeechText(w.en, 'en');
+    if (spokenEn !== w.en) {
+      problems.push(`prepareSpeechText("${w.en}", "en") alteró el inglés: "${spokenEn}"`);
+    }
+  }
+}
+
+// 0b · Integridad estática del banco de datos en ES, EU y EN.
 const seenEmojis = new Set();
 for (const w of words) {
   if (w.sylEs.join('') !== w.es) problems.push(`data.words[${w.id}]: sylEs no reconstruye "${w.es}"`);
   if (w.sylEu.join('') !== w.eu) problems.push(`data.words[${w.id}]: sylEu no reconstruye "${w.eu}"`);
+  if (w.sylEn.join('') !== w.en) problems.push(`data.words[${w.id}]: sylEn no reconstruye "${w.en}"`);
   if (seenEmojis.has(w.emoji)) problems.push(`data.words[${w.id}]: emoji repetido ${w.emoji}`);
   seenEmojis.add(w.emoji);
 }
+// 0c · Categorías funcionales y etiquetas de interfaz nuevas (emociones, días, meses, ropa, cole).
+const requiredCategories = ['emociones', 'dias', 'meses', 'ropa', 'cole'];
+for (const cat of requiredCategories) {
+  const items = words.filter((w) => w.cat === cat);
+  if (items.length < 5) problems.push(`data.words: categoría "${cat}" tiene solo ${items.length} palabras (mínimo 5)`);
+  for (const w of items) {
+    for (const lang of ['es', 'eu', 'en']) {
+      if (!w[lang]?.trim()) problems.push(`data.words[${w.id}]: categoría "${cat}" sin traducción ${lang}`);
+    }
+    const labelKey = `cat${cat[0].toUpperCase()}${cat.slice(1)}`;
+    for (const lang of ['es', 'eu']) {
+      if (t(labelKey, lang) === labelKey) problems.push(`i18n: falta la clave "${labelKey}" para ${lang}`);
+    }
+  }
+}
+// Las nuevas etiquetas de interfaz deben existir en ES y EU.
+for (const key of [
+  'stageLabel',
+  'stageGeneral',
+  'stageInfantil',
+  'stagePrim12',
+  'stagePrim34',
+  'stagePrim56',
+  'audioSpeedLabel',
+  'audioSpeedSlowHint',
+  'audioSpeedNormalHint',
+  'audioSpeedMarkedBadge',
+  'micRepeatBtn',
+  'micListening',
+  'micSuccess',
+  'micTryAgain',
+  'micEmpty',
+  'micDenied',
+  'micUnsupported',
+  'musicQuickOn',
+  'musicQuickOff',
+  'eyebrowLetters',
+  'promptOrderLetters',
+  'hintOrderLetters',
+  'eyebrowDictation',
+  'promptDictationWord',
+  'promptDictationSentence',
+  'dictationPlaceholderWord',
+  'dictationPlaceholderSentence',
+  'dictationHelperBank',
+  'hintDictation',
+]) {
+  for (const lang of ['es', 'eu']) {
+    if (t(key, lang) === key) problems.push(`i18n: falta la clave "${key}" para ${lang}`);
+  }
+}
+
 const seenPatterns = new Set();
 const seenSymbols = new Set();
 for (const col of colors) {
   if (!col.pattern || seenPatterns.has(col.pattern)) problems.push(`data.colors[${col.es}]: patrón ausente o repetido`);
   if (!col.symbol || seenSymbols.has(col.symbol)) problems.push(`data.colors[${col.es}]: símbolo ausente o repetido`);
+  if (!col.en) problems.push(`data.colors[${col.es}]: falta traducción en inglés`);
   seenPatterns.add(col.pattern);
   seenSymbols.add(col.symbol);
 }
-for (const lang of ['es', 'eu']) {
+for (const lang of ['es', 'eu', 'en']) {
   for (const token of specialSounds[lang]) {
     const hits = words.filter((w) => norm(w[lang]).includes(token));
     if (hits.length === 0) problems.push(`data.specialSounds.${lang}: "${token}" no aparece en ninguna palabra`);
   }
 }
 for (const st of stories) {
-  for (const lang of ['es', 'eu']) {
+  for (const lang of ['es', 'eu', 'en']) {
+    if (!st.title?.[lang]?.trim()) problems.push(`data.stories[${st.id}].title.${lang}: vacío`);
+    if (!st.text?.[lang]?.trim()) problems.push(`data.stories[${st.id}].text.${lang}: vacío`);
     if (!st.shortText?.[lang]?.trim()) problems.push(`data.stories[${st.id}].shortText.${lang}: vacío`);
+    if (!st.question?.[lang]?.trim()) problems.push(`data.stories[${st.id}].question.${lang}: vacío`);
   }
 }
 
-function check(ex, ctx, ad) {
+function check(ex, ctx, ad, learnMode) {
   const at = `${ctx} modo=${ex.levelId} lang=${ex.lang} ${ex.kind}`;
-  const ok = (cond, msg) => { if (!cond) problems.push(`${at}: ${msg}`); };
+  const ok = (cond, msg) => {
+    if (!cond) problems.push(`${at}: ${msg}`);
+  };
+  if (learnMode === 'both') {
+    ok(ex.lang === 'es' || ex.lang === 'eu', `el modo combinado both generó "${ex.lang}" en vez de solo ES/EU`);
+  }
   ok(!!ex.prompt && !ex.prompt.includes('{'), 'prompt vacío o sin interpolar');
   ok(!ex.prompt.startsWith('cat') && !ex.prompt.includes('undefined'), 'clave de traducción no encontrada');
   ok(!!ex.eyebrow && !!ex.hint && !!ex.explanation, 'falta texto de apoyo');
@@ -97,7 +215,6 @@ function check(ex, ctx, ad) {
     ok(new Set(opts.map((o) => o.label)).size === opts.length, 'opciones repetidas');
     ok(opts.every((o) => o.label.length > 0), 'opción vacía');
 
-    // Las opciones de colores en modos 7 y 8 deben llevar siempre su muestra hex, patrón y símbolo.
     const allColorOpts = opts.length > 0 && opts.every((o) => colorLabels[ex.lang].has(norm(o.label)));
     if ((ex.levelId === 7 || ex.levelId === 8) && allColorOpts) {
       ok(opts.every((o) => typeof o.color === 'string' && /^#[0-9a-f]{6}$/i.test(o.color)), 'falta muestra de color (opt.color)');
@@ -105,12 +222,10 @@ function check(ex, ctx, ad) {
       ok(opts.every((o) => typeof o.symbol === 'string' && o.symbol.length > 0), 'falta símbolo geométrico (opt.symbol)');
     }
 
-    // En perfil daltonismo, nunca usar círculos de color sin contexto como opción visual.
     if (ad?.colorblind) {
       ok(opts.every((o) => !bareColorCircles.has(o.emoji ?? '')), 'opción con círculo de color sin contexto en modo daltonismo');
     }
 
-    // En sonido especial (mundo 4), solo la respuesta correcta puede contener el sonido pedido.
     if (ex.levelId === 4 && ex.display?.variant === 'word' && ex.display.text && specialSounds[ex.lang].includes(ex.display.text)) {
       const token = ex.display.text;
       const correctOpt = opts.find((o) => o.id === ex.correctId);
@@ -119,7 +234,6 @@ function check(ex, ctx, ad) {
       ok(!badDistractor, `un distractor también contiene el sonido "${token}"`);
     }
 
-    // En «¿Qué palabra empieza por X?» (mundo 2), ningún distractor puede empezar por la misma sílaba.
     if (ex.levelId === 2 && ex.display?.variant === 'word' && ex.display.text) {
       const target = ex.display.text;
       const badDistractor = opts.find((o) => {
@@ -130,7 +244,6 @@ function check(ex, ctx, ad) {
       ok(!badDistractor, `un distractor también empieza por la sílaba "${target}"`);
     }
 
-    // En categorías (mundo 3), ningún distractor puede pertenecer a la misma categoría.
     if (ex.levelId === 3 && ex.display?.variant === 'none' && !ex.audio) {
       const correctOpt = opts.find((o) => o.id === ex.correctId);
       const cw = correctOpt ? wordByNorm[ex.lang].get(norm(correctOpt.label)) : undefined;
@@ -155,8 +268,9 @@ function check(ex, ctx, ad) {
     ok(!!ex.action && !!ex.action.emoji && !!ex.action.text, 'juego imperativo incompleto');
     ok(!ex.options, 'un juego imperativo no debería tener opciones');
     if (ex.action?.steps) {
-      if (ex.lang === 'eu') ok(!ex.action.text.includes('Primero '), 'instrucción de dos pasos mezcló castellano en euskera');
-      if (ex.lang === 'es') ok(!ex.action.text.includes('Lehenik '), 'instrucción de dos pasos mezcló euskera en castellano');
+      if (ex.lang === 'eu') ok(!ex.action.text.includes('Primero ') && !ex.action.text.includes('First '), 'instrucción de dos pasos mezcló otro idioma en euskera');
+      if (ex.lang === 'es') ok(!ex.action.text.includes('Lehenik ') && !ex.action.text.includes('First '), 'instrucción de dos pasos mezcló otro idioma en castellano');
+      if (ex.lang === 'en') ok(ex.action.text.startsWith('First '), 'instrucción de dos pasos en inglés no usó formato inglés');
     }
     const game = ex.action?.game;
     if (game) {
@@ -188,30 +302,78 @@ function check(ex, ctx, ad) {
     ok(ex.correctOrder?.length === ex.tiles?.length, 'orden incorrecto');
     ok(ex.correctOrder?.every((id) => ex.tiles.some((t) => t.id === id)), 'ficha inexistente en el orden');
     ok(!!ex.correctOrder?.every((id, i) => ex.correctOrder[i] === id), 'orden inconsistente');
+    if (ex.unit === 'letter') {
+      // Ordenar letras: las fichas reconstruyen la palabra funcional que se escucha.
+      const rebuilt = ex.correctOrder
+        .map((id) => (ex.tiles ?? []).find((t) => t.id === id)?.label ?? '')
+        .join('');
+      ok(rebuilt.length >= 3, `palabra de ordenar letras inválida: "${rebuilt}"`);
+      ok(rebuilt === ex.audio?.text, `ordenar letras reconstruye "${rebuilt}" y no "${ex.audio?.text}"`);
+      ok(!!ex.audio, 'ordenar letras sin audio');
+      ok(!!ex.audio?.syllables && ex.audio.syllables.length > 0, 'ordenar letras sin sílabas marcadas');
+    }
+  }
+  if (ex.kind === 'dictation') {
+    ok(!!ex.dictationTarget && ex.dictationTarget.length > 0, 'dictado sin texto objetivo');
+    ok(!!ex.audio && ex.audio.lang === ex.lang, 'dictado sin audio o en idioma distinto');
+    ok(!!ex.dictationPlaceholder, 'dictado sin placeholder');
+    if (ex.audio?.syllables) {
+      ok(ex.audio.syllables.join('') === ex.audio.text, `sílabas del dictado no reconstruyen "${ex.audio.text}"`);
+    }
+    if (ex.tiles) {
+      ok(ex.tiles.length >= 2, 'banco de letras del dictado muy corto');
+    }
+  }
+  if (ex.kind === 'pairs') {
+    ok((ex.pairs ?? []).length >= 4 && (ex.pairs?.length ?? 0) % 2 === 0, 'parejas inválidas');
   }
 }
+
+const schoolStages = ['general', 'infantil', 'prim12', 'prim34', 'prim56'];
+const stageLabels = { general: 'todas', infantil: 'infantil', prim12: 'p12', prim34: 'p34', prim56: 'p56' };
 
 for (const preset of presets) {
   const ad = preset ? adaptationsFor(preset) : undefined;
   const label = preset ? preset.join('+') : 'estándar';
   for (let levelId = 1; levelId <= 8; levelId++) {
     for (const route of routes) {
-      for (const learn of ['es', 'eu', 'both']) {
-        const state = createGenState();
-        for (let i = 0; i < 60; i++) {
-          const lang = learn === 'both' ? (i % 2 ? 'eu' : 'es') : learn;
-          const ex = pickExercise({
-            levelId, lang, ui: i % 2 ? 'eu' : 'es', route,
-            difficulty: (i % 3) + 1, slot: i, state, adaptations: ad,
-          });
-          check(ex, `${label}/${route}/${learn}`, ad);
-          total++;
-          if (i % 15 === 0 && levelId !== 8) {
-            const pEx = makePairsExercise({
-              levelId, lang, learnLang: learn, ui: i % 2 ? 'eu' : 'es', state, adaptations: ad,
+      for (const learn of ['es', 'eu', 'en', 'both']) {
+        for (const schoolStage of schoolStages) {
+          const state = createGenState();
+          const stageLabel = `${stageLabels[schoolStage]}`;
+          for (let i = 0; i < 45; i++) {
+            // 'both' alterna exclusivamente ES y EU
+            const lang = learn === 'both' ? (i % 2 ? 'eu' : 'es') : learn;
+            const ex = pickExercise({
+              levelId,
+              lang,
+              learnLang: learn,
+              ui: i % 2 ? 'eu' : 'es',
+              route,
+              difficulty: (i % 3) + 1,
+              slot: i,
+              state,
+              adaptations: ad,
+              schoolStage,
             });
+            check(ex, `${label}/${route}/${learn}/${stageLabel}`, ad, learn);
+            total++;
+            if (i % 15 === 0 && levelId !== 8) {
+              const pEx = makePairsExercise({
+                levelId,
+                lang,
+                learnLang: learn,
+                ui: i % 2 ? 'eu' : 'es',
+                state,
+                adaptations: ad,
+                schoolStage,
+              });
             if (!pEx.pairs || pEx.pairs.length < 4 || pEx.pairs.length % 2 !== 0) {
               problems.push(`[pairs:${label}/${learn}] número inválido de cartas de pareja`);
+            }
+            if (learn === 'both') {
+              const badLangCard = pEx.pairs.find((c) => c.lang && c.lang !== 'es' && c.lang !== 'eu');
+              if (badLangCard) problems.push(`[pairs:${label}/both] apareció idioma distinto de ES/EU: ${badLangCard.lang}`);
             }
             const leftLabels = new Set(pEx.pairs.filter((c) => c.side === 'left').map((c) => c.label));
             const rightLabels = new Set(pEx.pairs.filter((c) => c.side === 'right').map((c) => c.label));
@@ -225,6 +387,7 @@ for (const preset of presets) {
     }
   }
 }
+}
 
 const expectedGames = ['bubbles', 'count', 'breathe', 'find', 'imitate'];
 for (const kind of expectedGames) {
@@ -236,4 +399,6 @@ if (problems.length) {
   console.error(problems.slice(0, 20).join('\n'));
   process.exit(1);
 }
-console.log(`✅ ${total} ejercicios válidos (8 modos × 3 rutas × 3 idiomas × 3 dificultades × ${presets.length} perfiles) · ${gameKinds.size} minijuegos de Pato Ventura.`);
+console.log(
+  `✅ ${total} ejercicios válidos (8 modos × 3 rutas × ES/EU/EN/ES+EU × Bajo/Medio/Alto × ${schoolStages.length} etapas × ${presets.length} perfiles) · H muda vasca verificada · ${gameKinds.size} minijuegos de Pato Ventura · categorías funcionales e etapas verificadas.`,
+);

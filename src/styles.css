@@ -1310,6 +1310,7 @@ body.dark .duo-node-subtag.done { color: #ffd644; }
 }
 .duo-mini-tag.tag-es { background: var(--duo-yellow-soft); color: #9c6f00; }
 .duo-mini-tag.tag-eu { background: var(--duo-green-soft); color: var(--duo-green-lip); }
+.duo-mini-tag.tag-en { background: var(--duo-blue-soft); color: var(--duo-blue-lip); }
 .duo-audio-mini {
   border: 1.5px solid var(--duo-swan); background: var(--duo-polar);
   color: var(--duo-blue); border-radius: 8px; width: 28px; height: 28px;
@@ -1930,7 +1931,7 @@ body.dark .duo-lesson-bottombar.is-wrong .duo-fb-copy h3 { color: #ff7b7b; }
   letter-spacing: 0.08em; color: var(--duo-green-lip);
 }
 .duo-course-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 14px 0;
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 14px 0;
 }
 .duo-course-card {
   display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px;
@@ -2122,6 +2123,7 @@ body.dark .display-word { color: #5cd0ff; }
   background: var(--duo-blue-soft); color: var(--duo-blue-lip); border: 2px solid var(--duo-blue-border);
 }
 .lang-chip.lang-eu { background: var(--duo-green-soft); color: var(--duo-green-lip); border-color: var(--duo-mask-green); }
+.lang-chip.lang-en { background: var(--duo-purple-soft); color: var(--duo-purple-lip); border-color: var(--duo-purple); }
 
 .streak-pill-live {
   display: inline-flex; align-items: center; gap: 4px;
@@ -2457,6 +2459,118 @@ body.calm .confetti, body.calm .xp-float, body.calm .combo-pill { display: none 
   }
   .duo-letters-actions { justify-content: center; }
 }
+
+/* Barra de velocidad del audio, micrófono, música y dictado */
+.duo-music-btn {
+  width: 38px; height: 38px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 2px solid rgba(255,255,255,.28);
+  border-radius: 999px;
+  background: rgba(255,255,255,.12);
+  font-size: 1.05rem;
+  cursor: pointer;
+  transition: transform .12s ease, background .15s ease;
+}
+.duo-music-btn:active { transform: translateY(2px) scale(.97); }
+.duo-music-btn.is-on {
+  background: rgba(120, 200, 120, .32);
+  border-color: #7ee07e;
+  box-shadow: 0 0 0 3px rgba(126, 224, 126, .18);
+}
+
+.duo-speed-slider {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 0 10px;
+  height: 38px;
+  border: 2px solid rgba(255,255,255,.22);
+  border-radius: 999px;
+  background: rgba(255,255,255,.1);
+}
+.duo-speed-emoji { font-size: .9rem; }
+.duo-speed-slider input[type='range'] { width: 84px; }
+
+.duo-audio-controls {
+  margin-top: 14px;
+  display: flex; flex-direction: column; gap: 10px;
+  align-items: center;
+}
+.duo-speed-bar {
+  width: 100%;
+  max-width: 520px;
+  background: rgba(255,255,255,.72);
+  border: 2px solid rgba(60, 60, 90, .14);
+  border-radius: 16px;
+  padding: 10px 14px 8px;
+  box-shadow: 0 6px 18px rgba(30, 30, 60, .08);
+}
+.duo-speed-bar-head {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 6px;
+  font-size: .82rem; font-weight: 700;
+  color: #33406b;
+  margin-bottom: 6px;
+}
+.duo-speed-value { color: #6a73a8; font-weight: 600; }
+.duo-syl-badge {
+  background: #fde9b8; color: #8a5a00;
+  border-radius: 999px; padding: 2px 9px; font-size: .72rem;
+}
+.duo-speed-range {
+  width: 100%;
+  accent-color: #3ecf8e;
+  height: 30px;
+  cursor: pointer;
+}
+.duo-speed-ticks {
+  display: flex; justify-content: space-between;
+  font-size: .68rem; color: #8b93b8;
+  margin-top: 2px;
+}
+
+.duo-mic-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  width: 100%; max-width: 520px;
+}
+.duo-mic-status {
+  font-size: .85rem; font-weight: 600;
+  padding: 5px 12px; border-radius: 999px;
+  background: rgba(255,255,255,.8); color: #3b4674;
+}
+.duo-mic-status.ok { background: #d9f7e3; color: #127a3c; }
+.duo-mic-status.ko { background: #fde2e2; color: #a3231f; }
+.duo-mic-note {
+  font-size: .8rem; color: #6a73a8;
+  background: rgba(255,255,255,.7);
+  border-radius: 999px; padding: 6px 12px;
+  margin: 0;
+}
+
+.duo-dictation {
+  width: 100%; max-width: 560px; margin: 16px auto 0;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.duo-dictation-label {
+  font-size: .78rem; font-weight: 800; letter-spacing: .04em;
+  color: #6a73a8; text-transform: uppercase;
+}
+.duo-dictation-input {
+  width: 100%;
+  font-size: 1.5rem;
+  padding: 14px 16px;
+  border: 2px solid rgba(60, 60, 90, .2);
+  border-radius: 14px;
+  background: #fff;
+  color: #1c2240;
+  outline: none;
+}
+.duo-dictation-input:focus { border-color: #3ecf8e; box-shadow: 0 0 0 3px rgba(62, 207, 142, .18); }
+.duo-dictation-bank {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  background: rgba(255,255,255,.7);
+  border-radius: 14px; padding: 8px 10px;
+}
+.duo-dictation-bank .duo-wb-tile { width: auto; min-width: 48px; }
+.duo-dictation-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
 @media (max-width: 460px) {
   .options-three, .options-four { grid-template-columns: 1fr; }

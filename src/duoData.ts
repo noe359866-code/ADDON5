@@ -1,4 +1,4 @@
-import type { Lang, OutfitId, Progress, SyllableStage, UiLang } from './types';
+import type { Lang, LearnLang, OutfitId, Progress, SyllableStage, UiLang } from './types';
 
 export interface UnitTheme {
   id: number;
@@ -153,8 +153,10 @@ export interface GuidePhrase {
   emoji: string;
   es: string;
   eu: string;
+  en: string;
   sylEs: string;
   sylEu: string;
+  sylEn: string;
 }
 
 export interface UnitGuidebook {
@@ -171,17 +173,17 @@ export interface UnitGuidebook {
 export const UNIT_GUIDEBOOKS: Record<number, UnitGuidebook> = {
   1: {
     unitId: 1,
-    tipEs: 'Cada letra tiene su propia voz. Escucha el primer sonido de la palabra y míralo con calma.',
-    tipEu: 'Letra bakoitzak bere ahotsa du. Entzun hitzaren lehen soinua eta begiratu lasai.',
-    ruleTitleEs: 'Letras especiales: tx, tz, ch, ñ, rr',
-    ruleTitleEu: 'Letra bereziak: tx, tz, ch, ñ, rr',
-    ruleBodyEs: 'En euskera «tx» suena como «ch» en castellano (txakur = perro, txori = pájaro). ¡Dos letras que hacen un solo sonido!',
-    ruleBodyEu: 'Euskaraz «tx» eta gaztelaniaz «ch» antzeko soinua dute (txakur, txokolate). Bi letra, soinu bakar bat!',
+    tipEs: 'Cada letra tiene su propia voz. En euskera recuerda que la «h» es muda (no suena).',
+    tipEu: 'Letra bakoitzak bere ahotsa du. Gogoratu euskaraz «h» letra mutua dela (ez da ahoskatzen).',
+    ruleTitleEs: 'Letras especiales: tx, ch, sh, th y la «h» muda vasca',
+    ruleTitleEu: 'Letra bereziak: tx, ch, sh, th eta euskarazko «h» mutua',
+    ruleBodyEs: 'En euskera «tx» suena como «ch», y la «h» nunca se pronuncia (hiru = iru, behi = bei). En inglés «sh» y «th» unen dos letras en un sonido.',
+    ruleBodyEu: 'Euskaraz «tx» eta gaztelaniaz «ch» antzekoak dira, eta «h» ez da inoiz ahoskatzen (hiru = iru, behi = bei). Ingelesez «sh» eta «th» digrafoak dira.',
     phrases: [
-      { emoji: '🐶', es: 'perro', eu: 'txakur', sylEs: 'pe · rro', sylEu: 'txa · kur' },
-      { emoji: '🐦', es: 'pájaro', eu: 'txori', sylEs: 'pá · ja · ro', sylEu: 'txo · ri' },
-      { emoji: '☀️', es: 'sol', eu: 'eguzki', sylEs: 'sol', sylEu: 'e · guz · ki' },
-      { emoji: '🔑', es: 'llave', eu: 'giltza', sylEs: 'lla · ve', sylEu: 'gil · tza' },
+      { emoji: '🐶', es: 'perro', eu: 'txakur', en: 'dog', sylEs: 'pe · rro', sylEu: 'txa · kur', sylEn: 'dog' },
+      { emoji: '🐦', es: 'pájaro', eu: 'txori', en: 'bird', sylEs: 'pá · ja · ro', sylEu: 'txo · ri', sylEn: 'bird' },
+      { emoji: '☀️', es: 'sol', eu: 'eguzki', en: 'sun', sylEs: 'sol', sylEu: 'e · guz · ki', sylEn: 'sun' },
+      { emoji: '3️⃣', es: 'tres', eu: 'hiru', en: 'three', sylEs: 'tres', sylEu: 'hi · ru (iru)', sylEn: 'three' },
     ],
   },
   2: {
@@ -190,58 +192,58 @@ export const UNIT_GUIDEBOOKS: Record<number, UnitGuidebook> = {
     tipEu: '3 urratsetan goaz: 1. Zuzenak (kontsonante+bokal), 2. Alderantzizkoak (bokal+kontsonante) eta 3. Trabatutakoak (L edo R-rekin).',
     ruleTitleEs: '1 · Directas → 2 · Inversas → 3 · Trabadas',
     ruleTitleEu: '1 · Zuzenak → 2 · Alderantzizkoak → 3 · Trabatutakoak',
-    ruleBodyEs: '1) Directas: «pa · to», «pe · lo · ta». 2) Inversas: primero suena la vocal («is · la», «es · pe · jo»). 3) Trabadas: dos consonantes unidas («pla · to», «ti · gre», «dra · gón»).',
-    ruleBodyEu: '1) Zuzenak: «ka · tu», «pi · lo · ta». 2) Alderantzizkoak: bokala lehenik («ir · la», «is · pi · lu»). 3) Trabatutakoak: bi kontsonante elkarrekin («pla · ter», «ti · gre», «dra · goi»).',
+    ruleBodyEs: '1) Directas: «pa · to», «ba · na · na». 2) Inversas: primero suena la vocal («is · la», «is · land»). 3) Trabadas: dos consonantes unidas («pla · to», «dra · gon»).',
+    ruleBodyEu: '1) Zuzenak: «ka · tu», «pi · lo · ta». 2) Alderantzizkoak: bokala lehenik («ir · la», «is · pi · lu»). 3) Trabatutakoak: bi kontsonante elkarrekin («pla · ter», «dra · goi»).',
     phrases: [
-      { emoji: '⚽', es: '1·Directa: pelota', eu: '1·Zuzena: pilota', sylEs: 'pe · lo · ta', sylEu: 'pi · lo · ta' },
-      { emoji: '🪞', es: '2·Inversa: espejo', eu: '2·Alderantzizkoa: ispilu', sylEs: 'es · pe · jo', sylEu: 'is · pi · lu' },
-      { emoji: '🍽️', es: '3·Trabada (L): plato', eu: '3·Trabatua (L): plater', sylEs: 'pla · to', sylEu: 'pla · ter' },
-      { emoji: '🐉', es: '3·Trabada (R): dragón', eu: '3·Trabatua (R): dragoi', sylEs: 'dra · gón', sylEu: 'dra · goi' },
+      { emoji: '🍅', es: 'tomate', eu: 'tomate', en: 'tomato', sylEs: '1·Directa: to·ma·te', sylEu: '1·Zuzena: to·ma·te', sylEn: '1·Open: to·ma·to' },
+      { emoji: '🏝️', es: 'isla', eu: 'irla', en: 'island', sylEs: '2·Inversa: is·la', sylEu: '2·Alderantzizkoa: ir·la', sylEn: '2·Inverse: is·land' },
+      { emoji: '🍽️', es: 'plato', eu: 'plater', en: 'plate', sylEs: '3·Trabada: pla·to', sylEu: '3·Trabatua: pla·ter', sylEn: '3·Blend: plate' },
+      { emoji: '🐉', es: 'dragón', eu: 'dragoi', en: 'dragon', sylEs: '3·Trabada: dra·gón', sylEu: '3·Trabatua: dra·goi', sylEn: '3·Blend: dra·gon' },
     ],
   },
   3: {
     unitId: 3,
-    tipEs: 'Conecta la palabra escrita con su dibujo y con su sonido para recordarla el doble de rápido.',
-    tipEu: 'Lotu hitz idatzia bere marrazkiarekin eta soinuarekin bi aldiz azkarrago gogoratzeko.',
-    ruleTitleEs: 'Familias de palabras cotidianas',
-    ruleTitleEu: 'Eguneroko hitzen familiak',
-    ruleBodyEs: 'Agrupar palabras por familias (animales, comida, casa, naturaleza) ayuda a tu cerebro a encontrarlas enseguida al leer.',
-    ruleBodyEu: 'Hitzak familien arabera biltzeak (animaliak, janaria, etxea, natura) irakurtzean azkar aurkitzen laguntzen du.',
+    tipEs: 'Conecta cada palabra funcional con su dibujo y su sonido: emociones, el cole, la ropa, los días y los meses.',
+    tipEu: 'Lotu hitz funtzional bakoitza bere marrazkiarekin eta soinuarekin: emozioak, eskola, arropa, egunak eta hilabeteak.',
+    ruleTitleEs: 'Temas del día a día: emociones, cole, ropa, días y meses',
+    ruleTitleEu: 'Eguneroko gaiak: emozioak, eskola, arropa, egunak eta hilabeteak',
+    ruleBodyEs: 'Agrupar palabras cotidianas por temas (emociones, ropa, el cole, días de la semana y meses) ayuda a leer y expresarse en Infantil y Primaria.',
+    ruleBodyEu: 'Eguneroko hitzak gaien arabera biltzeak (emozioak, arropa, eskola, asteko egunak eta hilabeteak) Haur eta Lehen Hezkuntzan irakurtzen laguntzen du.',
     phrases: [
-      { emoji: '🐱', es: 'gato', eu: 'katu', sylEs: 'ga · to', sylEu: 'ka · tu' },
-      { emoji: '🍞', es: 'pan', eu: 'ogi', sylEs: 'pan', sylEu: 'o · gi' },
-      { emoji: '🥛', es: 'leche', eu: 'esne', sylEs: 'le · che', sylEu: 'es · ne' },
-      { emoji: '📖', es: 'libro', eu: 'liburu', sylEs: 'li · bro', sylEu: 'li · bu · ru' },
+      { emoji: '😄', es: 'feliz', eu: 'pozik', en: 'glad', sylEs: 'fe · liz', sylEu: 'po · zik', sylEn: 'glad' },
+      { emoji: '🎒', es: 'mochila', eu: 'motxila', en: 'backpack', sylEs: 'mo · chi · la', sylEu: 'mo · txi · la', sylEn: 'back · pack' },
+      { emoji: '🧥', es: 'abrigo', eu: 'beroki', en: 'coat', sylEs: 'a · bri · go', sylEu: 'be · ro · ki', sylEn: 'coat' },
+      { emoji: '📅', es: 'lunes', eu: 'astelehena', en: 'monday', sylEs: 'lu · nes', sylEu: 'as · te · le · he · na', sylEn: 'mon · day' },
     ],
   },
   4: {
     unitId: 4,
-    tipEs: 'Dos palabras riman cuando su final canta igual: «gato» y «pato», «txori» y «hori».',
-    tipEu: 'Bi hitzek errima egiten dute amaierak berdin abesten duenean: «txori» eta «hori», «sagar» eta «izar».',
+    tipEs: 'Dos palabras riman cuando su final canta igual: «gato / pato», «txori / hori», «cat / hat».',
+    tipEu: 'Bi hitzek errima egiten dute amaierak berdin abesten duenean: «txori / hori», «cat / hat».',
     ruleTitleEs: 'Entrena el oído con pares parecidos',
     ruleTitleEu: 'Entrenatu belarria antzeko bikoteekin',
-    ruleBodyEs: 'Fíjate en la letra que cambia: «casa» frente a «taza», o «katu» frente a «zapatu». ¡Leer el final con atención evita confusiones!',
-    ruleBodyEu: 'Begiratu aldatzen den letrari: «sagar» eta «adar», edo «lore» eta «kolore».',
+    ruleBodyEs: 'Fíjate en la letra que cambia: «casa» frente a «taza», «katu» frente a «zapatu», o «tree» frente a «bee».',
+    ruleBodyEu: 'Begiratu aldatzen den letrari: «sagar / adar», «lore / kolore» edo «cat / hat».',
     phrases: [
-      { emoji: '🐱', es: 'gato · pato', eu: 'txori · hori', sylEs: 'ga·to / pa·to', sylEu: 'txo·ri / ho·ri' },
-      { emoji: '⭐', es: 'estrella · botella', eu: 'sagar · izar', sylEs: 'es·tre·lla', sylEu: 'sa·gar / i·zar' },
-      { emoji: '🌸', es: 'flor · color', eu: 'lore · kolore', sylEs: 'flor / co·lor', sylEu: 'lo·re / ko·lo·re' },
-      { emoji: '❤️', es: 'corazón · canción', eu: 'urdin · egin', sylEs: 'co·ra·zón', sylEu: 'ur·din / e·gin' },
+      { emoji: '🐱', es: 'gato · pato', eu: 'txori · hori', en: 'cat · hat', sylEs: 'ga·to / pa·to', sylEu: 'txo·ri / o·ri', sylEn: 'cat / hat' },
+      { emoji: '⭐', es: 'estrella · botella', eu: 'sagar · izar', en: 'star · car', sylEs: 'es·tre·lla', sylEu: 'sa·gar / i·zar', sylEn: 'star / car' },
+      { emoji: '🌸', es: 'flor · color', eu: 'lore · kolore', en: 'tree · bee', sylEs: 'flor / co·lor', sylEu: 'lo·re / ko·lo·re', sylEn: 'tree / bee' },
+      { emoji: '🌙', es: 'luna · cuna', eu: 'urdin · egin', en: 'moon · spoon', sylEs: 'lu·na / cu·na', sylEu: 'ur·din / e·gin', sylEn: 'moon / spoon' },
     ],
   },
   5: {
     unitId: 5,
     tipEs: 'Una frase cuenta una pequeña película: quién hace algo y qué ocurre.',
     tipEu: 'Esaldi batek film txiki bat kontatzen du: nork egiten duen zerbait eta zer gertatzen den.',
-    ruleTitleEs: 'El orden de las palabras en ES y EU',
-    ruleTitleEu: 'Hitzen ordena gaztelaniaz eta euskaraz',
-    ruleBodyEs: 'En castellano decimos «El gato bebe leche». En euskera el verbo suele ir al final: «Katuak esnea edaten du» (El gato leche bebe).',
-    ruleBodyEu: 'Gaztelaniaz «El gato bebe leche» esaten da; euskaraz aditza amaieran doa: «Katuak esnea edaten du».',
+    ruleTitleEs: 'El orden de las palabras en ES, EU y EN',
+    ruleTitleEu: 'Hitzen ordena ES, EU eta EN hizkuntzetan',
+    ruleBodyEs: 'En castellano e inglés el verbo va en medio («El gato bebe leche» / «The cat drinks milk»); en euskera suele ir al final («Katuak esnea edaten du»).',
+    ruleBodyEu: 'Gaztelaniaz eta ingelesez aditza erdian doa («The cat drinks milk»); euskaraz amaieran («Katuak esnea edaten du»).',
     phrases: [
-      { emoji: '🐱🥛', es: 'El gato bebe leche', eu: 'Katuak esnea edaten du', sylEs: '4 palabras', sylEu: '4 hitz' },
-      { emoji: '☀️', es: 'El sol brilla hoy', eu: 'Eguzkiak gaur distira egiten du', sylEs: '4 palabras', sylEu: '5 hitz' },
-      { emoji: '🐶🌳', es: 'El perro corre al árbol', eu: 'Txakurra zuhaitzera korrika doa', sylEs: '5 palabras', sylEu: '4 hitz' },
-      { emoji: '🌙', es: 'La luna es blanca', eu: 'Ilargia zuria da', sylEs: '4 palabras', sylEu: '3 hitz' },
+      { emoji: '🐱🥛', es: 'El gato bebe leche', eu: 'Katuak esnea edaten du', en: 'The cat drinks milk', sylEs: '4 palabras', sylEu: '4 hitz', sylEn: '4 words' },
+      { emoji: '☀️', es: 'El sol brilla hoy', eu: 'Eguzkiak gaur distira egiten du', en: 'The sun shines today', sylEs: '4 palabras', sylEu: '5 hitz', sylEn: '4 words' },
+      { emoji: '🐶🌳', es: 'El perro corre al árbol', eu: 'Txakurra zuhaitzera korrika doa', en: 'The dog runs to trees', sylEs: '5 palabras', sylEu: '4 hitz', sylEn: '5 words' },
+      { emoji: '🌙', es: 'La luna es blanca', eu: 'Ilargia zuria da', en: 'The moon is white', sylEs: '4 palabras', sylEu: '3 hitz', sylEn: '4 words' },
     ],
   },
   6: {
@@ -253,10 +255,10 @@ export const UNIT_GUIDEBOOKS: Record<number, UnitGuidebook> = {
     ruleBodyEs: 'Puedes pulsar 🔊 o la tortuga 🐢 para escuchar el cuento despacio mientras sigues las palabras con la vista.',
     ruleBodyEu: 'Sakatu 🔊 edo dortoka 🐢 ipuina poliki entzuteko hitzei begiradarekin jarraitzen diezun bitartean.',
     phrases: [
-      { emoji: '🐦☀️', es: 'El pájaro canta en el árbol.', eu: 'Txoriak zuhaitzean abesten du.', sylEs: '¿Quién canta?', sylEu: 'Nork abesten du?' },
-      { emoji: '🦋🌸', es: 'La mariposa vuela sobre la flor.', eu: 'Tximeleta lorearen gainean hegan dabil.', sylEs: '¿Dónde vuela?', sylEu: 'Non dabil?' },
-      { emoji: '📖🔵', es: 'Leemos un libro azul.', eu: 'Liburu urdin bat irakurtzen dugu.', sylEs: '¿Qué color?', sylEu: 'Zer kolore?' },
-      { emoji: '🌙🦆', es: 'Pato Ventura duerme en su nido.', eu: 'Pato Ventura habian lokartzen da.', sylEs: '¿Dónde duerme?', sylEu: 'Non lokartzen da?' },
+      { emoji: '🐦☀️', es: 'El pájaro canta en el árbol.', eu: 'Txoriak zuhaitzean abesten du.', en: 'The bird sings in the tree.', sylEs: '¿Quién canta?', sylEu: 'Nork abesten du?', sylEn: 'Who sings?' },
+      { emoji: '🦋🌸', es: 'La mariposa vuela sobre la flor.', eu: 'Tximeleta lorearen gainean hegan dabil.', en: 'The butterfly flies over the flower.', sylEs: '¿Dónde vuela?', sylEu: 'Non dabil?', sylEn: 'Where?' },
+      { emoji: '📖🔵', es: 'Leemos un libro azul.', eu: 'Liburu urdin bat irakurtzen dugu.', en: 'We read a blue book.', sylEs: '¿Qué color?', sylEu: 'Zer kolore?', sylEn: 'What color?' },
+      { emoji: '🌙🦆', es: 'Pato Ventura duerme en su nido.', eu: 'Pato Ventura habian lokartzen da.', en: 'Pato Ventura sleeps in his nest.', sylEs: '¿Dónde duerme?', sylEu: 'Non lokartzen da?', sylEn: 'Where?' },
     ],
   },
 };
@@ -270,9 +272,11 @@ export interface PhoneticCard {
   symbol: string;
   exampleEs: string;
   exampleEu: string;
+  exampleEn: string;
   emoji: string;
   audioEs: string;
   audioEu: string;
+  audioEn: string;
 }
 
 export interface PhoneticSection {
@@ -294,14 +298,14 @@ export const PHONETIC_SECTIONS: PhoneticSection[] = [
     subEs: 'Paso 1: Consonante + vocal abierta. ¡El punto de partida ideal!',
     subEu: '1. urratsa: Kontsonantea + bokal irekia. Hasteko aproposa!',
     cards: [
-      { id: 'sd-ma', symbol: 'ma', exampleEs: 'ma·no', exampleEu: 'ma·hai', emoji: '✋', audioEs: 'ma, mano', audioEu: 'ma, mahai' },
-      { id: 'sd-pa', symbol: 'pa', exampleEs: 'pa·to', exampleEu: 'za·pa·ta', emoji: '🦆', audioEs: 'pa, pato', audioEu: 'pa, zapata' },
-      { id: 'sd-lu', symbol: 'lu', exampleEs: 'lu·na', exampleEu: 'is·pi·lu', emoji: '🌙', audioEs: 'lu, luna', audioEu: 'lu' },
-      { id: 'sd-so', symbol: 'so', exampleEs: 'so·pa', exampleEu: 'it·sa·so', emoji: '🥣', audioEs: 'so, sopa', audioEu: 'so, itsaso' },
-      { id: 'sd-to', symbol: 'to', exampleEs: 'to·ma·te', exampleEu: 'to·ma·te', emoji: '🍅', audioEs: 'to, tomate', audioEu: 'to, tomate' },
-      { id: 'sd-pe', symbol: 'pe', exampleEs: 'pe·lo·ta', exampleEu: 'pe·rre·txi·ko', emoji: '⚽', audioEs: 'pe, pelota', audioEu: 'pe, perretxiko' },
-      { id: 'sd-ka', symbol: 'ka', exampleEs: 'ca·sa', exampleEu: 'ka·tu', emoji: '🐱', audioEs: 'ca, casa', audioEu: 'ka, katu' },
-      { id: 'sd-lo', symbol: 'lo', exampleEs: 'pe·lo·ta', exampleEu: 'lo·re', emoji: '🌸', audioEs: 'lo, pelota', audioEu: 'lo, lore' },
+      { id: 'sd-ma', symbol: 'ma', exampleEs: 'ma·no', exampleEu: 'ma·hai', exampleEn: 'to·ma·to', emoji: '✋', audioEs: 'ma, mano', audioEu: 'ma, mahai', audioEn: 'ma, tomato' },
+      { id: 'sd-pa', symbol: 'pa / ba', exampleEs: 'pa·to', exampleEu: 'za·pa·ta', exampleEn: 'ba·na·na', emoji: '🦆', audioEs: 'pa, pato', audioEu: 'pa, zapata', audioEn: 'ba, banana' },
+      { id: 'sd-lu', symbol: 'lu / po', exampleEs: 'lu·na', exampleEu: 'is·pi·lu', exampleEn: 'po·ta·to', emoji: '🌙', audioEs: 'lu, luna', audioEu: 'lu, ispilu', audioEn: 'po, potato' },
+      { id: 'sd-so', symbol: 'so', exampleEs: 'so·pa', exampleEu: 'it·sa·so', exampleEn: 'so·fa', emoji: '🥣', audioEs: 'so, sopa', audioEu: 'so, itsaso', audioEn: 'so, sofa' },
+      { id: 'sd-to', symbol: 'to', exampleEs: 'to·ma·te', exampleEu: 'to·ma·te', exampleEn: 'to·ma·to', emoji: '🍅', audioEs: 'to, tomate', audioEu: 'to, tomate', audioEn: 'to, tomato' },
+      { id: 'sd-pe', symbol: 'pe / ti', exampleEs: 'pe·lo·ta', exampleEu: 'pi·lo·ta', exampleEn: 'ti·ger', emoji: '⚽', audioEs: 'pe, pelota', audioEu: 'pi, pilota', audioEn: 'ti, tiger' },
+      { id: 'sd-ka', symbol: 'ka / ca', exampleEs: 'ca·sa', exampleEu: 'ka·tu', exampleEn: 'ca·bin', emoji: '🐱', audioEs: 'ca, casa', audioEu: 'ka, katu', audioEn: 'cat' },
+      { id: 'sd-lo', symbol: 'lo / ze', exampleEs: 'pe·lo·ta', exampleEu: 'lo·re', exampleEn: 'ze·bra', emoji: '🌸', audioEs: 'lo, pelota', audioEu: 'lo, lore', audioEn: 'ze, zebra' },
     ],
   },
   {
@@ -309,17 +313,17 @@ export const PHONETIC_SECTIONS: PhoneticSection[] = [
     stage: 2,
     titleEs: '2 · Sílabas Inversas (VC)',
     titleEu: '2 · Alderantzizko Silabak (VC)',
-    subEs: 'Paso 2: Primero suena la vocal y después cierra la consonante (al, ar, an, es…).',
-    subEu: '2. urratsa: Bokala entzuten da lehenik eta kontsonanteak ixten du (al, ar, an, es…).',
+    subEs: 'Paso 2: Primero suena la vocal y después cierra la consonante (al, ar, an, es, in…).',
+    subEu: '2. urratsa: Bokala entzuten da lehenik eta kontsonanteak ixten du (al, ar, an, es, in…).',
     cards: [
-      { id: 'si-is', symbol: 'is / ir', exampleEs: 'is·la', exampleEu: 'ir·la', emoji: '🏝️', audioEs: 'is, isla', audioEu: 'ir, irla' },
-      { id: 'si-es', symbol: 'es', exampleEs: 'es·pe·jo', exampleEu: 'es·ko·la', emoji: '🪞', audioEs: 'es, espejo', audioEu: 'es, eskola' },
-      { id: 'si-ar', symbol: 'ar', exampleEs: 'ar·co', exampleEu: 'ar·ku', emoji: '🏹', audioEs: 'ar, arco', audioEu: 'ar, arku' },
-      { id: 'si-an', symbol: 'an', exampleEs: 'an·te·na', exampleEu: 'an·te·na', emoji: '📡', audioEs: 'an, antena', audioEu: 'an, antena' },
-      { id: 'si-in', symbol: 'in', exampleEs: 'in·sec·to', exampleEu: 'in·tsek·tu', emoji: '🐞', audioEs: 'in, insecto', audioEu: 'in, intsektu' },
-      { id: 'si-ez', symbol: 'es / ez', exampleEs: 'es·pa·da', exampleEu: 'ez·pa·ta', emoji: '⚔️', audioEs: 'es, espada', audioEu: 'ez, ezpata' },
-      { id: 'si-ur', symbol: 'ár / ur', exampleEs: 'ár·bol', exampleEu: 'ur·din', emoji: '🌳', audioEs: 'ar, árbol', audioEu: 'ur, urdin' },
-      { id: 'si-am', symbol: 'am / an', exampleEs: 'am·bu·lan·cia', exampleEu: 'an·bu·lan·tzi·a', emoji: '🚑', audioEs: 'am, ambulancia', audioEu: 'an, anbulantzia' },
+      { id: 'si-is', symbol: 'is / ir', exampleEs: 'is·la', exampleEu: 'ir·la', exampleEn: 'is·land', emoji: '🏝️', audioEs: 'is, isla', audioEu: 'ir, irla', audioEn: 'island' },
+      { id: 'si-es', symbol: 'es / ap', exampleEs: 'es·pe·jo', exampleEu: 'es·ko·la', exampleEn: 'ap·ple', emoji: '🪞', audioEs: 'es, espejo', audioEu: 'es, eskola', audioEn: 'apple' },
+      { id: 'si-ar', symbol: 'ar', exampleEs: 'ar·co', exampleEu: 'ar·ku', exampleEn: 'ar·row', emoji: '🏹', audioEs: 'ar, arco', audioEu: 'ar, arku', audioEn: 'arrow' },
+      { id: 'si-an', symbol: 'an', exampleEs: 'an·te·na', exampleEu: 'an·te·na', exampleEn: 'an·ten·na', emoji: '📡', audioEs: 'an, antena', audioEu: 'an, antena', audioEn: 'antenna' },
+      { id: 'si-in', symbol: 'in', exampleEs: 'in·sec·to', exampleEu: 'in·tsek·tu', exampleEn: 'in·sect', emoji: '🐞', audioEs: 'in, insecto', audioEu: 'in, intsektu', audioEn: 'insect' },
+      { id: 'si-ez', symbol: 'es / ez', exampleEs: 'es·pa·da', exampleEu: 'ez·pa·ta', exampleEn: 'up', emoji: '⚔️', audioEs: 'es, espada', audioEu: 'ez, ezpata', audioEn: 'up' },
+      { id: 'si-ur', symbol: 'ár / ur', exampleEs: 'ár·bol', exampleEu: 'ur·din', exampleEn: 'o·range', emoji: '🌳', audioEs: 'ar, árbol', audioEu: 'ur, urdin', audioEn: 'orange' },
+      { id: 'si-am', symbol: 'am / an', exampleEs: 'am·bu·lan·cia', exampleEu: 'an·bu·lan·tzi·a', exampleEn: 'am·bu·lance', emoji: '🚑', audioEs: 'am, ambulancia', audioEu: 'an, anbulantzia', audioEn: 'ambulance' },
     ],
   },
   {
@@ -330,62 +334,62 @@ export const PHONETIC_SECTIONS: PhoneticSection[] = [
     subEs: 'Paso 3: Dos consonantes unidas con L o con R antes de la vocal (bl, cl, fl, gl, pl · br, cr, dr, fr, gr, pr, tr).',
     subEu: '3. urratsa: Bi kontsonante L edo R-rekin bokalaren aurretik (bl, kl, fl, gl, pl · br, kr, dr, fr, gr, pr, tr).',
     cards: [
-      { id: 'st-pla', symbol: 'pla', exampleEs: 'pla·to', exampleEu: 'pla·ter', emoji: '🍽️', audioEs: 'pla, plato', audioEu: 'pla, plater' },
-      { id: 'st-blu', symbol: 'blu', exampleEs: 'blu·sa', exampleEu: 'blu·sa', emoji: '👚', audioEs: 'blu, blusa', audioEu: 'blu, blusa' },
-      { id: 'st-cle', symbol: 'cle / kle', exampleEs: 'bi·ci·cle·ta', exampleEu: 'bi·zi·kle·ta', emoji: '🚲', audioEs: 'cle, bicicleta', audioEu: 'kle, bizikleta' },
-      { id: 'st-fla', symbol: 'fla', exampleEs: 'flan', exampleEu: 'fla·na', emoji: '🍮', audioEs: 'flan', audioEu: 'fla, flana' },
-      { id: 'st-glo', symbol: 'glo', exampleEs: 'glo·bo', exampleEu: 'glo·bo', emoji: '🎈', audioEs: 'glo, globo', audioEu: 'glo, globo' },
-      { id: 'st-bra', symbol: 'bra', exampleEs: 'ce·bra', exampleEu: 'ze·bra', emoji: '🦓', audioEs: 'bra, cebra', audioEu: 'bra, zebra' },
-      { id: 'st-dri', symbol: 'dri / kro', exampleEs: 'co·co·dri·lo', exampleEu: 'kro·ko·di·lo', emoji: '🐊', audioEs: 'dri, cocodrilo', audioEu: 'kro, krokodilo' },
-      { id: 'st-dra', symbol: 'dra', exampleEs: 'dra·gón', exampleEu: 'dra·goi', emoji: '🐉', audioEs: 'dra, dragón', audioEu: 'dra, dragoi' },
-      { id: 'st-fru', symbol: 'fru', exampleEs: 'fru·ta', exampleEu: 'fru·ta', emoji: '🍓', audioEs: 'fru, fruta', audioEu: 'fru, fruta' },
-      { id: 'st-gre', symbol: 'gre', exampleEs: 'ti·gre', exampleEu: 'ti·gre', emoji: '🐯', audioEs: 'gre, tigre', audioEu: 'gre, tigre' },
-      { id: 'st-pri', symbol: 'prin', exampleEs: 'prin·ce·sa', exampleEu: 'prin·tze·sa', emoji: '👑', audioEs: 'prin, princesa', audioEu: 'prin, printzesa' },
-      { id: 'st-tra', symbol: 'tre / tra', exampleEs: 'trac·tor', exampleEu: 'trak·to·re', emoji: '🚜', audioEs: 'trac, tractor', audioEu: 'trak, traktore' },
+      { id: 'st-pla', symbol: 'pla', exampleEs: 'pla·to', exampleEu: 'pla·ter', exampleEn: 'plate', emoji: '🍽️', audioEs: 'pla, plato', audioEu: 'pla, plater', audioEn: 'plate' },
+      { id: 'st-blu', symbol: 'blu / blo', exampleEs: 'blu·sa', exampleEu: 'blu·sa', exampleEn: 'blouse', emoji: '👚', audioEs: 'blu, blusa', audioEu: 'blu, blusa', audioEn: 'blouse' },
+      { id: 'st-cle', symbol: 'cle / kle', exampleEs: 'bi·ci·cle·ta', exampleEu: 'bi·zi·kle·ta', exampleEn: 'bi·cy·cle', emoji: '🚲', audioEs: 'cle, bicicleta', audioEu: 'kle, bizikleta', audioEn: 'bicycle' },
+      { id: 'st-fla', symbol: 'fla / flo', exampleEs: 'flan', exampleEu: 'fla·na', exampleEn: 'flo·wer', emoji: '🍮', audioEs: 'flan', audioEu: 'fla, flana', audioEn: 'flower' },
+      { id: 'st-glo', symbol: 'glo / gre', exampleEs: 'glo·bo', exampleEu: 'glo·bo', exampleEn: 'green', emoji: '🎈', audioEs: 'glo, globo', audioEu: 'glo, globo', audioEn: 'green' },
+      { id: 'st-bra', symbol: 'bra', exampleEs: 'ce·bra', exampleEu: 'ze·bra', exampleEn: 'ze·bra', emoji: '🦓', audioEs: 'bra, cebra', audioEu: 'bra, zebra', audioEn: 'zebra' },
+      { id: 'st-dri', symbol: 'dri / cro', exampleEs: 'co·co·dri·lo', exampleEu: 'kro·ko·di·lo', exampleEn: 'cro·co·dile', emoji: '🐊', audioEs: 'dri, cocodrilo', audioEu: 'kro, krokodilo', audioEn: 'crocodile' },
+      { id: 'st-dra', symbol: 'dra', exampleEs: 'dra·gón', exampleEu: 'dra·goi', exampleEn: 'dra·gon', emoji: '🐉', audioEs: 'dra, dragón', audioEu: 'dra, dragoi', audioEn: 'dragon' },
+      { id: 'st-fru', symbol: 'fru', exampleEs: 'fru·ta', exampleEu: 'fru·ta', exampleEn: 'fruit', emoji: '🍓', audioEs: 'fru, fruta', audioEu: 'fru, fruta', audioEn: 'fruit' },
+      { id: 'st-gre', symbol: 'gre / tre', exampleEs: 'ti·gre', exampleEu: 'ti·gre', exampleEn: 'tree', emoji: '🐯', audioEs: 'gre, tigre', audioEu: 'gre, tigre', audioEn: 'tree' },
+      { id: 'st-pri', symbol: 'prin', exampleEs: 'prin·ce·sa', exampleEu: 'prin·tze·sa', exampleEn: 'prin·cess', emoji: '👑', audioEs: 'prin, princesa', audioEu: 'prin, printzesa', audioEn: 'princess' },
+      { id: 'st-tra', symbol: 'tra', exampleEs: 'trac·tor', exampleEu: 'trak·to·re', exampleEn: 'trac·tor', emoji: '🚜', audioEs: 'trac, tractor', audioEu: 'trak, traktore', audioEn: 'tractor' },
     ],
   },
   {
     id: 'vowels',
-    titleEs: 'Las 5 Vocales Claras',
-    titleEu: '5 Bokal Argiak',
-    subEs: 'Suenan igual de claras en castellano y en euskera.',
-    subEu: 'Berdin-berdin entzuten dira euskaraz zein gaztelaniaz.',
+    titleEs: 'Las 5 Vocales',
+    titleEu: '5 Bokalak',
+    subEs: 'Escucha cómo suenan las vocales en cada idioma.',
+    subEu: 'Entzun nola ahoskatzen diren bokalak hizkuntza bakoitzean.',
     cards: [
-      { id: 'v-a', symbol: 'a', exampleEs: 'agua', exampleEu: 'ate', emoji: '💧', audioEs: 'a, agua', audioEu: 'a, ate' },
-      { id: 'v-e', symbol: 'e', exampleEs: 'estrella', exampleEu: 'etxe', emoji: '⭐', audioEs: 'e, estrella', audioEu: 'e, etxe' },
-      { id: 'v-i', symbol: 'i', exampleEs: 'isla', exampleEu: 'izar', emoji: '🏝️', audioEs: 'i, isla', audioEu: 'i, izar' },
-      { id: 'v-o', symbol: 'o', exampleEs: 'ojo', exampleEu: 'ogi', emoji: '👁️', audioEs: 'o, ojo', audioEu: 'o, ogi' },
-      { id: 'v-u', symbol: 'u', exampleEs: 'uno', exampleEu: 'ur', emoji: '1️⃣', audioEs: 'u, uno', audioEu: 'u, ur' },
+      { id: 'v-a', symbol: 'a', exampleEs: 'agua', exampleEu: 'ate', exampleEn: 'apple', emoji: '💧', audioEs: 'a, agua', audioEu: 'a, ate', audioEn: 'apple' },
+      { id: 'v-e', symbol: 'e', exampleEs: 'estrella', exampleEu: 'etxe', exampleEn: 'tree', emoji: '⭐', audioEs: 'e, estrella', audioEu: 'e, etxe', audioEn: 'tree' },
+      { id: 'v-i', symbol: 'i', exampleEs: 'isla', exampleEu: 'izar', exampleEn: 'insect', emoji: '🏝️', audioEs: 'i, isla', audioEu: 'i, izar', audioEn: 'insect' },
+      { id: 'v-o', symbol: 'o', exampleEs: 'ojo', exampleEu: 'ogi', exampleEn: 'orange', emoji: '👁️', audioEs: 'o, ojo', audioEu: 'o, ogi', audioEn: 'orange' },
+      { id: 'v-u', symbol: 'u', exampleEs: 'uno', exampleEu: 'ur', exampleEn: 'sun', emoji: '1️⃣', audioEs: 'u, uno', audioEu: 'u, ur', audioEn: 'sun' },
     ],
   },
   {
     id: 'basque-special',
-    titleEs: 'Sonidos Especiales del Euskera',
-    titleEu: 'Euskararen Soinu Bereziak',
-    subEs: 'Parejas de letras muy frecuentes al leer en euskera.',
-    subEu: 'Euskaraz irakurtzean oso ohikoak diren letra-bikoteak.',
+    titleEs: 'Sonidos del Euskera (¡H muda!)',
+    titleEu: 'Euskararen Soinuak (H mutua!)',
+    subEs: 'Dígrafos vascos y la H muda: se escribe pero nunca se pronuncia.',
+    subEu: 'Euskal digrafoak eta H mutua: idatzi bai, baina ez da ahoskatzen.',
     cards: [
-      { id: 'eu-tx', symbol: 'tx', exampleEs: 'como «ch»', exampleEu: 'txakur', emoji: '🐶', audioEs: 'txakur', audioEu: 'txakur' },
-      { id: 'eu-tz', symbol: 'tz', exampleEs: 'sonido vibrante', exampleEu: 'giltza', emoji: '🔑', audioEs: 'giltza', audioEu: 'giltza' },
-      { id: 'eu-ts', symbol: 'ts', exampleEs: 'suave silbante', exampleEu: 'itsaso', emoji: '🌊', audioEs: 'itsaso', audioEu: 'itsaso' },
-      { id: 'eu-rr', symbol: 'rr', exampleEs: 'erre fuerte', exampleEu: 'harri', emoji: '🪨', audioEs: 'harri', audioEu: 'harri' },
-      { id: 'eu-kh', symbol: 'k', exampleEs: 'sonido /k/', exampleEu: 'katu', emoji: '🐱', audioEs: 'katu', audioEu: 'katu' },
-      { id: 'eu-z', symbol: 'z', exampleEs: 'ese suave', exampleEu: 'zuhaitz', emoji: '🌳', audioEs: 'zuhaitz', audioEu: 'zuhaitz' },
+      { id: 'eu-h', symbol: 'h (muda)', exampleEs: 'h silenciosa', exampleEu: 'hiru → iru', exampleEn: 'silent h', emoji: '🤫', audioEs: 'iru', audioEu: 'hiru', audioEn: 'iru' },
+      { id: 'eu-tx', symbol: 'tx', exampleEs: 'como «ch»', exampleEu: 'txakur', exampleEn: 'like ch', emoji: '🐶', audioEs: 'txakur', audioEu: 'txakur', audioEn: 'chocolate' },
+      { id: 'eu-tz', symbol: 'tz', exampleEs: 'sonido vibrante', exampleEu: 'giltza', exampleEn: 'tz', emoji: '🔑', audioEs: 'giltza', audioEu: 'giltza', audioEn: 'key' },
+      { id: 'eu-ts', symbol: 'ts', exampleEs: 'suave silbante', exampleEu: 'itsaso', exampleEn: 'ts', emoji: '🌊', audioEs: 'itsaso', audioEu: 'itsaso', audioEn: 'sea' },
+      { id: 'eu-rr', symbol: 'rr', exampleEs: 'erre fuerte', exampleEu: 'harri → arri', exampleEn: 'stone', emoji: '🪨', audioEs: 'arri', audioEu: 'harri', audioEn: 'stone' },
+      { id: 'eu-z', symbol: 'z', exampleEs: 'ese suave', exampleEu: 'zuhaitz → zuaitz', exampleEn: 'tree', emoji: '🌳', audioEs: 'zuaitz', audioEu: 'zuhaitz', audioEn: 'tree' },
     ],
   },
   {
-    id: 'spanish-special',
-    titleEs: 'Sonidos Especiales del Castellano',
-    titleEu: 'Gaztelaniaren Soinu Bereziak',
-    subEs: 'Dígrafos y letras mágicas para leer sin tropezar.',
-    subEu: 'Digrafo eta letra bereziak erraz irakurtzeko.',
+    id: 'spanish-english-special',
+    titleEs: 'Dígrafos de Castellano e Inglés',
+    titleEu: 'Gaztelaniaren eta Ingelesaren Digrafoak',
+    subEs: 'Parejas de letras especiales en español (ch, ll, ñ, qu) e inglés (sh, th, oo, ee).',
+    subEu: 'Letra-bikote bereziak gaztelaniaz (ch, ll, ñ, qu) eta ingelesez (sh, th, oo, ee).',
     cards: [
-      { id: 'es-ch', symbol: 'ch', exampleEs: 'chocolate', exampleEu: 'txokolate', emoji: '🍫', audioEs: 'chocolate', audioEu: 'txokolate' },
-      { id: 'es-ll', symbol: 'll', exampleEs: 'llave', exampleEu: 'giltza', emoji: '🔑', audioEs: 'llave', audioEu: 'llave' },
-      { id: 'es-ny', symbol: 'ñ', exampleEs: 'niño', exampleEu: 'haur', emoji: '🧒', audioEs: 'niño', audioEu: 'niño' },
-      { id: 'es-rr', symbol: 'rr', exampleEs: 'perro', exampleEu: 'txakur', emoji: '🐶', audioEs: 'perro', audioEu: 'perro' },
-      { id: 'es-qu', symbol: 'qu', exampleEs: 'queso', exampleEu: 'gazta', emoji: '🧀', audioEs: 'queso', audioEu: 'queso' },
-      { id: 'es-fl', symbol: 'fl', exampleEs: 'flor', exampleEu: 'lore', emoji: '🌸', audioEs: 'flor', audioEu: 'flor' },
+      { id: 'es-ch', symbol: 'ch', exampleEs: 'chocolate', exampleEu: 'txokolate', exampleEn: 'cheese', emoji: '🍫', audioEs: 'chocolate', audioEu: 'txokolate', audioEn: 'cheese' },
+      { id: 'es-ll', symbol: 'll / sh', exampleEs: 'llave', exampleEu: 'giltza', exampleEn: 'shoe', emoji: '👟', audioEs: 'llave', audioEu: 'giltza', audioEn: 'shoe' },
+      { id: 'es-ny', symbol: 'ñ / th', exampleEs: 'niño', exampleEu: 'haur', exampleEn: 'three', emoji: '3️⃣', audioEs: 'niño', audioEu: 'haur', audioEn: 'three' },
+      { id: 'es-qu', symbol: 'qu / sq', exampleEs: 'queso', exampleEu: 'gazta', exampleEn: 'squirrel', emoji: '🐿️', audioEs: 'queso', audioEu: 'gazta', audioEn: 'squirrel' },
+      { id: 'en-oo', symbol: 'oo', exampleEs: 'luna', exampleEu: 'ilargi', exampleEn: 'moon · book', emoji: '🌙', audioEs: 'luna', audioEu: 'ilargi', audioEn: 'moon, book' },
+      { id: 'en-ee', symbol: 'ee', exampleEs: 'árbol', exampleEu: 'zuhaitz', exampleEn: 'tree · green', emoji: '🌳', audioEs: 'árbol', audioEu: 'zuhaitz', audioEn: 'tree, green' },
     ],
   },
 ];
@@ -399,10 +403,12 @@ export interface StoryStep {
   avatar: string;
   es: string;
   eu: string;
+  en: string;
   quiz?: {
     questionEs: string;
     questionEu: string;
-    options: { es: string; eu: string; ok?: boolean }[];
+    questionEn: string;
+    options: { es: string; eu: string; en: string; ok?: boolean }[];
   };
 }
 
@@ -413,6 +419,7 @@ export interface DuoStory {
   color: string;
   titleEs: string;
   titleEu: string;
+  titleEn: string;
   xpReward: number;
   steps: StoryStep[];
 }
@@ -425,37 +432,60 @@ export const DUO_STORIES: DuoStory[] = [
     color: '#58cc02',
     titleEs: 'El desayuno de Pato Ventura',
     titleEu: 'Pato Venturaren gosaria',
+    titleEn: "Pato Ventura's Breakfast",
     xpReward: 20,
     steps: [
-      { speaker: 'Pato Ventura', avatar: '🦆', es: '¡Buenos días, Katu! Tengo mucha hambre.', eu: 'Egun on, Katu! Gose handia daukat.' },
-      { speaker: 'Katu', avatar: '🐱', es: '¡Hola! En la mesa hay pan y queso.', eu: 'Kaixo! Mahaian ogia eta gazta daude.' },
+      {
+        speaker: 'Pato Ventura',
+        avatar: '🦆',
+        es: '¡Buenos días, Katu! Tengo mucha hambre.',
+        eu: 'Egun on, Katu! Gose handia daukat.',
+        en: 'Good morning, Katu! I am very hungry.',
+      },
+      {
+        speaker: 'Katu',
+        avatar: '🐱',
+        es: '¡Hola! En la mesa hay pan y queso.',
+        eu: 'Kaixo! Mahaian ogia eta gazta daude.',
+        en: 'Hello! On the table there is bread and cheese.',
+      },
       {
         speaker: 'Pato Ventura',
         avatar: '🦆',
         es: '¡Qué rico! ¿Y hay una manzana roja?',
         eu: 'Ze goxoa! Eta ba al dago sagar gorri bat?',
+        en: 'Yummy! And is there a red apple?',
         quiz: {
           questionEs: '¿Qué busca Pato Ventura ahora?',
           questionEu: 'Zer bilatzen du Pato Venturak orain?',
+          questionEn: 'What is Pato Ventura looking for now?',
           options: [
-            { es: 'Una manzana roja 🍎', eu: 'Sagar gorri bat 🍎', ok: true },
-            { es: 'Un zapato azul 👟', eu: 'Zapata urdin bat 👟' },
-            { es: 'Una piedra grande 🪨', eu: 'Harri handi bat 🪨' },
+            { es: 'Una manzana roja 🍎', eu: 'Sagar gorri bat 🍎', en: 'A red apple 🍎', ok: true },
+            { es: 'Un zapato azul 👟', eu: 'Zapata urdin bat 👟', en: 'A blue shoe 👟' },
+            { es: 'Una piedra grande 🪨', eu: 'Harri handi bat 🪨', en: 'A big stone 🪨' },
           ],
         },
       },
-      { speaker: 'Katu', avatar: '🐱', es: '¡Sí! Toma la manzana y un vaso de leche.', eu: 'Bai! Hartu sagarra eta baso bat esne.' },
+      {
+        speaker: 'Katu',
+        avatar: '🐱',
+        es: '¡Sí! Toma la manzana y un vaso de leche.',
+        eu: 'Bai! Hartu sagarra eta baso bat esne.',
+        en: 'Yes! Take the apple and a glass of milk.',
+      },
       {
         speaker: 'Pato Ventura',
         avatar: '🦆',
         es: '¡Gracias, amigo! Ahora vamos a leer juntos.',
         eu: 'Eskerrik asko, lagun! Orain goazen elkarrekin irakurtzera.',
+        en: 'Thank you, friend! Now let us read together.',
         quiz: {
           questionEs: '¿Qué van a hacer después de desayunar?',
           questionEu: 'Zer egingo dute gosaldu ondoren?',
+          questionEn: 'What are they going to do after breakfast?',
           options: [
-            { es: 'Leer juntos 📖', eu: 'Elkarrekin irakurri 📖', ok: true },
-            { es: 'Dormir de noche 🌙', eu: 'Gauez lo egin 🌙' },
+            { es: 'Leer juntos 📖', eu: 'Elkarrekin irakurri 📖', en: 'Read together 📖', ok: true },
+            { es: 'Dormir de noche 🌙', eu: 'Gauez lo egin 🌙', en: 'Sleep at night 🌙' },
           ],
         },
       },
@@ -468,37 +498,60 @@ export const DUO_STORIES: DuoStory[] = [
     color: '#1cb0f6',
     titleEs: 'La llave perdida',
     titleEu: 'Galdutako giltza',
+    titleEn: 'The Lost Key',
     xpReward: 20,
     steps: [
-      { speaker: 'Naroa', avatar: '🧒', es: '¡Oh, no! No encuentro la llave de casa.', eu: 'Oi, ez! Ez dut etxeko giltza aurkitzen.' },
-      { speaker: 'Txakur', avatar: '🐶', es: '¡Guau! ¿Está encima de la mesa?', eu: 'Zaunk! Mahai gainean al dago?' },
+      {
+        speaker: 'Naroa',
+        avatar: '🧒',
+        es: '¡Oh, no! No encuentro la llave de casa.',
+        eu: 'Oi, ez! Ez dut etxeko giltza aurkitzen.',
+        en: 'Oh no! I cannot find the house key.',
+      },
+      {
+        speaker: 'Txakur',
+        avatar: '🐶',
+        es: '¡Guau! ¿Está encima de la mesa?',
+        eu: 'Zaunk! Mahai gainean al dago?',
+        en: 'Woof! Is it on the table?',
+      },
       {
         speaker: 'Naroa',
         avatar: '🧒',
         es: 'No, en la mesa solo hay un libro azul.',
         eu: 'Ez, mahaian liburu urdin bat besterik ez dago.',
+        en: 'No, on the table there is only a blue book.',
         quiz: {
           questionEs: '¿Qué hay encima de la mesa?',
           questionEu: 'Zer dago mahai gainean?',
+          questionEn: 'What is on the table?',
           options: [
-            { es: 'Un libro azul 📖', eu: 'Liburu urdin bat 📖', ok: true },
-            { es: 'La llave 🔑', eu: 'Giltza 🔑' },
-            { es: 'Un pescado 🐟', eu: 'Arrain bat 🐟' },
+            { es: 'Un libro azul 📖', eu: 'Liburu urdin bat 📖', en: 'A blue book 📖', ok: true },
+            { es: 'La llave 🔑', eu: 'Giltza 🔑', en: 'The key 🔑' },
+            { es: 'Un pescado 🐟', eu: 'Arrain bat 🐟', en: 'A fish 🐟' },
           ],
         },
       },
-      { speaker: 'Txakur', avatar: '🐶', es: '¡Mira junto a la flor amarilla en el jardín!', eu: 'Begiratu lorategiko lore horiaren ondoan!' },
+      {
+        speaker: 'Txakur',
+        avatar: '🐶',
+        es: '¡Mira junto a la flor amarilla en el jardín!',
+        eu: 'Begiratu lorategiko lore horiaren ondoan!',
+        en: 'Look next to the yellow flower in the garden!',
+      },
       {
         speaker: 'Naroa',
         avatar: '🧒',
         es: '¡Aquí está la llave! ¡Buen perro, Txakur!',
         eu: 'Hemen dago giltza! Txakur ona, Txakur!',
+        en: 'Here is the key! Good dog, Txakur!',
         quiz: {
           questionEs: '¿Dónde estaba la llave?',
           questionEu: 'Non zegoen giltza?',
+          questionEn: 'Where was the key?',
           options: [
-            { es: 'Junto a la flor amarilla 🌸', eu: 'Lore horiaren ondoan 🌸', ok: true },
-            { es: 'En la escuela 🏫', eu: 'Eskolan 🏫' },
+            { es: 'Junto a la flor amarilla 🌸', eu: 'Lore horiaren ondoan 🌸', en: 'Next to the yellow flower 🌸', ok: true },
+            { es: 'En la escuela 🏫', eu: 'Eskolan 🏫', en: 'At school 🏫' },
           ],
         },
       },
@@ -511,25 +564,46 @@ export const DUO_STORIES: DuoStory[] = [
     color: '#ff9600',
     titleEs: 'Un concierto en el árbol',
     titleEu: 'Kontzertua zuhaitzean',
+    titleEn: 'A Concert in the Tree',
     xpReward: 20,
     steps: [
-      { speaker: 'Txori', avatar: '🐦', es: 'El sol brilla mucho hoy en la montaña.', eu: 'Eguzkiak distira handia egiten du gaur mendian.' },
-      { speaker: 'Tximeleta', avatar: '🦋', es: '¡Hola, Txori! Me encanta escuchar tu canción.', eu: 'Kaixo, Txori! Asko gustatzen zait zure abestia entzutea.' },
+      {
+        speaker: 'Txori',
+        avatar: '🐦',
+        es: 'El sol brilla mucho hoy en la montaña.',
+        eu: 'Eguzkiak distira handia egiten du gaur mendian.',
+        en: 'The sun shines brightly today on the mountain.',
+      },
+      {
+        speaker: 'Tximeleta',
+        avatar: '🦋',
+        es: '¡Hola, Txori! Me encanta escuchar tu canción.',
+        eu: 'Kaixo, Txori! Asko gustatzen zait zure abestia entzutea.',
+        en: 'Hello, Txori! I love listening to your song.',
+      },
       {
         speaker: 'Txori',
         avatar: '🐦',
         es: '¡Canta y baila conmigo en el árbol grande!',
         eu: 'Abestu eta dantzatu nirekin zuhaitz handian!',
+        en: 'Sing and dance with me in the big tree!',
         quiz: {
           questionEs: '¿Dónde están Txori y la mariposa?',
           questionEu: 'Non daude Txori eta tximeleta?',
+          questionEn: 'Where are Txori and the butterfly?',
           options: [
-            { es: 'En el árbol grande 🌳', eu: 'Zuhaitz handian 🌳', ok: true },
-            { es: 'Debajo del mar 🌊', eu: 'Itsaso azpian 🌊' },
+            { es: 'En el árbol grande 🌳', eu: 'Zuhaitz handian 🌳', en: 'In the big tree 🌳', ok: true },
+            { es: 'Debajo del mar 🌊', eu: 'Itsaso azpian 🌊', en: 'Under the sea 🌊' },
           ],
         },
       },
-      { speaker: 'Pato Ventura', avatar: '🦆', es: '¡Cuac! ¡Yo llevo el ritmo dando tres palmadas!', eu: 'Kuak! Nik erritmoa eramango dut hiru txalo eginez!' },
+      {
+        speaker: 'Pato Ventura',
+        avatar: '🦆',
+        es: '¡Cuac! ¡Yo llevo el ritmo dando tres palmadas!',
+        eu: 'Kuak! Nik erritmoa eramango dut hiru txalo eginez!',
+        en: 'Quack! I keep the beat with three claps!',
+      },
     ],
   },
   {
@@ -539,25 +613,46 @@ export const DUO_STORIES: DuoStory[] = [
     color: '#ce82ff',
     titleEs: 'Viaje al mar azul',
     titleEu: 'Bidaia itsaso urdinera',
+    titleEn: 'Trip to the Blue Sea',
     xpReward: 20,
     steps: [
-      { speaker: 'Pato Ventura', avatar: '🦆', es: '¡Mira qué grande es el mar azul!', eu: 'Begira zein handia den itsaso urdina!' },
-      { speaker: 'Arrain', avatar: '🐟', es: '¡Hola! En el agua nadamos cinco peces amigos.', eu: 'Kaixo! Uretan bost arrain lagun igerian gabiltza.' },
+      {
+        speaker: 'Pato Ventura',
+        avatar: '🦆',
+        es: '¡Mira qué grande es el mar azul!',
+        eu: 'Begira zein handia den itsaso urdina!',
+        en: 'Look how big the blue sea is!',
+      },
+      {
+        speaker: 'Arrain',
+        avatar: '🐟',
+        es: '¡Hola! En el agua nadamos cinco peces amigos.',
+        eu: 'Kaixo! Uretan bost arrain lagun igerian gabiltza.',
+        en: 'Hello! Five friendly fish swim in the water.',
+      },
       {
         speaker: 'Pato Ventura',
         avatar: '🦆',
         es: '¡Uno, dos, tres, cuatro y cinco! ¡Qué rápidos!',
         eu: 'Bat, bi, hiru, lau eta bost! Zein azkarrak!',
+        en: 'One, two, three, four and five! So fast!',
         quiz: {
           questionEs: '¿Cuántos peces nadan en el agua?',
           questionEu: 'Zenbat arrain dabiltza uretan?',
+          questionEn: 'How many fish swim in the water?',
           options: [
-            { es: 'Cinco (5) 🐟', eu: 'Bost (5) 🐟', ok: true },
-            { es: 'Dos (2) 🐟', eu: 'Bi (2) 🐟' },
+            { es: 'Cinco (5) 🐟', eu: 'Bost (5) 🐟', en: 'Five (5) 🐟', ok: true },
+            { es: 'Dos (2) 🐟', eu: 'Bi (2) 🐟', en: 'Two (2) 🐟' },
           ],
         },
       },
-      { speaker: 'Arrain', avatar: '🐟', es: 'El viento suave hace olas blancas.', eu: 'Haize leunak olatu zuriak egiten ditu.' },
+      {
+        speaker: 'Arrain',
+        avatar: '🐟',
+        es: 'El viento suave hace olas blancas.',
+        eu: 'Haize leunak olatu zuriak egiten ditu.',
+        en: 'The gentle wind makes white waves.',
+      },
     ],
   },
   {
@@ -567,21 +662,36 @@ export const DUO_STORIES: DuoStory[] = [
     color: '#ff86d0',
     titleEs: 'La merienda secreta',
     titleEu: 'Askari sekretua',
+    titleEn: 'The Secret Snack',
     xpReward: 20,
     steps: [
-      { speaker: 'Hartz', avatar: '🐻', es: 'Hoy vienen mis amigos a casa para merendar.', eu: 'Gaur nire lagunak etxera datoz askaltzera.' },
-      { speaker: 'Naroa', avatar: '🧒', es: 'Yo traigo chocolate y pan recién hecho.', eu: 'Nik txokolatea eta ogi berria dakartzat.' },
+      {
+        speaker: 'Hartz',
+        avatar: '🐻',
+        es: 'Hoy vienen mis amigos a casa para merendar.',
+        eu: 'Gaur nire lagunak etxera datoz askaltzera.',
+        en: 'Today my friends come home for a snack.',
+      },
+      {
+        speaker: 'Naroa',
+        avatar: '🧒',
+        es: 'Yo traigo chocolate y pan recién hecho.',
+        eu: 'Nik txokolatea eta ogi berria dakartzat.',
+        en: 'I bring chocolate and fresh bread.',
+      },
       {
         speaker: 'Hartz',
         avatar: '🐻',
         es: '¡Qué bien huele! Ponemos cuatro platos en la mesa.',
         eu: 'Ze usain goxoa! Lau plater jarriko ditugu mahaian.',
+        en: 'It smells great! We put four plates on the table.',
         quiz: {
           questionEs: '¿Qué trae Naroa para merendar?',
           questionEu: 'Zer dakar Naroak askaltzeko?',
+          questionEn: 'What does Naroa bring for the snack?',
           options: [
-            { es: 'Chocolate y pan 🍫🍞', eu: 'Txokolatea eta ogia 🍫🍞', ok: true },
-            { es: 'Piedras y hojas 🪨🍃', eu: 'Harriak eta hostoak 🪨🍃' },
+            { es: 'Chocolate y pan 🍫🍞', eu: 'Txokolatea eta ogia 🍫🍞', en: 'Chocolate and bread 🍫🍞', ok: true },
+            { es: 'Piedras y hojas 🪨🍃', eu: 'Harriak eta hostoak 🪨🍃', en: 'Stones and leaves 🪨🍃' },
           ],
         },
       },
@@ -594,21 +704,36 @@ export const DUO_STORIES: DuoStory[] = [
     color: '#00cd9c',
     titleEs: 'La estrella viajera',
     titleEu: 'Izar bidaiaria',
+    titleEn: 'The Traveling Star',
     xpReward: 20,
     steps: [
-      { speaker: 'Pato Ventura', avatar: '🦆', es: 'Ya es de noche y la luna blanca ilumina el cielo.', eu: 'Gaua da jada eta ilargi zuriak zerua argitzen du.' },
-      { speaker: 'Katu', avatar: '🐱', es: '¡Mira arriba! Una estrella pequeña brilla sobre la montaña.', eu: 'Begira gora! Izar txiki batek mendi gainean distira egiten du.' },
+      {
+        speaker: 'Pato Ventura',
+        avatar: '🦆',
+        es: 'Ya es de noche y la luna blanca ilumina el cielo.',
+        eu: 'Gaua da jada eta ilargi zuriak zerua argitzen du.',
+        en: 'It is night now and the white moon lights up the sky.',
+      },
+      {
+        speaker: 'Katu',
+        avatar: '🐱',
+        es: '¡Mira arriba! Una estrella pequeña brilla sobre la montaña.',
+        eu: 'Begira gora! Izar txiki batek mendi gainean distira egiten du.',
+        en: 'Look up! A little star shines over the mountain.',
+      },
       {
         speaker: 'Pato Ventura',
         avatar: '🦆',
         es: 'Es hora de guardar nuestro libro y descansar en el nido.',
         eu: 'Gure liburua gorde eta habian atseden hartzeko ordua da.',
+        en: 'It is time to put away our book and rest in the nest.',
         quiz: {
           questionEs: '¿Dónde brilla la estrella pequeña?',
           questionEu: 'Non egiten du distira izar txikiak?',
+          questionEn: 'Where does the little star shine?',
           options: [
-            { es: 'Sobre la montaña ⛰️', eu: 'Mendi gainean ⛰️', ok: true },
-            { es: 'Dentro del zapato 👟', eu: 'Zapataren barruan 👟' },
+            { es: 'Sobre la montaña ⛰️', eu: 'Mendi gainean ⛰️', en: 'Over the mountain ⛰️', ok: true },
+            { es: 'Dentro del zapato 👟', eu: 'Zapataren barruan 👟', en: 'Inside the shoe 👟' },
           ],
         },
       },
@@ -648,21 +773,21 @@ export interface LeagueRival {
   bg: string;
   baseXp: number;
   streak: number;
-  langFlag: 'ES' | 'EU' | 'ES+EU';
+  langFlag: 'ES' | 'EU' | 'EN' | 'ES+EU';
 }
 
 export const LEAGUE_RIVALS: LeagueRival[] = [
   { id: 'r1', name: 'Ane Etxebarria', avatar: '🦊', bg: '#fff0d6', baseXp: 340, streak: 28, langFlag: 'ES+EU' },
   { id: 'r2', name: 'Mikel Agirre', avatar: '🐻', bg: '#ddf4ff', baseXp: 285, streak: 19, langFlag: 'EU' },
-  { id: 'r3', name: 'Uxue Lasa', avatar: '🦋', bg: '#f3e5ff', baseXp: 230, streak: 14, langFlag: 'ES+EU' },
+  { id: 'r3', name: 'Uxue Lasa', avatar: '🦋', bg: '#f3e5ff', baseXp: 230, streak: 14, langFlag: 'EN' },
   { id: 'r4', name: 'Iker Zabala', avatar: '🐼', bg: '#d7ffb8', baseXp: 190, streak: 11, langFlag: 'EU' },
   { id: 'r5', name: 'Naroa Ruiz', avatar: '🐨', bg: '#ffe6f5', baseXp: 155, streak: 9, langFlag: 'ES' },
   { id: 'r6', name: 'Jon Mendizabal', avatar: '🦁', bg: '#fff7d6', baseXp: 120, streak: 7, langFlag: 'ES+EU' },
-  { id: 'r7', name: 'Maialen Otaegi', avatar: '🐰', bg: '#d6fff4', baseXp: 95, streak: 6, langFlag: 'EU' },
+  { id: 'r7', name: 'Maialen Otaegi', avatar: '🐰', bg: '#d6fff4', baseXp: 95, streak: 6, langFlag: 'EN' },
   { id: 'r8', name: 'Unai Goikoetxea', avatar: '🐸', bg: '#d7ffb8', baseXp: 70, streak: 5, langFlag: 'ES+EU' },
   { id: 'r9', name: 'Leire Navarro', avatar: '🦉', bg: '#ddf4ff', baseXp: 50, streak: 4, langFlag: 'ES' },
   { id: 'r10', name: 'Aitor Uribe', avatar: '🐯', bg: '#fff0d6', baseXp: 35, streak: 3, langFlag: 'EU' },
-  { id: 'r11', name: 'Amaia Kortazar', avatar: '🦄', bg: '#f3e5ff', baseXp: 20, streak: 2, langFlag: 'ES+EU' },
+  { id: 'r11', name: 'Amaia Kortazar', avatar: '🦄', bg: '#f3e5ff', baseXp: 20, streak: 2, langFlag: 'EN' },
   { id: 'r12', name: 'Gorka Zubia', avatar: '🐧', bg: '#e0eeff', baseXp: 10, streak: 1, langFlag: 'ES' },
 ];
 
@@ -840,9 +965,10 @@ export function getDailyQuests(p: Progress, ui: UiLang): DailyQuestComputed[] {
   ];
 }
 
-export function flagLabelFor(learnLang: 'es' | 'eu' | 'both', lang?: Lang): string {
+export function flagLabelFor(learnLang: LearnLang, lang?: Lang): string {
   const code = lang ?? learnLang;
   if (code === 'es') return 'ES';
   if (code === 'eu') return 'EU';
+  if (code === 'en') return 'EN';
   return 'ES+EU';
 }

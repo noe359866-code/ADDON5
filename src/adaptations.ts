@@ -199,13 +199,16 @@ const pictograms = new Map<string, string>();
 for (const w of words) {
   pictograms.set(norm(w.es), w.emoji);
   pictograms.set(norm(w.eu), w.emoji);
+  pictograms.set(norm(w.en), w.emoji);
 }
 const colorMeta = new Map<string, { hex: string; pattern: string; symbol: string }>();
 for (const c of colors) {
   pictograms.set(norm(c.es), c.emoji);
   pictograms.set(norm(c.eu), c.emoji);
+  pictograms.set(norm(c.en), c.emoji);
   colorMeta.set(norm(c.es), { hex: c.hex, pattern: c.pattern, symbol: c.symbol });
   colorMeta.set(norm(c.eu), { hex: c.hex, pattern: c.pattern, symbol: c.symbol });
+  colorMeta.set(norm(c.en), { hex: c.hex, pattern: c.pattern, symbol: c.symbol });
 }
 
 function shuffle<T>(arr: T[]): T[] {

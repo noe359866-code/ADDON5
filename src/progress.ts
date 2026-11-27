@@ -16,6 +16,9 @@ export const defaultProgress: Progress = {
   joinedDate: todayString(),
   uiLang: 'es',
   learnLang: 'both',
+  difficultyLevel: 'medio',
+  schoolStage: 'general',
+  speechRate: 0.85,
   route: 'mixta',
   sound: true,
   music: false,
@@ -72,6 +75,26 @@ export function loadProgress(): Progress {
     return {
       ...defaultProgress,
       ...parsed,
+      difficultyLevel:
+        parsed.difficultyLevel === 'bajo' || parsed.difficultyLevel === 'medio' || parsed.difficultyLevel === 'alto'
+          ? parsed.difficultyLevel
+          : 'medio',
+      schoolStage:
+        parsed.schoolStage === 'general' ||
+        parsed.schoolStage === 'infantil' ||
+        parsed.schoolStage === 'prim12' ||
+        parsed.schoolStage === 'prim34' ||
+        parsed.schoolStage === 'prim56'
+          ? parsed.schoolStage
+          : 'general',
+      speechRate:
+        typeof parsed.speechRate === 'number' && Number.isFinite(parsed.speechRate)
+          ? Math.max(0.4, Math.min(1.05, parsed.speechRate))
+          : 0.85,
+      learnLang:
+        parsed.learnLang === 'es' || parsed.learnLang === 'eu' || parsed.learnLang === 'en' || parsed.learnLang === 'both'
+          ? parsed.learnLang
+          : 'both',
       joinedDate: parsed.joinedDate || today,
       dailyDate: today,
       dailyXp: isSameDay ? (parsed.dailyXp ?? 0) : 0,
