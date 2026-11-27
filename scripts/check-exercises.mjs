@@ -22,7 +22,7 @@ const result = await build({
 });
 const code = result.outputFiles[0].text;
 const mod = await import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`);
-const { createGenState, pickExercise, adaptationsFor, words, colors, stories, specialSounds, wordSyllables } = mod;
+const { createGenState, pickExercise, makePairsExercise, adaptationsFor, words, colors, stories, specialSounds, wordSyllables } = mod;
 
 const norm = (s) =>
   s
@@ -206,6 +206,20 @@ for (const preset of presets) {
           });
           check(ex, `${label}/${route}/${learn}`, ad);
           total++;
+          if (i % 15 === 0 && levelId !== 8) {
+            const pEx = makePairsExercise({
+              levelId, lang, learnLang: learn, ui: i % 2 ? 'eu' : 'es', state, adaptations: ad,
+            });
+            if (!pEx.pairs || pEx.pairs.length < 4 || pEx.pairs.length % 2 !== 0) {
+              problems.push(`[pairs:${label}/${learn}] número inválido de cartas de pareja`);
+            }
+            const leftLabels = new Set(pEx.pairs.filter((c) => c.side === 'left').map((c) => c.label));
+            const rightLabels = new Set(pEx.pairs.filter((c) => c.side === 'right').map((c) => c.label));
+            if (leftLabels.size !== pEx.pairs.length / 2 || rightLabels.size !== pEx.pairs.length / 2) {
+              problems.push(`[pairs:${label}/${learn}] etiquetas duplicadas en columna de parejas`);
+            }
+            total++;
+          }
         }
       }
     }

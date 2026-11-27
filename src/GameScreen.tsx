@@ -1,20 +1,41 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { computeAdaptations } from './adaptations';
-import { ComboPill, Confetti, LangChip, Mascot, Modal, RoutePill, SessionProgress, XpFloat, prefersReducedMotion, staggerStyle } from './components';
+import {
+  ComboPill,
+  Confetti,
+  DuoLessonProgress,
+  LangChip,
+  Mascot,
+  Modal,
+  XpFloat,
+  prefersReducedMotion,
+  staggerStyle,
+} from './components';
 import type { Mood } from './components';
 import { bonusModes } from './data';
-import { IconAccessibility, IconArrowRight, IconBolt, IconClose, IconLightbulb, IconVolume } from './icons';
-import { createGenState, pickExercise, practiceLevel } from './exercises';
+import { createGenState, makePairsExercise, pickExercise, practiceLevel } from './exercises';
 import type { GenState } from './exercises';
+import {
+  DuoGemSvg,
+  DuoHeartSvg,
+  DuoTurtleSvg,
+  IconArrowRight,
+  IconCheck,
+  IconClose,
+  IconLightbulb,
+  IconVolume,
+} from './icons';
 import { t, tf } from './i18n';
+import { isXpBoostActive, starsFor } from './progress';
 import { sfx, speak, stopSpeaking, voicesFor } from './sound';
-import { starsFor } from './progress';
-import type { Exercise, Lang, Modality, Progress, SessionResult } from './types';
+import type { Exercise, Lang, MistakeEntry, Modality, Progress, SessionMode, SessionResult, SyllableStage } from './types';
 
 interface Props {
   progress: Progress;
-  mode: 'level' | 'practice';
+  setProgress: (patch: Partial<Progress> | ((prev: Progress) => Partial<Progress>)) => void;
+  mode: SessionMode;
   levelId: number | null;
+  nodeKey?: string;
   onExit: () => void;
   onFinish: (result: SessionResult) => void;
 }
@@ -32,8 +53,6 @@ function longestStreak(history: HistoryEntry[], filter?: (m: Modality) => boolea
     if (entry.ok && (!filter || filter(entry.modality))) {
       current += 1;
       best = Math.max(best, current);
-    } else if (!entry.ok) {
-      current = 0;
     } else {
       current = 0;
     }
@@ -41,86 +60,166 @@ function longestStreak(history: HistoryEntry[], filter?: (m: Modality) => boolea
   return best;
 }
 
-export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props) {
+export function GameScreen({ progress, setProgress, mode, levelId, nodeKey, onExit, onFinish }: Props) {
   const ad = computeAdaptations(progress);
-  const total = mode === 'practice' ? ad.practiceLength : ad.sessionLength;
-  const startDifficulty = Math.min(2, ad.difficultyCap);
+  const effectiveUnlimited = progress.unlimitedHearts || ad.gentle || mode === 'practice' || mode === 'mistakes';
+  const xpBoost = isXpBoostActive(progress);
+
+  const baseTotal =
+    mode === 'legendary'
+      ? Math.max(ad.sessionLength, 7)
+      : mode === 'timed'
+        ? 8
+        : mode === 'practice' || mode === 'mistakes' || mode === 'listening'
+          ? ad.practiceLength
+          : ad.sessionLength;
+
+  const startDifficulty =
+    mode === 'legendary' ? Math.min(3, ad.difficultyCap) : levelId === 2 || levelId === 3 ? 1 : Math.min(2, ad.difficultyCap);
   const bonus = bonusModes.find((b) => b.id === levelId);
   const gen = useRef<GenState | null>(null);
   if (!gen.current) gen.current = createGenState();
+  const startedAtRef = useRef<number>(Date.now());
+
+  const fixedSyllableStage: SyllableStage | undefined =
+    nodeKey === 'u2-n0' ? 1 : nodeKey === 'u2-n1' ? 2 : nodeKey === 'u2-n3' ? 3 : undefined;
+
+  const resolveStageForSlot = (slot: number, targetLevel: number, diff: number): SyllableStage | undefined => {
+    if (fixedSyllableStage) return fixedSyllableStage;
+    if (targetLevel === 2) {
+      const third = Math.max(1, Math.floor(baseTotal / 3));
+      if (slot < third) return 1;
+      if (slot < third * 2) return 2;
+      return 3;
+    }
+    if (targetLevel === 3) {
+      return diff <= 1 ? 1 : diff === 2 ? 2 : 3;
+    }
+    return undefined;
+  };
 
   const initialLang: Lang = progress.learnLang === 'both' ? 'es' : progress.learnLang;
-  const makeExercise = (slot: number, difficulty: number, lang: Lang): Exercise =>
-    pickExercise({
-      levelId:
-        mode === 'practice'
-          ? ad.movement && Math.random() < 0.35
+
+  const makeExercise = (slot: number, difficulty: number, lang: Lang): Exercise => {
+    const targetLevel =
+      levelId !== null
+        ? levelId
+        : mode === 'letters'
+          ? 1
+          : ad.movement && Math.random() < 0.35
             ? 8
-            : practiceLevel(progress.stars)
-          : (levelId ?? 1),
+            : practiceLevel(progress.stars);
+
+    const sylStage = resolveStageForSlot(slot, targetLevel, difficulty);
+
+    // Intercala un ejercicio clásico de Emparejar Parejas de Duolingo a mitad de lección
+    if (
+      slot === 2 &&
+      targetLevel !== 8 &&
+      mode !== 'listening' &&
+      !ad.movement
+    ) {
+      return makePairsExercise({
+        levelId: targetLevel,
+        lang,
+        learnLang: progress.learnLang,
+        ui: progress.uiLang,
+        state: gen.current!,
+        adaptations: ad,
+        syllableStage: sylStage,
+      });
+    }
+
+    return pickExercise({
+      levelId: targetLevel,
       lang,
       ui: progress.uiLang,
-      route: progress.route,
+      route: mode === 'listening' ? 'auditivo' : progress.route,
       difficulty,
       slot,
       state: gen.current!,
       adaptations: ad,
+      syllableStage: sylStage,
     });
+  };
 
   const [current, setCurrent] = useState<Exercise>(() => makeExercise(0, startDifficulty, initialLang));
-  const [index, setIndex] = useState(0);
+  const [stepDone, setStepDone] = useState(0);
+  const [slotIndex, setSlotIndex] = useState(0);
   const [difficulty, setDifficulty] = useState(startDifficulty);
   const [streak, setStreak] = useState(0);
-  const [hearts, setHearts] = useState(5);
   const [wrongStreak, setWrongStreak] = useState(0);
+
+  // Estado de selección antes de pulsar COMPROBAR
   const [selected, setSelected] = useState<string | null>(null);
   const [picks, setPicks] = useState<string[]>([]);
   const [chip, setChip] = useState<string | null>(null);
+
+  // Estado de emparejar pares (Match Pairs)
+  const [pairLeft, setPairLeft] = useState<string | null>(null);
+  const [pairRight, setPairRight] = useState<string | null>(null);
+  const [matchedPairIds, setMatchedPairIds] = useState<string[]>([]);
+  const [wrongPairFlash, setWrongPairFlash] = useState<string[]>([]);
+
   const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none');
   const [lastOk, setLastOk] = useState(false);
   const [hintShown, setHintShown] = useState(false);
   const [showExit, setShowExit] = useState(false);
+  const [outOfHearts, setOutOfHearts] = useState(false);
   const [burst, setBurst] = useState(0);
   const [noteDismissed, setNoteDismissed] = useState(false);
   const [soundNotice, setSoundNotice] = useState(false);
   const [euVoice, setEuVoice] = useState(true);
   const [xpPop, setXpPop] = useState<{ id: number; amount: number } | null>(null);
   const [combo, setCombo] = useState<{ id: number; count: number } | null>(null);
+  const [fiveToast, setFiveToast] = useState<number | null>(null);
+  const [reviewBanner, setReviewBanner] = useState(false);
+  const [stageUpToast, setStageUpToast] = useState<SyllableStage | null>(null);
+
+  // Temporizador para modo Contrarreloj (90s)
+  const [timeLeft, setTimeLeft] = useState(90);
+
+  // Minijuegos de Pato Ventura
   const [actionTaps, setActionTaps] = useState(0);
   const [actionPicks, setActionPicks] = useState<string[]>([]);
 
+  const reviewQueueRef = useRef<Exercise[]>([]);
+  const inReviewPhaseRef = useRef(false);
   const correctRef = useRef(0);
+  const gradedCountRef = useRef(0);
   const xpRef = useRef(0);
   const historyRef = useRef<HistoryEntry[]>([]);
-  const pendingRef = useRef(false);
-  const answerTimerRef = useRef<number | null>(null);
   const speakAnswerTimerRef = useRef<number | null>(null);
   const aliveRef = useRef(true);
   const actionDoneRef = useRef(false);
   const actionTokenRef = useRef(0);
 
-  function clearPendingTimers() {
-    if (answerTimerRef.current !== null) {
-      window.clearTimeout(answerTimerRef.current);
-      answerTimerRef.current = null;
-    }
-    if (speakAnswerTimerRef.current !== null) {
-      window.clearTimeout(speakAnswerTimerRef.current);
-      speakAnswerTimerRef.current = null;
-    }
-    pendingRef.current = false;
-  }
+  const ui = progress.uiLang;
 
   useEffect(() => {
     aliveRef.current = true;
     return () => {
       aliveRef.current = false;
-      clearPendingTimers();
+      if (speakAnswerTimerRef.current !== null) window.clearTimeout(speakAnswerTimerRef.current);
     };
   }, []);
 
-  const ui = progress.uiLang;
-  const routeLabel = t(`route${progress.route === 'auditivo' ? 'Auditivo' : progress.route === 'visual' ? 'Visual' : 'Mixta'}`, ui);
+  // Temporizador para Contrarreloj
+  useEffect(() => {
+    if (mode !== 'timed' || showExit || outOfHearts) return;
+    const iv = window.setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          window.clearInterval(iv);
+          finishSessionNow();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(iv);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, showExit, outOfHearts]);
 
   useEffect(() => {
     const check = () => setEuVoice(voicesFor('eu').length > 0);
@@ -133,33 +232,11 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
     };
   }, []);
 
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (showExit) return;
-      const tag = (e.target as HTMLElement | null)?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-      if (feedback !== 'none') {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          advance();
-        }
-        return;
-      }
-      if (e.key.toLowerCase() === 'r' && current.audio && progress.sound) {
-        e.preventDefault();
-        speak(current.audio.text, current.audio.lang, true, 0.86);
-        return;
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  });
-
-  // La ruta auditiva escucha cada pregunta automáticamente; la visual solo si lo pide.
+  // Reproducción automática en ruta auditiva o cuando el ejercicio lo requiere
   useEffect(() => {
     if (!current.audio || !progress.sound) return;
-    if (progress.route !== 'auditivo' && !current.autoAudio) return;
-    const id = window.setTimeout(() => speak(current.audio!.text, current.audio!.lang, true, 0.86), 450);
+    if (progress.route !== 'auditivo' && mode !== 'listening' && !current.autoAudio) return;
+    const id = window.setTimeout(() => speak(current.audio!.text, current.audio!.lang, true, 0.88), 380);
     return () => window.clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current.id]);
@@ -173,64 +250,215 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
     return current.options?.find((o) => o.id === current.correctId)?.label ?? '';
   }, [current]);
 
+  function recordMistakeItem() {
+    if (!correctLabel) return;
+    const entry: MistakeEntry = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      prompt: current.prompt,
+      answer: correctLabel,
+      lang: current.lang,
+      levelId: current.levelId,
+      addedAt: new Date().toISOString(),
+    };
+    setProgress((prev) => ({
+      mistakes: [entry, ...prev.mistakes.filter((m) => m.answer !== correctLabel)].slice(0, 15),
+    }));
+  }
+
   function submitAnswer(ok: boolean) {
     if (feedback !== 'none') return;
-    const base = mode === 'practice' ? 5 : 10;
-    const gain = ok ? Math.max(3, base - (hintShown ? 4 : 0) + (difficulty === 3 ? 2 : 0)) : 0;
-    correctRef.current += ok ? 1 : 0;
+    const base = mode === 'legendary' ? 14 : mode === 'timed' ? 12 : mode === 'practice' ? 8 : 10;
+    let gain = ok ? Math.max(4, base - (hintShown ? 3 : 0) + (difficulty === 3 ? 2 : 0)) : 0;
+    if (xpBoost) gain *= 2;
+
+    if (!current.isReview) {
+      gradedCountRef.current += 1;
+      if (ok) correctRef.current += 1;
+    }
     xpRef.current += gain;
     historyRef.current.push({ ok, modality: current.modality, lang: current.lang });
     setLastOk(ok);
     setFeedback(ok ? 'correct' : 'wrong');
     sfx(ok ? 'correct' : 'wrong', progress.sound);
+
     if (ad.speakAnswer && correctLabel && progress.sound) {
       if (speakAnswerTimerRef.current !== null) window.clearTimeout(speakAnswerTimerRef.current);
       speakAnswerTimerRef.current = window.setTimeout(() => {
         speakAnswerTimerRef.current = null;
-        if (aliveRef.current) speak(correctLabel, current.lang, true, 0.8);
-      }, 560);
+        if (aliveRef.current) speak(correctLabel, current.lang, true, 0.82);
+      }, 520);
     }
+
     if (ok) {
+      setStepDone((s) => s + 1);
       if (!ad.calm) setXpPop({ id: Date.now(), amount: gain });
       if (!ad.calm) setBurst((b) => b + 1);
-      if (correctRef.current % 3 === 0) sfx('star', progress.sound);
+      if (mode === 'mistakes' && progress.mistakes.length > 0) {
+        setProgress((prev) => ({ mistakes: prev.mistakes.slice(1) }));
+      }
     } else {
       setXpPop(null);
+      recordMistakeItem();
+      // Cola de repaso estilo Duolingo al final de la lección (salvo modo gentil sin fallos)
+      if (!ad.gentle && reviewQueueRef.current.length < 3) {
+        reviewQueueRef.current.push({
+          ...current,
+          id: `${current.id}-rev-${Date.now()}`,
+          isReview: true,
+        });
+      }
+      // Descuento de vidas reales en estado global (salvo vidas ilimitadas o apoyo gentil)
+      if (!effectiveUnlimited) {
+        const nextHearts = Math.max(0, progress.hearts - 1);
+        setProgress({ hearts: nextHearts });
+        if (nextHearts === 0) {
+          window.setTimeout(() => {
+            if (aliveRef.current) setOutOfHearts(true);
+          }, 650);
+        }
+      }
     }
+
     const nextCombo = ok ? streak + 1 : 0;
     if (!ad.calm) setCombo(nextCombo >= 2 ? { id: Date.now(), count: nextCombo } : null);
+    if (nextCombo > 0 && nextCombo % 5 === 0 && !ad.calm) {
+      setFiveToast(nextCombo);
+      window.setTimeout(() => {
+        if (aliveRef.current) setFiveToast(null);
+      }, 2100);
+    }
     if (nextCombo >= 3 && !ad.calm && !prefersReducedMotion()) sfx('combo', progress.sound);
   }
 
-  /** Un instante de "presión" antes del resultado: la sensación Duolingo. */
-  function delayedAnswer(ok: boolean) {
-    if (pendingRef.current) return;
-    if (ad.calm || prefersReducedMotion()) {
-      submitAnswer(ok);
+  /** Selección estilo Duolingo: 1er clic ilumina en azul, 2º clic en la misma opción o COMPROBAR evalúa. */
+  function handleOptionClick(id: string, labelToSpeak?: string) {
+    if (feedback !== 'none') return;
+    if (ad.gentle) {
+      // En perfiles cognitivos/lectura fácil basta 1 toque directo si lo prefieren, o seleccionan rápido
+      setSelected(id);
+      sfx('click', progress.sound);
+      submitAnswer(id === current.correctId);
       return;
     }
-    pendingRef.current = true;
-    answerTimerRef.current = window.setTimeout(() => {
-      answerTimerRef.current = null;
-      pendingRef.current = false;
-      if (aliveRef.current) submitAnswer(ok);
-    }, 170);
+    if (selected === id) {
+      checkCurrentAnswer();
+      return;
+    }
+    setSelected(id);
+    sfx('click', progress.sound);
+    if (labelToSpeak && progress.sound && current.modality !== 'auditivo') {
+      speak(labelToSpeak, current.lang, true, 0.94);
+    }
   }
 
-  /** Los juegos imperativos no tienen fallo: participar ya es un acierto. */
+  function handleChipClick(id: string, labelToSpeak?: string) {
+    if (feedback !== 'none') return;
+    if (ad.gentle || chip === id) {
+      setChip(id);
+      submitAnswer(id === current.correctChip);
+      return;
+    }
+    setChip(id);
+    sfx('click', progress.sound);
+    if (labelToSpeak && progress.sound && current.modality !== 'auditivo') {
+      speak(labelToSpeak, current.lang, true, 0.92);
+    }
+  }
+
+  function addPick(id: string, label?: string) {
+    if (feedback !== 'none' || picks.includes(id) || !current.tiles) return;
+    sfx('pop', progress.sound);
+    if (label && progress.sound && current.modality !== 'auditivo') {
+      speak(label, current.lang, true, 0.94);
+    }
+    setPicks([...picks, id]);
+  }
+
+  function handlePairCardTap(cardId: string, side: 'left' | 'right', pairId: string, label: string, cardLang?: Lang) {
+    if (feedback !== 'none' || matchedPairIds.includes(pairId)) return;
+    sfx('click', progress.sound);
+    if (cardLang && progress.sound) {
+      speak(label, cardLang, true, 0.92);
+    }
+
+    const nextLeft = side === 'left' ? (pairLeft === cardId ? null : cardId) : pairLeft;
+    const nextRight = side === 'right' ? (pairRight === cardId ? null : cardId) : pairRight;
+    setPairLeft(nextLeft);
+    setPairRight(nextRight);
+
+    if (nextLeft && nextRight && current.pairs) {
+      const lCard = current.pairs.find((c) => c.id === nextLeft);
+      const rCard = current.pairs.find((c) => c.id === nextRight);
+      if (lCard && rCard) {
+        if (lCard.pairId === rCard.pairId) {
+          sfx('pop', progress.sound);
+          const updated = [...matchedPairIds, lCard.pairId];
+          setMatchedPairIds(updated);
+          setPairLeft(null);
+          setPairRight(null);
+          const totalPairs = current.pairs.length / 2;
+          if (updated.length >= totalPairs) {
+            submitAnswer(true);
+          }
+        } else {
+          sfx('wrong', progress.sound);
+          setWrongPairFlash([nextLeft, nextRight]);
+          setPairLeft(null);
+          setPairRight(null);
+          window.setTimeout(() => {
+            if (aliveRef.current) setWrongPairFlash([]);
+          }, 420);
+        }
+      }
+    }
+  }
+
+  const canCheck = useMemo(() => {
+    if (feedback !== 'none') return false;
+    if (current.kind === 'choice' || current.kind === 'story') return selected !== null;
+    if (current.kind === 'tap') return chip !== null;
+    if (current.kind === 'build') return !!current.tiles && picks.length === current.tiles.length;
+    return false;
+  }, [feedback, current, selected, chip, picks]);
+
+  function checkCurrentAnswer() {
+    if (feedback !== 'none') return;
+    if (current.kind === 'choice' || current.kind === 'story') {
+      if (!selected) return;
+      submitAnswer(selected === current.correctId);
+    } else if (current.kind === 'tap') {
+      if (!chip) return;
+      submitAnswer(chip === current.correctChip);
+    } else if (current.kind === 'build' && current.correctOrder) {
+      if (picks.length !== current.correctOrder.length) return;
+      submitAnswer(picks.every((id, i) => id === current.correctOrder![i]));
+    }
+  }
+
+  function skipExercise() {
+    if (feedback !== 'none') return;
+    if (current.kind === 'action') {
+      completeAction();
+      return;
+    }
+    submitAnswer(false);
+  }
+
   function completeAction() {
     if (feedback !== 'none' || current.kind !== 'action') return;
-    const gain = mode === 'practice' ? 5 : 10;
+    let gain = mode === 'practice' ? 8 : 10;
+    if (xpBoost) gain *= 2;
+    gradedCountRef.current += 1;
     correctRef.current += 1;
     xpRef.current += gain;
     historyRef.current.push({ ok: true, modality: current.modality, lang: current.lang });
+    setStepDone((s) => s + 1);
     setLastOk(true);
     sfx('correct', progress.sound);
     if (!ad.calm) setBurst((b) => b + 1);
     advance(true);
   }
 
-  /** Minijuegos de Pato Ventura: cualquier interacción cuenta, nunca hay fallo. */
   function handleActionGameTap(id?: string) {
     if (feedback !== 'none' || current.kind !== 'action' || !current.action?.game || actionDoneRef.current) return;
     const game = current.action.game;
@@ -254,76 +482,95 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
     }
   }
 
-  function submitChoice(id: string) {
-    if (feedback !== 'none' || pendingRef.current) return;
-    setSelected(id);
-    sfx('click', progress.sound);
-    delayedAnswer(id === current.correctId);
-  }
-
-  function submitChip(id: string) {
-    if (feedback !== 'none' || pendingRef.current) return;
-    setChip(id);
-    sfx('click', progress.sound);
-    delayedAnswer(id === current.correctChip);
-  }
-
-  function addPick(id: string) {
-    if (feedback !== 'none' || pendingRef.current || picks.includes(id) || !current.tiles) return;
-    sfx('pop', progress.sound);
-    setPicks([...picks, id]);
-  }
-
-  function submitBuild() {
-    if (feedback !== 'none' || pendingRef.current || !current.correctOrder || picks.length !== current.correctOrder.length) return;
-    delayedAnswer(picks.every((id, i) => id === current.correctOrder![i]));
-  }
-
-  function finish() {
+  function finishSessionNow() {
     const history = historyRef.current;
-    const correct = correctRef.current;
+    const total = Math.max(1, gradedCountRef.current || baseTotal);
+    const correct = Math.min(total, correctRef.current);
+    const durationSec = Math.max(8, Math.round((Date.now() - startedAtRef.current) / 1000));
+    const bonusXp = mode === 'legendary' ? 25 : mode === 'timed' ? 10 : correct === total ? 5 : 0;
+    const finalXp = xpRef.current + (xpBoost ? bonusXp * 2 : bonusXp);
+    const gemsEarned = mode === 'legendary' ? 30 : correct === total ? 15 : 10;
+    const heartsRestored = mode === 'practice' && progress.hearts < 5 && !progress.unlimitedHearts ? 1 : 0;
+
     const result: SessionResult = {
       mode,
       levelId,
+      nodeKey,
       total,
       correct,
-      xp: xpRef.current,
+      xp: finalXp,
+      gemsEarned,
+      durationSec,
+      xpBoosted: xpBoost,
       stars: starsFor({ total, correct }),
       maxStreak: longestStreak(history),
       visualStreak: longestStreak(history, (m) => m !== 'auditivo'),
       audioStreak: longestStreak(history, (m) => m !== 'visual'),
       langsUsed: Array.from(new Set(history.map((h) => h.lang))) as Lang[],
       perfect: correct === total,
+      heartsRestored,
     };
-    clearPendingTimers();
     stopSpeaking();
     onFinish(result);
   }
 
   function advance(okOverride?: boolean) {
-    const nextIndex = index + 1;
-    if (nextIndex >= total) {
-      finish();
-      return;
-    }
     const wasOk = okOverride ?? lastOk;
     const newStreak = wasOk ? streak + 1 : 0;
     const newWrong = wasOk ? 0 : wrongStreak + 1;
     let nextDifficulty = difficulty;
     if (newStreak >= 3) nextDifficulty = Math.min(ad.difficultyCap, difficulty + 1);
     if (newWrong >= 2) nextDifficulty = Math.max(1, difficulty - 1);
+
     setStreak(newStreak);
     setWrongStreak(newWrong);
-    if (!wasOk) setHearts((h) => Math.max(0, h - 1));
     setDifficulty(nextDifficulty);
-    const lang: Lang = progress.learnLang === 'both' ? (nextIndex % 2 === 0 ? 'es' : 'eu') : progress.learnLang;
-    clearPendingTimers();
+
+    const nextSlot = slotIndex + 1;
+    let nextEx: Exercise | null = null;
+
+    if (!inReviewPhaseRef.current && nextSlot < baseTotal) {
+      const lang: Lang = progress.learnLang === 'both' ? (nextSlot % 2 === 0 ? 'es' : 'eu') : progress.learnLang;
+      nextEx = makeExercise(nextSlot, nextDifficulty, lang);
+      setSlotIndex(nextSlot);
+    } else if (reviewQueueRef.current.length > 0) {
+      if (!inReviewPhaseRef.current) {
+        inReviewPhaseRef.current = true;
+        setReviewBanner(true);
+        window.setTimeout(() => {
+          if (aliveRef.current) setReviewBanner(false);
+        }, 2200);
+      }
+      nextEx = reviewQueueRef.current.shift()!;
+    }
+
+    if (!nextEx) {
+      finishSessionNow();
+      return;
+    }
+
+    if (
+      !nextEx.isReview &&
+      nextEx.syllableStage &&
+      current.syllableStage &&
+      nextEx.syllableStage > current.syllableStage
+    ) {
+      setStageUpToast(nextEx.syllableStage);
+      if (!ad.calm) sfx('star', progress.sound);
+      window.setTimeout(() => {
+        if (aliveRef.current) setStageUpToast(null);
+      }, 2400);
+    }
+
     stopSpeaking();
-    setCurrent(makeExercise(nextIndex, nextDifficulty, lang));
-    setIndex(nextIndex);
+    setCurrent(nextEx);
     setSelected(null);
     setPicks([]);
     setChip(null);
+    setPairLeft(null);
+    setPairRight(null);
+    setMatchedPairIds([]);
+    setWrongPairFlash([]);
     setFeedback('none');
     setHintShown(false);
     setXpPop(null);
@@ -345,16 +592,19 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
   }
 
   function showHint() {
-    if (feedback !== 'none' || pendingRef.current) return;
+    if (feedback !== 'none') return;
     setHintShown(true);
     sfx('pop', progress.sound);
-    if (current.audio && progress.route !== 'visual') listen(0.68);
+    if (current.audio && progress.route !== 'visual') listen(0.65);
   }
 
-  // Atajos de teclado: 1-4 para responder, Enter para continuar.
+  // Atajos de teclado estilo Duolingo: 1-4 para seleccionar, Enter para Comprobar / Continuar, R para audio
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (showExit) return;
+      if (showExit || outOfHearts) return;
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
       if (feedback !== 'none') {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
@@ -362,42 +612,54 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
         }
         return;
       }
-      if (current.kind === 'action' && (e.key === 'Enter' || e.key === ' ')) {
+
+      if (e.key.toLowerCase() === 'r' && current.audio && progress.sound) {
         e.preventDefault();
-        completeAction();
+        listen(0.86);
         return;
       }
+
+      if (e.key === 'Enter') {
+        if (current.kind === 'action') {
+          e.preventDefault();
+          completeAction();
+        } else if (canCheck) {
+          e.preventDefault();
+          checkCurrentAnswer();
+        }
+        return;
+      }
+
       if (!/^[1-9]$/.test(e.key)) return;
       const n = Number(e.key) - 1;
       if (current.kind === 'choice' || current.kind === 'story') {
         const opt = current.options?.[n];
-        if (opt) submitChoice(opt.id);
+        if (opt) handleOptionClick(opt.id, opt.label);
       } else if (current.kind === 'tap') {
         const c = current.chips?.[n];
-        if (c) submitChip(c.id);
+        if (c) handleChipClick(c.id, c.label);
       } else if (current.kind === 'build') {
         const available = current.tiles?.filter((tile) => !picks.includes(tile.id)) ?? [];
         const tile = available[n];
-        if (tile) addPick(tile.id);
+        if (tile) addPick(tile.id, tile.label);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   });
 
-  const adaptiveLabel = t(difficulty === 1 ? 'adaptiveEasy' : difficulty === 2 ? 'adaptiveMedium' : 'adaptiveHard', ui);
   const showSoundOrb =
     current.audio &&
     (current.display?.variant === 'none' || current.modality === 'auditivo') &&
     !current.story &&
-    current.kind !== 'action';
+    current.kind !== 'action' &&
+    current.kind !== 'pairs';
+
   const voiceNoteVisible = !euVoice && current.lang === 'eu' && progress.sound && !noteDismissed;
-  const gameTitle = mode === 'practice' ? t('freeMode', ui) : bonus ? bonus[ui].title : `${t('worldOf', ui)} ${levelId}`;
   const titleCorrect = ad.gentle ? t('gentleGreat', ui) : t('correctTitle', ui);
   const titleWrong = ad.gentle ? t('gentleAlmost', ui) : t('wrongTitle', ui);
-  const subCorrect = ad.gentle ? t('actionDone', ui) : t('wellDone', ui);
-  const subWrong = ad.gentle ? current.hint : t('almost', ui);
   const actionGame = current.kind === 'action' ? current.action?.game : undefined;
+
   const promptMood: Mood =
     feedback === 'correct'
       ? 'cheer'
@@ -411,69 +673,78 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
             ? 'wave'
             : streak >= 2
               ? 'excited'
-              : index === 0
-                ? 'wave'
-                : 'happy';
+              : 'happy';
+
+  const totalProgressTarget = baseTotal + reviewQueueRef.current.length + (current.isReview ? 1 : 0);
+  const timeFormatted = `${Math.floor(timeLeft / 60)}:${String(timeLeft % 60).padStart(2, '0')}`;
 
   return (
-    <div className={`game-screen ${ad.calm ? 'calm' : ''}`}>
-      {burst > 0 && !ad.calm && <Confetti burstKey={burst} />}
-      <header className="game-header">
-        <button className="icon-btn" onClick={() => setShowExit(true)} aria-label={t('exit', ui)} title={t('exit', ui)}>
-          <IconClose size={18} />
-        </button>
-        <div className="game-progress">
-          <div className="game-progress-top">
-            <span className="game-title">{gameTitle}</span>
-            <span className="game-count">
-              {index + 1} / {total}
+    <div className={`duo-lesson-screen ${mode === 'legendary' ? 'is-legendary' : ''} ${ad.calm ? 'calm' : ''}`}>
+      {burst > 0 && !ad.calm && <Confetti burstKey={burst} count={26} />}
+
+      {/* Cabecera superior minimalista estilo Duolingo */}
+      <header className="duo-lesson-topbar">
+        <div className="duo-lesson-topbar-inner">
+          <button
+            className="duo-close-x"
+            onClick={() => setShowExit(true)}
+            aria-label={t('exit', ui)}
+            title={t('exit', ui)}
+          >
+            <IconClose size={22} />
+          </button>
+
+          <DuoLessonProgress current={stepDone} total={totalProgressTarget} streak={streak} />
+
+          {mode === 'timed' && (
+            <span className={`duo-timer-pill ${timeLeft <= 15 ? 'urgent' : ''}`}>
+              ⏱️ {timeFormatted}
             </span>
-          </div>
-          <SessionProgress current={index} total={total} />
+          )}
+
+          {xpBoost && <span className="duo-boost-pill">⚡ 2X</span>}
+
+          <span
+            className={`duo-hearts-live ${!effectiveUnlimited && progress.hearts <= 1 ? 'low' : ''}`}
+            aria-label={`${effectiveUnlimited ? '∞' : progress.hearts} ${ui === 'eu' ? 'bihotz' : 'vidas'}`}
+          >
+            <DuoHeartSvg size={24} unlimited={effectiveUnlimited} />
+            <strong>{effectiveUnlimited ? '∞' : progress.hearts}</strong>
+          </span>
+
+          <LangChip lang={current.lang} />
         </div>
-        <span
-          className={`hearts-pill ${hearts <= 1 ? 'low' : ''}`}
-          title={ui === 'eu' ? 'Bihotzak' : 'Vidas'}
-          aria-label={`${hearts} ${ui === 'eu' ? 'bihotz' : 'vidas'}`}
-        >
-          ❤️ {hearts}
-        </span>
-        <LangChip lang={current.lang} />
       </header>
 
-      <div className="game-meta">
-        <RoutePill route={progress.route} label={routeLabel} />
-        <span className="adaptive-pill" title={t('adaptive', ui)}>
-          <span className="adaptive-dots" aria-hidden="true">
-            {[1, 2, 3].map((n) => (
-              <i key={n} className={n <= difficulty ? 'on' : ''} />
-            ))}
-          </span>
-          <span>{adaptiveLabel}</span>
-        </span>
-        <span className="xp-pill">
-          <IconBolt size={13} />
-          <span>{xpRef.current} {t('xp', ui)}</span>
-        </span>
-        {streak >= 1 && (
-          <span className="streak-pill-live" title={ui === 'eu' ? 'Segida' : 'Racha'}>
-            🔥 {streak}
-          </span>
-        )}
-        {ad.active.length > 0 && (
-          <span className="support-pill">
-            <IconAccessibility size={14} />
-            <span>{ad.active.length}</span>
-          </span>
-        )}
-      </div>
+      {/* Avisos flotantes de Racha de 5 o Ronda de Repaso */}
+      {fiveToast !== null && (
+        <div className="duo-interstitial-toast streak" role="status">
+          🔥 {tf('streakFiveBanner', ui, { n: String(fiveToast) })}
+        </div>
+      )}
+      {reviewBanner && (
+        <div className="duo-interstitial-toast review" role="status">
+          🔄 {t('reviewRoundBanner', ui)}
+        </div>
+      )}
+      {stageUpToast !== null && (
+        <div className="duo-interstitial-toast stageup" role="status">
+          🧩{' '}
+          {tf('sylStageUpBanner', ui, {
+            n: String(stageUpToast),
+            name: t(stageUpToast === 2 ? 'sylStage2Short' : 'sylStage3Short', ui),
+          })}
+        </div>
+      )}
 
+      {/* Área central del ejercicio */}
       <main
         key={current.id}
-        className={`exercise-card modality-${current.modality} ${progress.bigText ? 'big-text' : ''} ${ad.hyperlegible ? 'hyperlegible' : ''} ${ad.bigTargets ? 'big-targets' : ''}`}
+        className={`duo-exercise-stage modality-${current.modality} ${progress.bigText ? 'big-text' : ''} ${ad.hyperlegible ? 'hyperlegible' : ''} ${ad.bigTargets ? 'big-targets' : ''}`}
       >
         {!ad.calm && xpPop && <XpFloat amount={xpPop.amount} burstKey={xpPop.id} />}
         {!ad.calm && combo && <ComboPill count={combo.count} label={t('comboLabel', ui)} burstKey={combo.id} />}
+
         {ad.firstThen && (
           <div className="first-then" aria-label={t('adaptSchedule', ui)}>
             <span><b>1</b> {t('stepListen', ui)}</span>
@@ -483,22 +754,69 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
             <span><b>3</b> ⭐ {t('stepStar', ui)}</span>
           </div>
         )}
-        <div className="ex-eyebrow">
-          <span className="ex-eyebrow-pill">{current.eyebrow}</span>
-          {current.audio && (
-            <button className="listen-small" onClick={() => listen()} aria-label={t('listenAgain', ui)}>
-              <IconVolume size={15} />
-              <span>{t('listen', ui)}</span>
-            </button>
+
+        {/* Kicker / Eyebrow superior estilo Duolingo ("NUEVA PALABRA", "ESCUCHA Y ELIGE", "REPASO") */}
+        <div className="duo-ex-kicker-row">
+          {current.isReview ? (
+            <span className="duo-review-tag">🔄 {t('reviewMistakeTag', ui)}</span>
+          ) : (
+            <span className="duo-eyebrow-tag">
+              {mode === 'legendary' ? '👑 ' : bonus ? `${bonus.emoji} ` : '✨ '}
+              {current.eyebrow}
+            </span>
           )}
-        </div>
-        <div className="ex-prompt-row">
-          <Mascot mood={promptMood} size={68} interactive sound={progress.sound} />
-          <div className="ex-prompt-bubble">
-            <h2 className="ex-prompt">{current.prompt}</h2>
-          </div>
+          {current.syllableStage && (
+            <span className={`duo-syl-stage-pill stage-${current.syllableStage}`}>
+              {t(
+                current.syllableStage === 1
+                  ? 'sylStage1Badge'
+                  : current.syllableStage === 2
+                    ? 'sylStage2Badge'
+                    : 'sylStage3Badge',
+                ui,
+              )}
+            </span>
+          )}
+          {streak >= 2 && <span className="streak-pill-live">🔥 {streak}</span>}
         </div>
 
+        {/* Instrucción principal + Pato Ventura + Bocadillo con Audio Normal y Tortuga Lenta */}
+        <h1 className="duo-ex-headline">{current.prompt}</h1>
+
+        <div className="duo-character-prompt-row">
+          <Mascot
+            mood={promptMood}
+            size={92}
+            outfit={progress.equippedOutfit}
+            interactive
+            sound={progress.sound}
+          />
+          {current.audio && !showSoundOrb && !current.story && (
+            <div className="duo-audio-bubble">
+              <button
+                className="duo-speaker-btn"
+                onClick={() => listen(0.9)}
+                aria-label={t('listen', ui)}
+                title={t('listen', ui)}
+              >
+                <IconVolume size={22} />
+              </button>
+              <button
+                className="duo-turtle-btn"
+                onClick={() => listen(0.58)}
+                aria-label={t('slowAudio', ui)}
+                title={t('slowAudio', ui)}
+              >
+                <DuoTurtleSvg size={22} />
+              </button>
+              {current.display?.variant === 'word' && current.display.text && (
+                <strong className="duo-bubble-word">{current.display.text}</strong>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Tarjeta de Cuento */}
         {current.story && (
           <section className="story-card">
             <div className="story-emoji" aria-hidden="true">
@@ -507,67 +825,88 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
             <div className="story-body">
               <h3>{current.story.title}</h3>
               <p>{current.story.text}</p>
-              <button className="btn btn-tiny" onClick={() => listen(0.82)}>
-                <IconVolume size={14} />
-                <span>{t('readAloud', ui)}</span>
-              </button>
+              <div className="duo-story-inline-audio">
+                <button className="duo-btn duo-btn-blue duo-btn-sm" onClick={() => listen(0.84)}>
+                  <IconVolume size={15} />
+                  <span>{t('readAloud', ui)}</span>
+                </button>
+                <button className="duo-btn duo-btn-outline duo-btn-sm" onClick={() => listen(0.58)}>
+                  <DuoTurtleSvg size={17} />
+                  <span>{t('slowAudio', ui)}</span>
+                </button>
+              </div>
             </div>
           </section>
         )}
 
-        {current.display && current.display.variant !== 'none' && (
-          <div className={`display-area display-${current.display.variant}`}>
-            {current.display.emoji && current.display.variant !== 'objects' && current.display.variant !== 'swatch' && (
-              <div className="display-emoji">{current.display.emoji}</div>
-            )}
-            {current.display.variant === 'objects' && current.display.text && (
-              <div className="display-objects" aria-label={current.display.text}>
-                {current.display.text}
-              </div>
-            )}
-            {current.display.variant === 'swatch' && (
-              <div
-                className={`display-swatch ${ad.colorblind && current.display.pattern ? `swatch-pattern pattern-${current.display.pattern}` : ''}`}
-                style={{ backgroundColor: current.display.color }}
-                aria-label={current.display.emoji}
-              >
-                {ad.colorblind && current.display.symbol ? (
-                  <span className="swatch-symbol swatch-symbol-lg" aria-hidden="true">{current.display.symbol}</span>
-                ) : (
-                  current.display.emoji
-                )}
-              </div>
-            )}
-            {current.display.variant === 'chunks' && current.display.chunks && (
-              <div className="chunk-row" aria-label={current.display.chunks.join(' ')}>
-                {current.display.chunks.map((chunk, i) => (
-                  <span key={i} className={`chunk chunk-${i % 5}`}>
-                    {chunk}
-                  </span>
-                ))}
-              </div>
-            )}
-            {(current.display.variant === 'blank' || current.display.variant === 'hidden' || current.display.variant === 'word') &&
-              current.display.text && (
-                <div className={`display-text ${current.display.variant === 'word' ? 'display-word' : ''}`}>
-                  {current.display.text.split('＿').map((part, i, arr) => (
-                    <span key={i}>
-                      {part}
-                      {i < arr.length - 1 && <span className="blank-box">?</span>}
+        {/* Área visual (emoji, sílabas, huecos, muestras de color, objetos) */}
+        {current.display &&
+          current.display.variant !== 'none' &&
+          !(current.audio && !showSoundOrb && current.display.variant === 'word') && (
+            <div className={`display-area display-${current.display.variant}`}>
+              {current.display.emoji && current.display.variant !== 'objects' && current.display.variant !== 'swatch' && (
+                <div className="display-emoji">{current.display.emoji}</div>
+              )}
+              {current.display.variant === 'objects' && current.display.text && (
+                <div className="display-objects" aria-label={current.display.text}>
+                  {current.display.text}
+                </div>
+              )}
+              {current.display.variant === 'swatch' && (
+                <div
+                  className={`display-swatch ${ad.colorblind && current.display.pattern ? `swatch-pattern pattern-${current.display.pattern}` : ''}`}
+                  style={{ backgroundColor: current.display.color }}
+                  aria-label={current.display.emoji}
+                >
+                  {ad.colorblind && current.display.symbol ? (
+                    <span className="swatch-symbol swatch-symbol-lg" aria-hidden="true">{current.display.symbol}</span>
+                  ) : (
+                    current.display.emoji
+                  )}
+                </div>
+              )}
+              {current.display.variant === 'chunks' && current.display.chunks && (
+                <div className="chunk-row" aria-label={current.display.chunks.join(' ')}>
+                  {current.display.chunks.map((chunk, i) => (
+                    <span key={i} className={`chunk chunk-${i % 5}`}>
+                      {chunk}
                     </span>
                   ))}
                 </div>
               )}
-          </div>
-        )}
+              {(current.display.variant === 'blank' || current.display.variant === 'hidden' || current.display.variant === 'word') &&
+                current.display.text && (
+                  <div className={`display-text ${current.display.variant === 'word' ? 'display-word' : ''}`}>
+                    {current.display.text.split('＿').map((part, i, arr) => (
+                      <span key={i}>
+                        {part}
+                        {i < arr.length - 1 && <span className="blank-box">?</span>}
+                      </span>
+                    ))}
+                  </div>
+                )}
+            </div>
+          )}
 
+        {/* Botones dobles de escucha (Altavoz grande azul + Tortuga lenta) estilo Duolingo Listening */}
         {showSoundOrb && (
-          <button className={`sound-orb ${current.modality === 'auditivo' ? 'pulsing' : ''}`} onClick={() => listen()} aria-label={t('listenAgain', ui)}>
-            <span className="orb-ring ring-1" />
-            <span className="orb-ring ring-2" />
-            <span className="orb-icon"><IconVolume size={34} /></span>
-            <span className="orb-label">{t('listenAgain', ui)}</span>
-          </button>
+          <div className="duo-listening-pair">
+            <button
+              className="duo-big-speaker"
+              onClick={() => listen(0.9)}
+              aria-label={t('listenAgain', ui)}
+            >
+              <IconVolume size={40} />
+            </button>
+            <button
+              className="duo-big-turtle"
+              onClick={() => listen(0.56)}
+              aria-label={t('slowAudio', ui)}
+              title={t('slowAudio', ui)}
+            >
+              <DuoTurtleSvg size={32} />
+            </button>
+          </div>
         )}
 
         {voiceNoteVisible && (
@@ -587,19 +926,28 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
           </div>
         )}
 
+        {/* 1 · Opciones de Selección Múltiple estilo Duolingo */}
         {(current.kind === 'choice' || current.kind === 'story') && current.options && (
           <div className={`options options-${current.options.length > 3 ? 'four' : 'three'}`}>
             {current.options.map((opt, i) => {
               const isCorrect = opt.id === current.correctId;
               const isChosen = selected === opt.id;
               const state =
-                feedback === 'none' ? '' : isCorrect ? 'is-correct' : isChosen ? 'is-wrong' : 'is-muted';
+                feedback === 'none'
+                  ? isChosen
+                    ? 'is-selected'
+                    : ''
+                  : isCorrect
+                    ? 'is-correct'
+                    : isChosen
+                      ? 'is-wrong'
+                      : 'is-muted';
               return (
                 <button
                   key={opt.id}
-                  className={`option ${state} ${opt.emoji ? 'has-emoji' : ''} ${opt.color ? 'has-swatch' : ''} ${selected === opt.id && feedback === 'none' ? 'pressing' : ''}`}
+                  className={`option ${state} ${opt.emoji ? 'has-emoji' : ''} ${opt.color ? 'has-swatch' : ''}`}
                   style={staggerStyle(i)}
-                  onClick={() => submitChoice(opt.id)}
+                  onClick={() => handleOptionClick(opt.id, opt.emoji === opt.label ? undefined : opt.label)}
                   disabled={feedback !== 'none'}
                 >
                   <span className="option-key">{i + 1}</span>
@@ -623,6 +971,7 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
           </div>
         )}
 
+        {/* 2 · Tocar Letra / Sílaba */}
         {current.kind === 'tap' && current.chips && (
           <div className="chip-area">
             <p className="area-caption">{t('tapToFind', ui)}</p>
@@ -630,13 +979,22 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
               {current.chips.map((c, i) => {
                 const isCorrect = c.id === current.correctChip;
                 const isChosen = chip === c.id;
-                const state = feedback === 'none' ? '' : isCorrect ? 'is-correct' : isChosen ? 'is-wrong' : 'is-muted';
+                const state =
+                  feedback === 'none'
+                    ? isChosen
+                      ? 'is-selected'
+                      : ''
+                    : isCorrect
+                      ? 'is-correct'
+                      : isChosen
+                        ? 'is-wrong'
+                        : 'is-muted';
                 return (
                   <button
                     key={c.id}
-                    className={`letter-chip ${state} ${chip === c.id && feedback === 'none' ? 'pressing' : ''}`}
+                    className={`letter-chip ${state}`}
                     style={staggerStyle(i)}
-                    onClick={() => submitChip(c.id)}
+                    onClick={() => handleChipClick(c.id, c.label)}
                     disabled={feedback !== 'none'}
                   >
                     {c.label}
@@ -650,19 +1008,25 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
           </div>
         )}
 
+        {/* 3 · Banco de Palabras / Sílabas sobre renglones estilo Duolingo */}
         {current.kind === 'build' && current.tiles && current.correctOrder && (
-          <div className="build-area">
+          <div className="duo-wordbank">
             <p className="area-caption">{t('tapToOrder', ui)}</p>
-            <div className="build-slots">
-              {current.correctOrder.map((slotId, i) => {
-                const pickedId = picks[i];
+            <div className="duo-wordbank-lines">
+              {picks.length === 0 && (
+                <span className="duo-wordbank-placeholder">{t('tapToOrder', ui)}…</span>
+              )}
+              {picks.map((pickedId, i) => {
                 const tile = current.tiles!.find((x) => x.id === pickedId);
                 return (
                   <button
-                    key={slotId}
-                    className={`build-slot ${tile ? 'filled' : ''}`}
+                    key={`${pickedId}-${i}`}
+                    className={`duo-wb-tile picked ${current.unit === 'word' ? 'tile-word' : ''}`}
                     onClick={() => {
-                      if (feedback === 'none' && !pendingRef.current && pickedId) setPicks(picks.filter((_, idx) => idx !== i));
+                      if (feedback === 'none') {
+                        sfx('click', progress.sound);
+                        setPicks(picks.filter((_, idx) => idx !== i));
+                      }
                     }}
                     disabled={feedback !== 'none'}
                   >
@@ -671,36 +1035,75 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
                 );
               })}
             </div>
-            <div className="tile-pool">
-              {current.tiles.map((tile, i) => (
-                <button
-                  key={tile.id}
-                  style={staggerStyle(i)}
-                  className={`tile ${picks.includes(tile.id) ? 'used' : ''} ${current.unit === 'word' ? 'tile-word' : ''}`}
-                  onClick={() => addPick(tile.id)}
-                  disabled={picks.includes(tile.id) || feedback !== 'none'}
-                >
-                  {tile.label}
-                </button>
-              ))}
-            </div>
-            <div className="build-actions">
-              <button
-                className="btn btn-quiet"
-                onClick={() => {
-                  if (feedback === 'none' && !pendingRef.current) setPicks(picks.slice(0, -1));
-                }}
-                disabled={!picks.length || feedback !== 'none'}
-              >
-                ↩ {t('undo', ui)}
-              </button>
-              <button className="btn btn-primary" onClick={submitBuild} disabled={picks.length !== current.tiles.length || feedback !== 'none'}>
-                ✓ {t('check', ui)}
-              </button>
+
+            <div className="duo-wb-pool">
+              {current.tiles.map((tile, i) => {
+                const used = picks.includes(tile.id);
+                return (
+                  <div key={tile.id} className="duo-wb-slot-ghost">
+                    <button
+                      style={staggerStyle(i)}
+                      className={`duo-wb-tile ${used ? 'is-used' : ''} ${current.unit === 'word' ? 'tile-word' : ''}`}
+                      onClick={() => addPick(tile.id, tile.label)}
+                      disabled={used || feedback !== 'none'}
+                    >
+                      {tile.label}
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
 
+        {/* 4 · Emparejar Parejas (2 columnas estilo Duolingo Match Pairs) */}
+        {current.kind === 'pairs' && current.pairs && (
+          <div className="duo-pairs-grid">
+            <div className="duo-pairs-col">
+              {current.pairs
+                .filter((c) => c.side === 'left')
+                .map((card, i) => {
+                  const isMatched = matchedPairIds.includes(card.pairId);
+                  const isSelected = pairLeft === card.id;
+                  const isWrong = wrongPairFlash.includes(card.id);
+                  return (
+                    <button
+                      key={card.id}
+                      style={staggerStyle(i)}
+                      disabled={isMatched || feedback !== 'none'}
+                      className={`duo-pair-btn ${isSelected ? 'is-selected' : ''} ${isMatched ? 'is-matched' : ''} ${isWrong ? 'is-wrong' : ''}`}
+                      onClick={() => handlePairCardTap(card.id, 'left', card.pairId, card.label, card.lang)}
+                    >
+                      {card.emoji && card.label !== card.emoji && <span className="pair-emoji">{card.emoji}</span>}
+                      <span className={card.label === card.emoji ? 'pair-big-emoji' : 'pair-label'}>{card.label}</span>
+                    </button>
+                  );
+                })}
+            </div>
+            <div className="duo-pairs-col">
+              {current.pairs
+                .filter((c) => c.side === 'right')
+                .map((card, i) => {
+                  const isMatched = matchedPairIds.includes(card.pairId);
+                  const isSelected = pairRight === card.id;
+                  const isWrong = wrongPairFlash.includes(card.id);
+                  return (
+                    <button
+                      key={card.id}
+                      style={staggerStyle(i)}
+                      disabled={isMatched || feedback !== 'none'}
+                      className={`duo-pair-btn ${isSelected ? 'is-selected' : ''} ${isMatched ? 'is-matched' : ''} ${isWrong ? 'is-wrong' : ''}`}
+                      onClick={() => handlePairCardTap(card.id, 'right', card.pairId, card.label, card.lang)}
+                    >
+                      <span className="pair-label">{card.label}</span>
+                    </button>
+                  );
+                })}
+            </div>
+          </div>
+        )}
+
+        {/* 5 · Minijuegos de Acción de Pato Ventura (sin fallo) */}
         {current.kind === 'action' && current.action && feedback === 'none' && (
           <div className={`action-card ${actionGame ? `action-game-card action-game-${actionGame.kind}` : ''}`}>
             <div className="action-emoji" aria-hidden="true">{current.action.emoji}</div>
@@ -786,74 +1189,172 @@ export function GameScreen({ progress, mode, levelId, onExit, onFinish }: Props)
             )}
 
             <div className="action-buttons">
-              <button className="btn btn-quiet" onClick={() => listen(0.78)}>🔁 {t('actionAgain', ui)}</button>
+              <button className="duo-btn duo-btn-outline" onClick={() => listen(0.78)}>
+                🔁 {t('actionAgain', ui)}
+              </button>
               {actionGame?.kind !== 'imitate' && (
-                <button className="btn btn-primary btn-lg" onClick={completeAction}>{t('actionDo', ui)}</button>
+                <button className="duo-btn duo-btn-green duo-btn-lg" onClick={completeAction}>
+                  {t('actionDo', ui)}
+                </button>
               )}
-              <button className="btn btn-quiet" onClick={completeAction}>{t('actionSkip', ui)}</button>
             </div>
           </div>
         )}
 
-        {feedback === 'none' ? (
-          <div className="game-footer">
-            <button className={`btn btn-ghost ${hintShown ? 'active' : ''}`} onClick={showHint} disabled={hintShown}>
-              <IconLightbulb size={16} />
-              <span>{t('hint', ui)}</span>
-            </button>
-            {hintShown && (
-              <div className="hint-box">
-                <Mascot mood="think" size={62} interactive sound={progress.sound} />
-                <div>
-                  <strong>{t('hintTitle', ui)}</strong>
-                  <p>{current.hint}</p>
-                </div>
-                <button className="icon-btn" onClick={() => setHintShown(false)} aria-label={t('hideHint', ui)}>
-                  <IconClose size={15} />
-                </button>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className={`feedback feedback-${feedback}`} role="status">
-            <div className="feedback-head">
-              <Mascot mood={feedback === 'correct' ? 'excited' : ad.gentle ? 'think' : 'sad'} size={80} interactive sound={progress.sound} />
-              <div>
-                <h3>{feedback === 'correct' ? titleCorrect : titleWrong}</h3>
-                <p>{feedback === 'correct' ? subCorrect : subWrong}</p>
-              </div>
+        {/* Caja de pista desplegable */}
+        {hintShown && feedback === 'none' && (
+          <div className="hint-box">
+            <Mascot mood="think" size={58} outfit={progress.equippedOutfit} />
+            <div>
+              <strong>💡 {t('hintTitle', ui)}</strong>
+              <p>{current.hint}</p>
             </div>
-            <p className="feedback-explain">{current.explanation}</p>
-            {feedback === 'wrong' && (
-              <p className="correct-answer">
-                {t('correctAnswerLabel', ui)}: <strong>{correctLabel}</strong>
-              </p>
-            )}
-            <button className="btn btn-primary btn-wide" onClick={() => advance()} autoFocus>
-              <span>{index + 1 >= total ? t('finishSession', ui) : t('continueBtn', ui)}</span>
-              <IconArrowRight size={17} />
+            <button className="duo-close-x" onClick={() => setHintShown(false)} aria-label={t('hideHint', ui)}>
+              <IconClose size={16} />
             </button>
           </div>
         )}
       </main>
 
+      {/* Barra Inferior Fija de Ancho Completo estilo Duolingo (COMPROBAR / Feedback Verde o Rojo) */}
+      <footer
+        className={`duo-lesson-bottombar ${feedback === 'correct' ? 'is-correct' : feedback === 'wrong' ? 'is-wrong' : ''}`}
+        role="status"
+      >
+        <div className="duo-lesson-bottom-inner">
+          {feedback === 'none' ? (
+            <>
+              <div className="duo-bottom-left-btns">
+                <button className="duo-btn duo-btn-outline" onClick={skipExercise}>
+                  {t('skipBtn', ui)}
+                </button>
+                <button
+                  className="duo-btn duo-btn-yellow-ghost"
+                  onClick={showHint}
+                  disabled={hintShown}
+                >
+                  <IconLightbulb size={17} />
+                  <span>{t('hint', ui).toUpperCase()}</span>
+                </button>
+              </div>
+
+              {current.kind === 'action' ? (
+                <button className="duo-btn duo-btn-green duo-btn-lg" onClick={completeAction}>
+                  <span>{t('continueBtn', ui).toUpperCase()}</span>
+                </button>
+              ) : current.kind === 'pairs' ? (
+                <span className="duo-pairs-counter">
+                  {matchedPairIds.length} / {(current.pairs?.length ?? 8) / 2}
+                </span>
+              ) : (
+                <button
+                  className="duo-btn duo-btn-green duo-btn-lg"
+                  disabled={!canCheck}
+                  onClick={checkCurrentAnswer}
+                >
+                  <span>{t('check', ui).toUpperCase()}</span>
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="duo-feedback-left">
+                <span className={`duo-fb-circle ${feedback}`} aria-hidden="true">
+                  {feedback === 'correct' ? <IconCheck size={28} /> : <IconClose size={28} />}
+                </span>
+                <div className="duo-fb-copy">
+                  <h3>{feedback === 'correct' ? titleCorrect : titleWrong}</h3>
+                  {feedback === 'wrong' && correctLabel && (
+                    <p className="duo-fb-solution">
+                      {t('correctAnswerLabel', ui)}: <strong>{correctLabel}</strong>
+                    </p>
+                  )}
+                  <p className="duo-fb-explain">{current.explanation}</p>
+                </div>
+              </div>
+
+              <button
+                className={`duo-btn ${feedback === 'correct' ? 'duo-btn-green' : 'duo-btn-red'} duo-btn-lg`}
+                onClick={() => advance()}
+                autoFocus
+              >
+                <span>{feedback === 'correct' ? t('continueBtn', ui).toUpperCase() : t('gotItBtn', ui)}</span>
+                <IconArrowRight size={17} />
+              </button>
+            </>
+          )}
+        </div>
+      </footer>
+
+      {/* Modal "¡Te quedaste sin vidas!" estilo Duolingo */}
+      {outOfHearts && (
+        <Modal onClose={() => setOutOfHearts(false)}>
+          <div className="duo-hearts-modal">
+            <Mascot mood="sad" size={118} outfit={progress.equippedOutfit} />
+            <h2>{t('outOfHeartsTitle', ui)}</h2>
+            <p>{t('outOfHeartsSub', ui)}</p>
+            <div className="duo-hearts-modal-gems">
+              <DuoGemSvg size={22} /> <strong>{progress.gems}</strong>
+            </div>
+            <div className="duo-pop-btn-col">
+              <button
+                className="duo-btn duo-btn-blue duo-btn-full"
+                disabled={progress.gems < 100}
+                onClick={() => {
+                  if (progress.gems >= 100) {
+                    sfx('star', progress.sound);
+                    setProgress({ gems: progress.gems - 100, hearts: 5 });
+                    setOutOfHearts(false);
+                  }
+                }}
+              >
+                {t('refillGemsBtn', ui)}
+              </button>
+              <button
+                className="duo-btn duo-btn-purple duo-btn-full"
+                onClick={() => {
+                  sfx('star', progress.sound);
+                  setProgress({ unlimitedHearts: true, hearts: 5 });
+                  setOutOfHearts(false);
+                }}
+              >
+                ♾️ {t('enableUnlimitedBtn', ui)}
+              </button>
+              <button
+                className="duo-btn duo-btn-outline duo-btn-full"
+                onClick={() => {
+                  stopSpeaking();
+                  onExit();
+                }}
+              >
+                {t('leaveLessonBtn', ui)}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Modal de confirmación de salida */}
       {showExit && (
         <Modal onClose={() => setShowExit(false)}>
-          <h3>{t('exitTitle', ui)}</h3>
-          <p>{t('exitSub', ui)}</p>
-          <div className="modal-actions">
-            <button className="btn btn-quiet" onClick={() => setShowExit(false)}>
-              {t('exitNo', ui)}
-            </button>
-            <button
-              className="btn btn-primary"
-              onClick={() => {
-                stopSpeaking();
-                onExit();
-              }}
-            >
-              {t('exitYes', ui)}
-            </button>
+          <div className="duo-hearts-modal">
+            <Mascot mood="sad" size={110} outfit={progress.equippedOutfit} />
+            <h3>{t('exitTitle', ui)}</h3>
+            <p>{t('exitSub', ui)}</p>
+            <div className="duo-pop-btn-col">
+              <button className="duo-btn duo-btn-blue duo-btn-full" onClick={() => setShowExit(false)}>
+                {t('exitNo', ui).toUpperCase()}
+              </button>
+              <button
+                className="duo-btn duo-btn-red-ghost duo-btn-full"
+                onClick={() => {
+                  stopSpeaking();
+                  onExit();
+                }}
+              >
+                {t('exitYes', ui).toUpperCase()}
+              </button>
+            </div>
           </div>
         </Modal>
       )}

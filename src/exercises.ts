@@ -1,5 +1,8 @@
 import {
+  INVERSE_MIRROR_PAIRS,
+  SYLLABLE_BANKS,
   blanks,
+  classifySyllable,
   colorById,
   colors,
   colorObjects,
@@ -14,15 +17,17 @@ import {
   specialSounds,
   stories,
   wordById,
+  wordSyllableStage,
   wordSyllables,
   wordText,
   words,
+  wordsForSyllableStage,
 } from './data';
 import type { ColorItem, Word } from './data';
 import { applyAdaptations, defaultAdaptations } from './adaptations';
 import type { Adaptations } from './adaptations';
 import { t, tf } from './i18n';
-import type { ActionGame, Exercise, ExerciseKind, Lang, Modality, Option, Route, Tile, UiLang } from './types';
+import type { ActionGame, Exercise, ExerciseKind, Lang, LearnLang, Modality, Option, PairCard, Route, SyllableStage, Tile, UiLang } from './types';
 
 export interface GenState {
   used: Set<string>;
@@ -38,6 +43,7 @@ interface Ctx {
   lang: Lang;
   ui: UiLang;
   difficulty: number;
+  syllableStage: SyllableStage;
   state: GenState;
   colorblind: boolean;
 }
@@ -111,6 +117,32 @@ function distract(pool: string[], correct: string, n: number, difficulty: number
 /** Palabras con dibujo inequívoco: en daltonismo se evitan los círculos de solo color (🔴🟢🟠). */
 function visualWords(c: Ctx, list: Word[] = words): Word[] {
   return c.colorblind ? list.filter((w) => w.cat !== 'colores') : list;
+}
+
+/** Palabras filtradas por la etapa silábica actual (1: Directas, 2: Inversas, 3: Trabadas). */
+function stageVisualWords(c: Ctx, minSyl = 1): Word[] {
+  const base = visualWords(c);
+  const byStage = wordsForSyllableStage(c.syllableStage, c.lang, base).filter(
+    (w) => wordSyllables(w, c.lang).length >= minSyl,
+  );
+  if (byStage.length >= 4) return byStage;
+  return base.filter((w) => wordSyllables(w, c.lang).length >= minSyl);
+}
+
+/** Elige dentro de una palabra el índice de la sílaba que ejemplifica la etapa actual. */
+function pickStageSyllableIndex(syl: string[], stage: SyllableStage): number {
+  const wanted = stage === 3 ? 'trabada' : stage === 2 ? 'inversa' : 'directa';
+  const matches = syl
+    .map((s, idx) => ({ s, idx }))
+    .filter(({ s }) => classifySyllable(s) === wanted);
+  if (matches.length > 0) return rnd(matches).idx;
+  return Math.floor(Math.random() * syl.length);
+}
+
+function stageHint(c: Ctx): string {
+  if (c.syllableStage === 2) return t('hintInverse', c.ui);
+  if (c.syllableStage === 3) return t('hintTrabada', c.ui);
+  return t('hintSyllables', c.ui);
 }
 
 interface OptionInput {
@@ -222,8 +254,12 @@ function wordOptions(c: Ctx, correct: Word, others: Word[], withEmoji = false): 
 /* ------------------------------------------------------------------ */
 
 function makeBuild(c: Ctx, levelId: number, modality: Modality, minSyllables: number): Exercise {
-  const pool = visualWords(c).filter((w) => wordSyllables(w, c.lang).length >= minSyllables);
-  const w = pickFresh(pool, (x) => x.id, `build-${levelId}`, c.state);
+  const pool =
+    levelId === 2
+      ? stageVisualWords(c, minSyllables)
+      : visualWords(c).filter((w) => wordSyllables(w, c.lang).length >= minSyllables && wordSyllableStage(w, c.lang) <= c.syllableStage);
+  const effectivePool = pool.length ? pool : visualWords(c).filter((w) => wordSyllables(w, c.lang).length >= minSyllables);
+  const w = pickFresh(effectivePool, (x) => x.id, `build-${levelId}-s${c.syllableStage}`, c.state);
   const syl = wordSyllables(w, c.lang);
   let tiles: Tile[] = shuffle(syl.map((s, i) => ({ id: `t${i}`, label: s })));
   if (tiles.every((tile, i) => tile.id === `t${i}`)) tiles = [...tiles.slice(1), tiles[0]!];
@@ -236,8 +272,9 @@ function makeBuild(c: Ctx, levelId: number, modality: Modality, minSyllables: nu
     tiles,
     correctOrder: syl.map((_, i) => `t${i}`),
     unit: 'syllable',
-    hint: t('hintSyllables', c.ui),
+    hint: levelId === 2 ? stageHint(c) : t('hintSyllables', c.ui),
     explanation: answerExplanation(c, text, 'written'),
+    ...(levelId === 2 ? { syllableStage: c.syllableStage } : {}),
   });
 }
 
@@ -578,9 +615,9 @@ const factories: Record<number, Factory[]> = {
       id: 'l2-find-syllable',
       modality: 'visual',
       make(c) {
-        const w = pickFresh(visualWords(c).filter((x) => wordSyllables(x, c.lang).length >= 2), (x) => x.id, 'l2-find', c.state);
+        const w = pickFresh(stageVisualWords(c, 2), (x) => x.id, `l2-find-s${c.syllableStage}`, c.state);
         const syl = wordSyllables(w, c.lang);
-        const index = Math.floor(Math.random() * syl.length);
+        const index = pickStageSyllableIndex(syl, c.syllableStage);
         const chips: Tile[] = syl.map((s, i) => ({ id: `c${i}`, label: s }));
         return makeEx(c, 2, 'visual', 'tap', {
           eyebrow: t('eyebrowTap', c.ui),
@@ -589,8 +626,9 @@ const factories: Record<number, Factory[]> = {
           audio: { text: wordText(w, c.lang), lang: c.lang },
           chips,
           correctChip: `c${index}`,
-          hint: t('hintSyllables', c.ui),
+          hint: stageHint(c),
           explanation: answerExplanation(c, syl[index]!),
+          syllableStage: c.syllableStage,
         });
       },
     },
@@ -598,9 +636,9 @@ const factories: Record<number, Factory[]> = {
       id: 'l2-hear-syllable',
       modality: 'auditivo',
       make(c) {
-        const w = pickFresh(visualWords(c).filter((x) => wordSyllables(x, c.lang).length >= 2), (x) => x.id, 'l2-hear', c.state);
+        const w = pickFresh(stageVisualWords(c, 2), (x) => x.id, `l2-hear-s${c.syllableStage}`, c.state);
         const syl = wordSyllables(w, c.lang);
-        const index = Math.floor(Math.random() * syl.length);
+        const index = pickStageSyllableIndex(syl, c.syllableStage);
         const chips: Tile[] = syl.map((s, i) => ({ id: `c${i}`, label: s }));
         return makeEx(c, 2, 'auditivo', 'tap', {
           eyebrow: t('eyebrowListen', c.ui),
@@ -609,8 +647,41 @@ const factories: Record<number, Factory[]> = {
           audio: { text: syl[index]!, lang: c.lang },
           chips,
           correctChip: `c${index}`,
-          hint: t('hintListen', c.ui),
+          hint: stageHint(c),
           explanation: answerExplanation(c, syl[index]!),
+          syllableStage: c.syllableStage,
+        });
+      },
+    },
+    {
+      id: 'l2-stage-missing',
+      modality: 'visual',
+      make(c) {
+        const w = pickFresh(stageVisualWords(c, 2), (x) => x.id, `l2-miss-s${c.syllableStage}`, c.state);
+        const syl = wordSyllables(w, c.lang);
+        const index = pickStageSyllableIndex(syl, c.syllableStage);
+        const target = syl[index]!;
+        const hidden = syl.map((s, i) => (i === index ? '＿' : s)).join('');
+        const bank = SYLLABLE_BANKS[c.lang][c.syllableStage];
+        const contrastExtra: string[] = [];
+        if (c.syllableStage === 2 && target.length === 2) {
+          contrastExtra.push(`${target[1]}${target[0]}`);
+        } else if (c.syllableStage === 3 && target.length >= 3) {
+          contrastExtra.push(`${target[0]}${target.slice(2)}`);
+        }
+        const rest = distract([...contrastExtra, ...bank], target, nOpts(c) - 1, c.difficulty, allSyllables(c.lang));
+        const { options, correctId } = optionSet([target, ...rest].map((label) => ({ label })), 0);
+        const text = wordText(w, c.lang);
+        return makeEx(c, 2, 'visual', 'choice', {
+          eyebrow: t('eyebrowComplete', c.ui),
+          prompt: c.syllableStage === 3 ? t('promptTrabadaWord', c.ui) : t('promptMissingLetter', c.ui),
+          display: { variant: 'hidden', text: hidden, emoji: w.emoji },
+          audio: { text, lang: c.lang },
+          options,
+          correctId,
+          hint: stageHint(c),
+          explanation: answerExplanation(c, text, 'written'),
+          syllableStage: c.syllableStage,
         });
       },
     },
@@ -618,7 +689,7 @@ const factories: Record<number, Factory[]> = {
       id: 'l2-count',
       modality: 'any',
       make(c) {
-        const w = pickFresh(visualWords(c), (x) => x.id, 'l2-count', c.state);
+        const w = pickFresh(stageVisualWords(c, 1), (x) => x.id, `l2-count-s${c.syllableStage}`, c.state);
         const syl = wordSyllables(w, c.lang);
         const nums = ['1', '2', '3', '4', '5'];
         const correct = String(syl.length);
@@ -630,8 +701,9 @@ const factories: Record<number, Factory[]> = {
           audio: { text: wordText(w, c.lang), lang: c.lang },
           options,
           correctId,
-          hint: t('hintSyllables', c.ui),
+          hint: stageHint(c),
           explanation: answerExplanation(c, correct),
+          syllableStage: c.syllableStage,
         });
       },
     },
@@ -639,7 +711,9 @@ const factories: Record<number, Factory[]> = {
       id: 'l2-starts-with',
       modality: 'visual',
       make(c) {
-        const w = pickFresh(words, (x) => x.id, 'l2-starts', c.state);
+        const wanted = c.syllableStage === 3 ? 'trabada' : c.syllableStage === 2 ? 'inversa' : 'directa';
+        const stageStarters = words.filter((x) => classifySyllable(wordSyllables(x, c.lang)[0]!) === wanted);
+        const w = pickFresh(stageStarters.length ? stageStarters : words, (x) => x.id, `l2-starts-s${c.syllableStage}`, c.state);
         const target = wordSyllables(w, c.lang)[0]!;
         const pool = words.filter((x) => x.id !== w.id && wordSyllables(x, c.lang)[0] !== target);
         const { options, correctId } = wordOptions(c, w, pool);
@@ -649,8 +723,9 @@ const factories: Record<number, Factory[]> = {
           display: { variant: 'word', text: target },
           options,
           correctId,
-          hint: t('hintVisual', c.ui),
+          hint: stageHint(c),
           explanation: answerExplanation(c, wordText(w, c.lang), 'written'),
+          syllableStage: c.syllableStage,
         });
       },
     },
@@ -658,10 +733,33 @@ const factories: Record<number, Factory[]> = {
       id: 'l2-hear-syllable-choice',
       modality: 'auditivo',
       make(c) {
-        const w = pickFresh(words, (x) => x.id, 'l2-hear-choice', c.state);
+        if (c.syllableStage === 2 && c.state.seq % 2 === 0) {
+          const pair = pickFresh(INVERSE_MIRROR_PAIRS[c.lang], (p) => p[0], 'l2-mirror', c.state);
+          const inv = pair[0];
+          const dir = pair[1];
+          const extra = distract(SYLLABLE_BANKS[c.lang][2], inv, Math.max(0, nOpts(c) - 2), c.difficulty).filter((s) => s !== dir);
+          const items = [inv, dir, ...extra].slice(0, nOpts(c));
+          const { options, correctId } = optionSet(items.map((label) => ({ label })), 0);
+          return makeEx(c, 2, 'auditivo', 'choice', {
+            eyebrow: t('eyebrowListen', c.ui),
+            prompt: tf('promptInverseMirror', c.ui, { a: inv, b: dir }),
+            display: { variant: 'none' },
+            audio: { text: inv, lang: c.lang },
+            options,
+            correctId,
+            hint: stageHint(c),
+            explanation: answerExplanation(c, inv),
+            syllableStage: 2,
+          });
+        }
+
+        const stagePool = wordsForSyllableStage(c.syllableStage, c.lang);
+        const w = pickFresh(stagePool.length ? stagePool : words, (x) => x.id, `l2-hear-choice-s${c.syllableStage}`, c.state);
         const syl = wordSyllables(w, c.lang);
-        const target = rnd(syl);
-        const rest = distract(allSyllables(c.lang), target, nOpts(c) - 1, c.difficulty);
+        const idx = pickStageSyllableIndex(syl, c.syllableStage);
+        const target = syl[idx]!;
+        const bank = SYLLABLE_BANKS[c.lang][c.syllableStage];
+        const rest = distract(bank, target, nOpts(c) - 1, c.difficulty, allSyllables(c.lang));
         const { options, correctId } = optionSet([target, ...rest].map((label) => ({ label })), 0);
         return makeEx(c, 2, 'auditivo', 'choice', {
           eyebrow: t('eyebrowListen', c.ui),
@@ -670,8 +768,9 @@ const factories: Record<number, Factory[]> = {
           audio: { text: target, lang: c.lang },
           options,
           correctId,
-          hint: t('hintListen', c.ui),
+          hint: stageHint(c),
           explanation: answerExplanation(c, target),
+          syllableStage: c.syllableStage,
         });
       },
     },
@@ -683,7 +782,8 @@ const factories: Record<number, Factory[]> = {
       modality: 'visual',
       make(c) {
         const bank = visualWords(c);
-        const w = pickFresh(bank, (x) => x.id, 'l3-word-img', c.state);
+        const stageBank = stageVisualWords(c, 1);
+        const w = pickFresh(stageBank, (x) => x.id, `l3-word-img-s${c.syllableStage}`, c.state);
         const pool = bank.filter((x) => x.id !== w.id);
         const chosen = distract(
           pool.map((x) => x.emoji),
@@ -712,7 +812,8 @@ const factories: Record<number, Factory[]> = {
       modality: 'visual',
       make(c) {
         const bank = visualWords(c);
-        const w = pickFresh(bank, (x) => x.id, 'l3-img-word', c.state);
+        const stageBank = stageVisualWords(c, 1);
+        const w = pickFresh(stageBank, (x) => x.id, `l3-img-word-s${c.syllableStage}`, c.state);
         const { options, correctId } = wordOptions(c, w, bank.filter((x) => x.id !== w.id), true);
         const text = wordText(w, c.lang);
         return makeEx(c, 3, 'visual', 'choice', {
@@ -731,7 +832,8 @@ const factories: Record<number, Factory[]> = {
       id: 'l3-hear-word',
       modality: 'auditivo',
       make(c) {
-        const w = pickFresh(words, (x) => x.id, 'l3-hear-word', c.state);
+        const stagePool = wordsForSyllableStage(c.syllableStage, c.lang);
+        const w = pickFresh(stagePool.length ? stagePool : words, (x) => x.id, `l3-hear-word-s${c.syllableStage}`, c.state);
         const sameCat = words.filter((x) => x.id !== w.id && x.cat === w.cat);
         const pool = c.difficulty >= 3 && sameCat.length >= 2 ? sameCat : words.filter((x) => x.id !== w.id);
         const { options, correctId } = wordOptions(c, w, pool);
@@ -753,7 +855,8 @@ const factories: Record<number, Factory[]> = {
       modality: 'auditivo',
       make(c) {
         const bank = visualWords(c);
-        const w = pickFresh(bank, (x) => x.id, 'l3-hear-img', c.state);
+        const stageBank = stageVisualWords(c, 1);
+        const w = pickFresh(stageBank, (x) => x.id, `l3-hear-img-s${c.syllableStage}`, c.state);
         const chosen = distract(
           bank.filter((x) => x.id !== w.id).map((x) => x.emoji),
           w.emoji,
@@ -1289,6 +1392,7 @@ export interface ExerciseRequest {
   slot: number;
   state: GenState;
   adaptations?: Adaptations;
+  syllableStage?: SyllableStage;
 }
 
 /** Actividades adecuadas para lectura fácil: concretas, cortas y con imagen. */
@@ -1298,6 +1402,7 @@ function isEasyFactory(id: string): boolean {
     'l2-build',
     'l2-find-syllable',
     'l2-hear-syllable',
+    'l2-stage-missing',
     'l4-special-choice',
     'l4-special-tap',
     'l5-blank',
@@ -1309,10 +1414,16 @@ function isEasyFactory(id: string): boolean {
 
 export function pickExercise(req: ExerciseRequest): Exercise {
   const ad = req.adaptations ?? defaultAdaptations;
+  const effDiff = Math.min(req.difficulty, ad.difficultyCap);
+  const autoStage: SyllableStage =
+    req.syllableStage ??
+    (req.difficulty <= 1 ? 1 : req.difficulty === 2 ? 2 : 3);
+
   const c: Ctx = {
     lang: req.lang,
     ui: req.ui,
-    difficulty: Math.min(req.difficulty, ad.difficultyCap),
+    difficulty: effDiff,
+    syllableStage: autoStage,
     state: req.state,
     colorblind: ad.colorblind,
   };
@@ -1353,4 +1464,54 @@ export function practiceLevel(progressStars: Record<number, number>): number {
   const available = levels.filter((l) => l.id === 1 || (progressStars[l.id - 1] ?? 0) >= 1 || (progressStars[l.id] ?? 0) >= 1);
   return rnd(available.length ? available : levels).id;
 }
+
+/** Ejercicio clásico de Duolingo: emparejar 4 (o 3 en apoyo) pares de palabras/dibujos. */
+export function makePairsExercise(opts: {
+  levelId: number;
+  lang: Lang;
+  learnLang: LearnLang;
+  ui: UiLang;
+  state: GenState;
+  adaptations?: Adaptations;
+  syllableStage?: SyllableStage;
+}): Exercise {
+  const ad = opts.adaptations ?? defaultAdaptations;
+  const count = ad.optionCount <= 2 ? 3 : 4;
+  const stage: SyllableStage = opts.syllableStage ?? 1;
+  const c: Ctx = {
+    lang: opts.lang,
+    ui: opts.ui,
+    difficulty: 2,
+    syllableStage: stage,
+    state: opts.state,
+    colorblind: ad.colorblind,
+  };
+  const sourcePool = opts.levelId === 2 ? stageVisualWords(c, 1) : visualWords(c);
+  const pool = shuffle(sourcePool).slice(0, count);
+  const bilingual = opts.learnLang === 'both' && !ad.simpleOnly;
+  const leftCards: PairCard[] = shuffle(
+    pool.map((w, idx) =>
+      bilingual
+        ? { id: `pl-${idx}`, pairId: w.id, side: 'left', label: w.es, emoji: w.emoji, lang: 'es' }
+        : { id: `pl-${idx}`, pairId: w.id, side: 'left', label: w.emoji, emoji: w.emoji },
+    ),
+  );
+  const rightCards: PairCard[] = shuffle(
+    pool.map((w, idx) =>
+      bilingual
+        ? { id: `pr-${idx}`, pairId: w.id, side: 'right', label: w.eu, lang: 'eu' }
+        : { id: `pr-${idx}`, pairId: w.id, side: 'right', label: wordText(w, opts.lang), lang: opts.lang },
+    ),
+  );
+  return makeEx(c, opts.levelId, 'visual', 'pairs', {
+    eyebrow: t('eyebrowPairs', opts.ui),
+    prompt: bilingual ? t('promptMatchBilingual', opts.ui) : t('promptMatchPairs', opts.ui),
+    display: { variant: 'none' },
+    pairs: [...leftCards, ...rightCards],
+    hint: t('hintPairs', opts.ui),
+    explanation: t('wellDone', opts.ui),
+    ...(opts.levelId === 2 ? { syllableStage: stage } : {}),
+  });
+}
+
 

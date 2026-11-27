@@ -3,19 +3,45 @@ import type { ReactNode } from 'react';
 import { adaptationsFor, computeAdaptations, supportProfiles, supportSummary } from './adaptations';
 import {
   Confetti,
+  DuoOwlBuddy,
   Mascot,
   Modal,
   PatoMark,
-  ProgressBar,
-  SectionHead,
   StarRow,
   StepProgress,
   prefersReducedMotion,
   staggerStyle,
   useCountUp,
 } from './components';
-import { badgeById, badges, bonusModes, levels } from './data';
+import { badgeById, bonusModes, levels } from './data';
 import {
+  DUO_STORIES,
+  LEAGUE_RIVALS,
+  LEAGUES,
+  UNIT_THEMES,
+  getDailyQuests,
+  nodesForUnit,
+} from './duoData';
+import type { DuoStory, PathNodeDef } from './duoData';
+import {
+  GuidebookModal,
+  LeaderboardView,
+  LettersView,
+  PracticeHubView,
+  ProfileView,
+  QuestsView,
+  ShopView,
+  StoriesView,
+  StoryPlayerModal,
+} from './DuoViews';
+import {
+  DuoChestSvg,
+  DuoCrownSvg,
+  DuoFlagSvg,
+  DuoFlameSvg,
+  DuoGemSvg,
+  DuoHeartSvg,
+  DuoNavIcon,
   IconAccessibility,
   IconArrowLeft,
   IconArrowRight,
@@ -25,19 +51,15 @@ import {
   IconCheck,
   IconCompass,
   IconEye,
-  IconFlame,
-  IconGamepad,
   IconGlobe,
   IconHeadphones,
   IconLayers,
   IconLightbulb,
   IconLock,
-  IconMap,
   IconMusic,
   IconPlay,
   IconRepeat,
   IconSettings,
-  IconShuffle,
   IconStar,
   IconUser,
   IconVolume,
@@ -45,13 +67,9 @@ import {
 } from './icons';
 import { t, tf } from './i18n';
 import { startAmbientMusic, stopAmbientMusic } from './music';
-import { isUnlocked, nextLevel, readerLevel } from './progress';
+import { getRecentWeekStats, isUnlocked, isXpBoostActive, nextLevel, todayString, xpBoostMinutesLeft } from './progress';
 import { sfx } from './sound';
-import type { LearnLang, Progress, Route, SessionResult, SupportId, UiLang } from './types';
-
-/* ------------------------------------------------------------------ */
-/* Piezas pequeñas                                                     */
-/* ------------------------------------------------------------------ */
+import type { LearnLang, NavTab, Progress, Route, SessionMode, SessionResult, SupportId, UiLang } from './types';
 
 function syncMusic(enabled: boolean) {
   if (enabled) startAmbientMusic();
@@ -84,16 +102,16 @@ function Segmented<T extends string>({
   );
 }
 
-function Brand({ ui, compact = false }: { ui: UiLang; compact?: boolean }) {
+export function DuoWordmark({ ui, compact = false }: { ui: UiLang; compact?: boolean }) {
   return (
-    <div className={`brand ${compact ? 'brand-compact' : ''}`}>
-      <span className="brand-mark" aria-hidden="true">
-        <PatoMark size={compact ? 24 : 32} />
+    <div className={`duo-brand ${compact ? 'compact' : ''}`}>
+      <span className="duo-brand-owl" aria-hidden="true">
+        <PatoMark size={compact ? 28 : 36} />
       </span>
-      <span className="brand-text">
-        <strong>{t('appName', ui)}</strong>
+      <div className="duo-brand-copy">
+        <span className="duo-wordmark">hitzbidaia</span>
         {!compact && <small>{t('appSub', ui)}</small>}
-      </span>
+      </div>
     </div>
   );
 }
@@ -104,25 +122,26 @@ function RouteIcon({ route, size = 18 }: { route: Route; size?: number }) {
   return <IconLayers size={size} />;
 }
 
-/* ------------------------------------------------------------------ */
-/* Onboarding                                                          */
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
+/* Onboarding estilo Duolingo                                          */
+/* ================================================================== */
 
 export function Onboarding({ onDone }: { onDone: (patch: Partial<Progress>) => void }) {
   const [step, setStep] = useState(0);
   const [name, setName] = useState('');
   const [learnLang, setLearnLang] = useState<LearnLang>('both');
   const [route, setRoute] = useState<Route>('mixta');
+  const [dailyGoal, setDailyGoal] = useState<number>(20);
   const [ui, setUi] = useState<UiLang>('es');
   const [supports, setSupports] = useState<SupportId[]>([]);
 
   const toggleSupport = (id: SupportId) =>
     setSupports((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
-  const langCards: { value: LearnLang; icon: ReactNode; code: string; title: string; desc: string }[] = [
-    { value: 'es', icon: <IconBook size={20} />, code: 'ES', title: t('langEs', ui), desc: t('langEsDesc', ui) },
-    { value: 'eu', icon: <IconGlobe size={20} />, code: 'EU', title: t('langEu', ui), desc: t('langEuDesc', ui) },
-    { value: 'both', icon: <IconLayers size={20} />, code: 'ES + EU', title: t('langBoth', ui), desc: t('langBothDesc', ui) },
+  const langCards: { value: LearnLang; flag: 'es' | 'eu' | 'both'; title: string; desc: string }[] = [
+    { value: 'es', flag: 'es', title: t('langEs', ui), desc: t('langEsDesc', ui) },
+    { value: 'eu', flag: 'eu', title: t('langEu', ui), desc: t('langEuDesc', ui) },
+    { value: 'both', flag: 'both', title: t('langBoth', ui), desc: t('langBothDesc', ui) },
   ];
   const routeCards: { value: Route; title: string; desc: string }[] = [
     { value: 'visual', title: t('routeVisual', ui), desc: t('routeVisualDesc', ui) },
@@ -130,10 +149,24 @@ export function Onboarding({ onDone }: { onDone: (patch: Partial<Progress>) => v
     { value: 'mixta', title: t('routeMixta', ui), desc: t('routeMixtaDesc', ui) },
   ];
 
+  function completeOnboarding(chosenSupports: SupportId[]) {
+    onDone({
+      onboarded: true,
+      name: name.trim() || (ui === 'eu' ? 'Lagun' : 'Amigo'),
+      learnLang,
+      route,
+      dailyGoal,
+      uiLang: ui,
+      supports: chosenSupports,
+      calmMode: chosenSupports.includes('tea'),
+      unlimitedHearts: chosenSupports.length > 0,
+    });
+  }
+
   return (
-    <div className="onboarding">
-      <div className="onb-top">
-        <Brand ui={ui} />
+    <div className="duo-onboarding">
+      <header className="duo-onb-header">
+        <DuoWordmark ui={ui} />
         <div className="lang-switch" role="group" aria-label={t('appLangLabel', ui)}>
           <button className={ui === 'es' ? 'on' : ''} onClick={() => setUi('es')} aria-pressed={ui === 'es'}>
             ES
@@ -142,14 +175,15 @@ export function Onboarding({ onDone }: { onDone: (patch: Partial<Progress>) => v
             EU
           </button>
         </div>
-      </div>
+      </header>
 
-      <div className="onb-card">
-        <div className="onb-hero">
-          <div className="onb-mascot-frame">
-            <Mascot mood={step === 0 ? 'wave' : step === 2 ? 'excited' : 'happy'} size={136} interactive />
+      <div className="duo-onb-card">
+        <div className="duo-onb-mascot-row">
+          <div className="duo-onb-mascots">
+            <Mascot mood={step === 0 ? 'wave' : step === 2 ? 'excited' : 'happy'} size={118} interactive />
+            <DuoOwlBuddy size={72} />
           </div>
-          <div className="speech-bubble">
+          <div className="duo-speech-cloud">
             <span className="speech-kicker">{t('welcomeKicker', ui)}</span>
             <strong>{t('welcomeTitle', ui)}</strong>
             <span>{t('welcomeSub', ui)}</span>
@@ -162,6 +196,26 @@ export function Onboarding({ onDone }: { onDone: (patch: Partial<Progress>) => v
           <>
             <h1>{t('step1Title', ui)}</h1>
             <p className="onb-sub">{t('step1Sub', ui)}</p>
+
+            <div className="duo-course-grid">
+              {langCards.map((card, i) => (
+                <button
+                  key={card.value}
+                  style={staggerStyle(i)}
+                  className={`duo-course-card ${learnLang === card.value ? 'selected' : ''}`}
+                  onClick={() => {
+                    setLearnLang(card.value);
+                    if (card.value === 'eu' || card.value === 'es') setUi(card.value);
+                  }}
+                  aria-pressed={learnLang === card.value}
+                >
+                  <DuoFlagSvg code={card.flag} size={46} />
+                  <strong>{card.title}</strong>
+                  <small>{card.desc}</small>
+                </button>
+              ))}
+            </div>
+
             <label className="name-field">
               <span className="field-label">
                 <IconUser size={15} /> {t('nameLabel', ui)}
@@ -173,35 +227,10 @@ export function Onboarding({ onDone }: { onDone: (patch: Partial<Progress>) => v
                 onChange={(e) => setName(e.target.value)}
               />
             </label>
-            <div className="choice-grid">
-              {langCards.map((card, i) => (
-                <button
-                  key={card.value}
-                  style={staggerStyle(i)}
-                  className={`choice-card ${learnLang === card.value ? 'selected' : ''}`}
-                  onClick={() => {
-                    setLearnLang(card.value);
-                    if (card.value === 'eu' || card.value === 'es') setUi(card.value);
-                  }}
-                  aria-pressed={learnLang === card.value}
-                >
-                  <span className="choice-head">
-                    <span className="choice-icon">{card.icon}</span>
-                    <span className="choice-code">{card.code}</span>
-                  </span>
-                  <strong>{card.title}</strong>
-                  <small>{card.desc}</small>
-                  {learnLang === card.value && (
-                    <span className="choice-check" aria-hidden="true">
-                      <IconCheck size={13} />
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
+
             <div className="onb-actions">
-              <button className="btn btn-primary btn-wide" onClick={() => setStep(1)}>
-                <span>{t('next', ui)}</span>
+              <button className="duo-btn duo-btn-green duo-btn-lg" onClick={() => setStep(1)}>
+                <span>{t('continueBtn', ui).toUpperCase()}</span>
                 <IconArrowRight size={17} />
               </button>
             </div>
@@ -232,17 +261,35 @@ export function Onboarding({ onDone }: { onDone: (patch: Partial<Progress>) => v
                 </button>
               ))}
             </div>
-            <p className="onb-note">
-              <IconLightbulb size={16} />
-              <span>{t('routeExplanation', ui)}</span>
-            </p>
-            <div className="onb-actions">
-              <button className="btn btn-quiet" onClick={() => setStep(0)}>
+
+            <div className="duo-onb-goal">
+              <span className="field-label">🔥 {t('dailyGoalLabel', ui)}</span>
+              <div className="duo-goal-grid">
+                {[
+                  { xp: 10, es: 'Relajada', eu: 'Lasaia' },
+                  { xp: 20, es: 'Normal', eu: 'Arrunta' },
+                  { xp: 30, es: 'Seria', eu: 'Serioa' },
+                  { xp: 50, es: 'Intensa', eu: 'Bizkorra' },
+                ].map((g) => (
+                  <button
+                    key={g.xp}
+                    className={`duo-goal-btn ${dailyGoal === g.xp ? 'selected' : ''}`}
+                    onClick={() => setDailyGoal(g.xp)}
+                  >
+                    <strong>{ui === 'eu' ? g.eu : g.es}</strong>
+                    <span>{g.xp} XP</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="onb-actions split">
+              <button className="duo-btn duo-btn-outline" onClick={() => setStep(0)}>
                 <IconArrowLeft size={16} />
-                <span>{t('back', ui)}</span>
+                <span>{t('back', ui).toUpperCase()}</span>
               </button>
-              <button className="btn btn-primary" onClick={() => setStep(2)}>
-                <span>{t('next', ui)}</span>
+              <button className="duo-btn duo-btn-green duo-btn-lg" onClick={() => setStep(2)}>
+                <span>{t('continueBtn', ui).toUpperCase()}</span>
                 <IconArrowRight size={16} />
               </button>
             </div>
@@ -284,43 +331,20 @@ export function Onboarding({ onDone }: { onDone: (patch: Partial<Progress>) => v
               <IconLightbulb size={16} />
               <span>{t('supportsHint', ui)}</span>
             </p>
-            <div className="onb-actions">
-              <button className="btn btn-quiet" onClick={() => setStep(1)}>
+            <div className="onb-actions split">
+              <button className="duo-btn duo-btn-outline" onClick={() => setStep(1)}>
                 <IconArrowLeft size={16} />
-                <span>{t('back', ui)}</span>
+                <span>{t('back', ui).toUpperCase()}</span>
               </button>
               <button
-                className="btn btn-primary"
-                onClick={() =>
-                  onDone({
-                    onboarded: true,
-                    name: name.trim() || (ui === 'eu' ? 'Lagun' : 'Amigo'),
-                    learnLang,
-                    route,
-                    uiLang: ui,
-                    supports,
-                    calmMode: supports.includes('tea'),
-                  })
-                }
+                className="duo-btn duo-btn-green duo-btn-lg"
+                onClick={() => completeOnboarding(supports)}
               >
                 <IconPlay size={16} />
-                <span>{t('letsGo', ui)}</span>
+                <span>{t('letsGo', ui).toUpperCase()}</span>
               </button>
             </div>
-            <button
-              className="support-skip"
-              onClick={() =>
-                onDone({
-                  onboarded: true,
-                  name: name.trim() || (ui === 'eu' ? 'Lagun' : 'Amigo'),
-                  learnLang,
-                  route,
-                  uiLang: ui,
-                  supports: [],
-                  calmMode: false,
-                })
-              }
-            >
+            <button className="support-skip" onClick={() => completeOnboarding([])}>
               {t('supportSkip', ui)}
             </button>
           </>
@@ -331,34 +355,493 @@ export function Onboarding({ onDone }: { onDone: (patch: Partial<Progress>) => v
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Pantalla principal / estudio de aprendizaje                         */
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
+/* Camino Serpentino de Unidades (Duolingo /learn)                     */
+/* ================================================================== */
+
+interface ActiveNodePopover {
+  unitId: number;
+  node: PathNodeDef;
+  unlocked: boolean;
+  done: boolean;
+  isLegendary: boolean;
+}
+
+function LearnPathView({
+  progress,
+  setProgress,
+  onStartLesson,
+  onOpenStory,
+  onOpenGuidebook,
+  onToast,
+}: {
+  progress: Progress;
+  setProgress: (patch: Partial<Progress> | ((prev: Progress) => Partial<Progress>)) => void;
+  onStartLesson: (mode: SessionMode, levelId: number | null, nodeKey?: string) => void;
+  onOpenStory: (story: DuoStory) => void;
+  onOpenGuidebook: (unitId: number) => void;
+  onToast: (msg: string) => void;
+}) {
+  const ui = progress.uiLang;
+  const currentUnitId = nextLevel(progress);
+  const [selectedPop, setSelectedPop] = useState<ActiveNodePopover | null>(null);
+  const [chestBurst, setChestBurst] = useState(0);
+
+  function openChest(chestKey: string) {
+    if (progress.chestsClaimed.includes(chestKey)) return;
+    sfx('badge', progress.sound);
+    setChestBurst((b) => b + 1);
+    setProgress((prev) => ({
+      gems: prev.gems + 25,
+      chestsClaimed: [...prev.chestsClaimed, chestKey],
+    }));
+    onToast(t('chestToast', ui));
+    setSelectedPop(null);
+  }
+
+  return (
+    <div className="duo-learn-column" onClick={() => setSelectedPop(null)}>
+      {chestBurst > 0 && !progress.calmMode && <Confetti burstKey={chestBurst} count={36} />}
+
+      {levels.map((unit) => {
+        const theme = UNIT_THEMES[unit.id] ?? UNIT_THEMES[1]!;
+        const unitUnlocked = isUnlocked(progress, unit.id);
+        const unitCompleted = !!progress.completed[unit.id];
+        const unitLegendary = !!progress.legendary[unit.id];
+        const stars = progress.stars[unit.id] ?? 0;
+        const nodes = nodesForUnit(unit.id);
+
+        const chestKey = `chest-u${unit.id}`;
+        const chestOpened = progress.chestsClaimed.includes(chestKey);
+        const storyRead = progress.storiesRead.includes(`ds${unit.id}`);
+
+        const nodeDone = nodes.map((nd) => {
+          if (nd.kind === 'chest') return chestOpened;
+          if (nd.kind === 'story') return storyRead || unitCompleted;
+          if (nd.kind === 'trophy') return unitCompleted;
+          const count = progress.nodeProgress[`u${unit.id}-n${nd.index}`] ?? 0;
+          return count >= 1 || unitCompleted;
+        });
+
+        let activeIdx = -1;
+        if (unitUnlocked && unit.id === currentUnitId && !unitCompleted) {
+          activeIdx = nodeDone.findIndex((d) => !d);
+          if (activeIdx === -1) activeIdx = nodes.length - 1;
+        }
+
+        const unitHasPopover = selectedPop?.unitId === unit.id;
+
+        return (
+          <section key={unit.id} className={`duo-unit-section ${unitHasPopover ? 'has-popover' : ''}`}>
+            {/* Banner colorido oficial de Unidad con botón GUÍA */}
+            <header
+              className={`duo-unit-banner ${!unitUnlocked ? 'is-locked' : ''} ${unitLegendary ? 'is-legendary' : ''}`}
+              style={
+                unitLegendary
+                  ? { background: 'linear-gradient(135deg, #ce82ff 0%, #8b46ff 100%)', borderBottomColor: '#6929d4' }
+                  : unitUnlocked
+                    ? { background: theme.bg, borderBottomColor: theme.lip }
+                    : undefined
+              }
+            >
+              <div className="duo-unit-banner-text">
+                <span className="duo-unit-kicker">
+                  {tf('sectionUnit', ui, { n: String(unit.id) })} · {unit[ui].skill}
+                </span>
+                <h2>{unit[ui].title}</h2>
+                <p>{unit[ui].sub}</p>
+              </div>
+              <button
+                className="duo-guidebook-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  sfx('click', progress.sound);
+                  onOpenGuidebook(unit.id);
+                }}
+              >
+                <IconBook size={18} />
+                <span>{t('guidebookBtn', ui)}</span>
+              </button>
+            </header>
+
+            {/* Camino Serpentino de Nodos 3D */}
+            <div className="duo-serpentine-track">
+              {/* Personajes animados junto al camino */}
+              <div
+                className={`duo-path-character ${unit.id % 2 === 1 ? 'side-left' : 'side-right'} ${!unitUnlocked ? 'is-locked' : ''}`}
+              >
+                {unit.id % 2 === 1 ? (
+                  <Mascot
+                    mood={!unitUnlocked ? 'think' : unitCompleted ? 'cheer' : 'wave'}
+                    size={102}
+                    outfit={progress.equippedOutfit}
+                    interactive={unitUnlocked}
+                    sound={progress.sound}
+                  />
+                ) : (
+                  <DuoOwlBuddy size={88} locked={!unitUnlocked} />
+                )}
+              </div>
+
+              {nodes.map((node, idx) => {
+                const nodeKey = `u${unit.id}-n${node.index}`;
+                const isDone = !!nodeDone[idx];
+                const isCurrent = idx === activeIdx;
+                const canClickChest = unitUnlocked && (idx === 0 || nodeDone[0] || unitCompleted);
+                const nodeUnlocked =
+                  unitUnlocked &&
+                  (idx === 0 ||
+                    isDone ||
+                    isCurrent ||
+                    !!nodeDone[idx - 1] ||
+                    (node.kind === 'chest' && canClickChest) ||
+                    node.kind === 'story');
+                const isJumpable = !unitUnlocked && idx === 0;
+                const isSelected = selectedPop?.unitId === unit.id && selectedPop?.node.index === node.index;
+
+                // Color del nodo circular 3D
+                let bg = '#e5e5e5';
+                let lip = '#b7b7b7';
+                let fg = '#afafaf';
+                if (unitLegendary && isDone) {
+                  bg = '#ce82ff';
+                  lip = '#9b51e0';
+                  fg = '#ffffff';
+                } else if (isDone && node.kind !== 'chest') {
+                  bg = '#ffc800';
+                  lip = '#e0a800';
+                  fg = '#ffffff';
+                } else if (nodeUnlocked) {
+                  bg = theme.bg;
+                  lip = theme.lip;
+                  fg = '#ffffff';
+                } else if (isJumpable) {
+                  bg = theme.bg;
+                  lip = theme.lip;
+                  fg = '#ffffff';
+                }
+
+                // Progreso del anillo exterior
+                const stepVal = progress.nodeProgress[nodeKey] ?? 0;
+                const pctRing = isCurrent
+                  ? Math.min(85, Math.max(20, Math.round((stepVal / node.totalCrownSteps) * 100) || 25))
+                  : 0;
+                const circumference = 2 * Math.PI * 42;
+
+                return (
+                  <div
+                    key={nodeKey}
+                    className={`duo-node-row ${isSelected ? 'has-popover' : ''}`}
+                    style={{ transform: `translateX(${node.offsetPx}px)` }}
+                  >
+                    <div className="duo-node-anchor" onClick={(e) => e.stopPropagation()}>
+                      {/* Etiqueta flotante animada EMPEZAR / ¿SALTAR AQUÍ? / LEGENDARIO (clicable directo) */}
+                      {isCurrent && (
+                        <button
+                          type="button"
+                          className="duo-floating-start"
+                          style={{ color: theme.bg }}
+                          onClick={() => {
+                            if (node.kind === 'chest') {
+                              openChest(chestKey);
+                            } else if (node.kind === 'story') {
+                              const st = DUO_STORIES.find((s) => s.id === node.storyId) ?? DUO_STORIES[0]!;
+                              onOpenStory(st);
+                            } else {
+                              onStartLesson('level', unit.id, nodeKey);
+                            }
+                          }}
+                        >
+                          {t('startPill', ui)}
+                        </button>
+                      )}
+                      {isJumpable && (
+                        <button
+                          type="button"
+                          className="duo-floating-start jump"
+                          style={{ color: theme.bg }}
+                          onClick={() => onStartLesson('level', unit.id, nodeKey)}
+                        >
+                          {t('jumpHerePill', ui)}
+                        </button>
+                      )}
+                      {unitCompleted && !unitLegendary && node.kind === 'trophy' && unit.id === currentUnitId && (
+                        <button
+                          type="button"
+                          className="duo-floating-start legendary"
+                          onClick={() => onStartLesson('legendary', unit.id, nodeKey)}
+                        >
+                          👑 {t('legendaryPill', ui)}
+                        </button>
+                      )}
+
+                      {/* Anillo de progreso circular SVG alrededor del nodo activo */}
+                      {isCurrent && (
+                        <svg className="duo-node-ring" width="98" height="92" viewBox="0 0 98 98" aria-hidden="true">
+                          <circle cx="49" cy="49" r="42" fill="none" stroke="var(--duo-swan)" strokeWidth="7" />
+                          <circle
+                            cx="49"
+                            cy="49"
+                            r="42"
+                            fill="none"
+                            stroke={theme.bg}
+                            strokeWidth="7"
+                            strokeLinecap="round"
+                            strokeDasharray={circumference}
+                            strokeDashoffset={circumference - (pctRing / 100) * circumference}
+                            transform="rotate(-90 49 49)"
+                          />
+                        </svg>
+                      )}
+
+                      {/* Nodo Cofre vs Nodo Circular 3D */}
+                      {node.kind === 'chest' ? (
+                        <button
+                          className={`duo-chest-node ${chestOpened ? 'opened' : canClickChest ? 'ready' : 'locked'}`}
+                          onClick={() => {
+                            sfx('click', progress.sound);
+                            setSelectedPop({
+                              unitId: unit.id,
+                              node,
+                              unlocked: canClickChest,
+                              done: chestOpened,
+                              isLegendary: unitLegendary,
+                            });
+                          }}
+                          aria-label={t('chestTitle', ui)}
+                        >
+                          <DuoChestSvg size={64} open={chestOpened} />
+                        </button>
+                      ) : (
+                        <button
+                          className={`duo-pebble-btn ${isCurrent ? 'is-current' : ''} ${isDone ? 'is-done' : ''} ${!nodeUnlocked && !isJumpable ? 'is-locked' : ''}`}
+                          style={{
+                            background: bg,
+                            borderBottomColor: lip,
+                            color: fg,
+                          }}
+                          onClick={() => {
+                            sfx('click', progress.sound);
+                            setSelectedPop(
+                              isSelected
+                                ? null
+                                : {
+                                    unitId: unit.id,
+                                    node,
+                                    unlocked: nodeUnlocked || isJumpable,
+                                    done: isDone,
+                                    isLegendary: unitLegendary,
+                                  },
+                            );
+                          }}
+                          aria-label={`${unit[ui].title} · ${ui === 'eu' ? node.euLabel : node.esLabel}`}
+                        >
+                          <span className="duo-pebble-shine" aria-hidden="true" />
+                          {!nodeUnlocked && !isJumpable ? (
+                            <IconLock size={26} />
+                          ) : node.kind === 'story' ? (
+                            <IconBook size={28} />
+                          ) : node.kind === 'trophy' ? (
+                            <DuoCrownSvg size={32} purple={unitLegendary} />
+                          ) : isDone ? (
+                            <IconCheck size={30} />
+                          ) : node.syllableStage ? (
+                            <strong className="duo-node-stage-num">{node.syllableStage}</strong>
+                          ) : idx === 0 ? (
+                            <IconStar size={30} filled />
+                          ) : (
+                            <span className="duo-node-emoji">{unit.emoji}</span>
+                          )}
+                        </button>
+                      )}
+
+                      {/* Etiqueta de etapa progresiva debajo del nodo (ej. 1·Directas, 2·Inversas, 3·Trabadas) */}
+                      {(node.shortTagEs || node.shortTagEu) && (
+                        <span className={`duo-node-subtag ${isDone ? 'done' : nodeUnlocked ? 'open' : 'locked'}`}>
+                          {ui === 'eu' ? node.shortTagEu : node.shortTagEs}
+                        </span>
+                      )}
+
+                      {/* Mini estrellas debajo del trofeo de unidad completada */}
+                      {node.kind === 'trophy' && stars > 0 && (
+                        <div className="duo-node-stars">
+                          <StarRow count={stars} size="sm" />
+                        </div>
+                      )}
+
+                      {/* Popover interactivo estilo Duolingo al pulsar un nodo */}
+                      {isSelected && (
+                        <div
+                          className={`duo-node-popover ${!selectedPop.unlocked ? 'locked' : ''}`}
+                          style={
+                            selectedPop.unlocked
+                              ? {
+                                  background: unitLegendary ? '#9b51e0' : isDone && node.kind !== 'chest' ? '#ffc800' : theme.bg,
+                                }
+                              : undefined
+                          }
+                        >
+                          <h4>{ui === 'eu' ? node.euLabel : node.esLabel}</h4>
+                          <p>
+                            {!selectedPop.unlocked
+                              ? t('nodeLockedMsg', ui)
+                              : node.kind === 'chest'
+                                ? chestOpened
+                                  ? t('chestClaimed', ui)
+                                  : '+25 💎'
+                                : isDone
+                                  ? t('nodeCompleted', ui)
+                                  : unit[ui].title}
+                          </p>
+
+                          {selectedPop.unlocked && (
+                            <>
+                              {node.kind === 'chest' ? (
+                                !chestOpened && (
+                                  <button
+                                    className="duo-popover-cta"
+                                    style={{ color: '#9b51e0' }}
+                                    onClick={() => openChest(chestKey)}
+                                  >
+                                    {t('chestOpenBtn', ui)}
+                                  </button>
+                                )
+                              ) : node.kind === 'story' ? (
+                                <button
+                                  className="duo-popover-cta"
+                                  style={{ color: isDone ? '#b58300' : theme.bg }}
+                                  onClick={() => {
+                                    const st = DUO_STORIES.find((s) => s.id === node.storyId) ?? DUO_STORIES[0]!;
+                                    setSelectedPop(null);
+                                    onOpenStory(st);
+                                  }}
+                                >
+                                  {isDone ? t('storyReplayBtn', ui) : t('storyStartBtn', ui)}
+                                </button>
+                              ) : isJumpable ? (
+                                <button
+                                  className="duo-popover-cta"
+                                  style={{ color: theme.bg }}
+                                  onClick={() => {
+                                    setSelectedPop(null);
+                                    onStartLesson('level', unit.id, nodeKey);
+                                  }}
+                                >
+                                  ⚡ {t('nodeJumpBtn', ui)}
+                                </button>
+                              ) : (
+                                <div className="duo-popover-btn-stack">
+                                  <button
+                                    className="duo-popover-cta"
+                                    style={{ color: isDone ? '#b58300' : theme.bg }}
+                                    onClick={() => {
+                                      setSelectedPop(null);
+                                      onStartLesson('level', unit.id, nodeKey);
+                                    }}
+                                  >
+                                    {isDone
+                                      ? tf('nodePracticeXp', ui, { xp: '10' })
+                                      : tf('nodeStartXp', ui, { xp: '15' })}
+                                  </button>
+                                  {isDone && node.kind === 'trophy' && !unitLegendary && (
+                                    <button
+                                      className="duo-popover-cta legendary-cta"
+                                      onClick={() => {
+                                        setSelectedPop(null);
+                                        onStartLesson('legendary', unit.id, nodeKey);
+                                      }}
+                                    >
+                                      👑 {t('nodeLegendaryXp', ui)}
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
+
+      {/* Sección final Patio de Juegos Abierto (Modos 7 y 8) */}
+      <section className="duo-unit-section">
+        <header
+          className="duo-unit-banner"
+          style={{ background: UNIT_THEMES[7]!.bg, borderBottomColor: UNIT_THEMES[7]!.lip, color: '#3c2d00' }}
+        >
+          <div className="duo-unit-banner-text">
+            <span className="duo-unit-kicker dark">{t('bonusFree', ui)}</span>
+            <h2 style={{ color: '#3c2d00' }}>🎠 {t('bonusTitle', ui)}</h2>
+            <p style={{ color: '#5c4500' }}>{t('bonusSub', ui)}</p>
+          </div>
+        </header>
+        <div className="duo-playground-row">
+          {bonusModes.map((bm) => (
+            <button
+              key={bm.id}
+              className="duo-playground-card"
+              onClick={() => onStartLesson('level', bm.id)}
+            >
+              <span className="duo-pg-emoji" aria-hidden="true">{bm.emoji}</span>
+              <div>
+                <strong>{bm[ui].title}</strong>
+                <small>{bm[ui].sub}</small>
+              </div>
+              <span className="duo-btn duo-btn-green duo-btn-sm">{t('playBonus', ui).toUpperCase()}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+/* ================================================================== */
+/* Shell Principal de 3 Columnas estilo Duolingo Web                   */
+/* ================================================================== */
 
 interface HomeProps {
   progress: Progress;
   setProgress: (patch: Partial<Progress> | ((prev: Progress) => Partial<Progress>)) => void;
-  onStart: (levelId: number | null) => void;
+  onStart: (levelId: number | null, mode?: SessionMode, nodeKey?: string) => void;
   onToast: (text: string) => void;
   onSettings: () => void;
 }
 
+type PopoverKind = 'course' | 'streak' | 'gems' | 'hearts' | null;
+
 export function Home({ progress, setProgress, onStart, onToast, onSettings }: HomeProps) {
   const ui = progress.uiLang;
-  const current = nextLevel(progress);
-  const levelInfo = readerLevel(progress.xp);
-  const currentDef = levels.find((l) => l.id === current)!;
-  const name = progress.name || (ui === 'eu' ? 'Lagun' : 'Amigo');
-  const ad = computeAdaptations(progress);
-  const supportLabels = supportSummary(ad, ui);
-  const completedCount = levels.filter((l) => progress.completed[l.id]).length;
-  const totalStars = levels.reduce((acc, l) => acc + (progress.stars[l.id] ?? 0), 0);
-  const maxStars = levels.length * 3;
+  const [activeTab, setActiveTab] = useState<NavTab>('learn');
+  const [openPop, setOpenPop] = useState<PopoverKind>(null);
+  const [guidebookUnit, setGuidebookUnit] = useState<number | null>(null);
+  const [activeStory, setActiveStory] = useState<DuoStory | null>(null);
 
-  const setRoute = (route: Route) => {
-    setProgress({ route });
-    onToast(t('routeChanged', ui));
-  };
+  const ad = computeAdaptations(progress);
+  const effectiveUnlimited = progress.unlimitedHearts || ad.gentle;
+  const quests = getDailyQuests(progress, ui);
+  const weekStats = getRecentWeekStats(progress);
+  const league = LEAGUES[Math.min(LEAGUES.length - 1, progress.leagueId ?? 2)]!;
+  const myLeagueRank = useMemoRank(progress.xp);
+  const boostActive = isXpBoostActive(progress);
+  const boostMins = xpBoostMinutesLeft(progress);
+
+  const navItems: { id: NavTab; label: string; badge?: number }[] = [
+    { id: 'learn', label: t('navLearn', ui) },
+    { id: 'letters', label: t('navLetters', ui) },
+    { id: 'stories', label: t('navStories', ui) },
+    { id: 'practice', label: t('navPractice', ui), badge: progress.mistakes.length || undefined },
+    { id: 'leaderboard', label: t('navLeagues', ui) },
+    { id: 'quests', label: t('navQuests', ui), badge: quests.filter((q) => q.done && !q.claimed).length || undefined },
+    { id: 'shop', label: t('navShop', ui) },
+    { id: 'profile', label: t('navProfile', ui) },
+  ];
 
   const toggleMusic = () => {
     const next = !progress.music;
@@ -367,330 +850,491 @@ export function Home({ progress, setProgress, onStart, onToast, onSettings }: Ho
     onToast(t(next ? 'musicOn' : 'musicOff', ui));
   };
 
-  const routeKey = (r: Route) => (r === 'visual' ? 'routeVisual' : r === 'auditivo' ? 'routeAuditivo' : 'routeMixta');
+  function handleStoryComplete(storyId: string, xpReward: number) {
+    const today = todayString();
+    const yesterday = todayString(-1);
+    const alreadyRead = progress.storiesRead.includes(storyId);
+    const earnedXp = alreadyRead ? 10 : xpReward;
+    setProgress((prev) => {
+      let streak = prev.streak;
+      if (prev.lastPlayed !== today) {
+        streak = prev.lastPlayed === yesterday ? prev.streak + 1 : Math.max(1, prev.streak);
+      }
+      return {
+        xp: prev.xp + earnedXp,
+        gems: prev.gems + 10,
+        dailyXp: prev.dailyXp + earnedXp,
+        dailyLessons: prev.dailyLessons + 1,
+        xpHistory: { ...prev.xpHistory, [today]: (prev.xpHistory[today] ?? 0) + earnedXp },
+        storiesRead: alreadyRead ? prev.storiesRead : [...prev.storiesRead, storyId],
+        streak,
+        bestStreak: Math.max(prev.bestStreak, streak),
+        lastPlayed: today,
+        sessions: prev.sessions + 1,
+      };
+    });
+    setActiveStory(null);
+    onToast(`📖 +${earnedXp} XP · +10 💎`);
+  }
+
+  const statsBar = (
+    <div className="duo-top-stats" onClick={(e) => e.stopPropagation()}>
+      {/* Bandera de Curso / Idioma */}
+      <div className="duo-stat-trigger-wrap">
+        <button
+          className={`duo-stat-pill flag ${openPop === 'course' ? 'active' : ''}`}
+          onClick={() => setOpenPop(openPop === 'course' ? null : 'course')}
+          aria-label={t('learningLabel', ui)}
+        >
+          <DuoFlagSvg code={progress.learnLang} size={28} />
+        </button>
+        {openPop === 'course' && (
+          <div className="duo-top-popover">
+            <h4>{t('learningLabel', ui)}</h4>
+            <div className="duo-pop-course-list">
+              {(['es', 'eu', 'both'] as LearnLang[]).map((code) => (
+                <button
+                  key={code}
+                  className={`duo-pop-course-item ${progress.learnLang === code ? 'selected' : ''}`}
+                  onClick={() => {
+                    sfx('click', progress.sound);
+                    setProgress({ learnLang: code });
+                    setOpenPop(null);
+                  }}
+                >
+                  <DuoFlagSvg code={code} size={26} />
+                  <strong>
+                    {code === 'es' ? t('langEs', ui) : code === 'eu' ? t('langEu', ui) : t('langBoth', ui)}
+                  </strong>
+                  {progress.learnLang === code && <IconCheck size={15} />}
+                </button>
+              ))}
+            </div>
+            <div className="duo-pop-sep" />
+            <h4>{t('routeLabel', ui)}</h4>
+            <Segmented<Route>
+              value={progress.route}
+              options={[
+                { value: 'visual', label: t('routeVisual', ui) },
+                { value: 'auditivo', label: t('routeAuditivo', ui) },
+                { value: 'mixta', label: t('routeMixta', ui) },
+              ]}
+              onChange={(route) => {
+                setProgress({ route });
+                onToast(t('routeChanged', ui));
+              }}
+            />
+            <div className="duo-pop-sep" />
+            <div className="duo-pop-ui-row">
+              <span>{t('appLangLabel', ui)}:</span>
+              <div className="lang-switch">
+                <button className={ui === 'es' ? 'on' : ''} onClick={() => setProgress({ uiLang: 'es' })}>ES</button>
+                <button className={ui === 'eu' ? 'on' : ''} onClick={() => setProgress({ uiLang: 'eu' })}>EU</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Racha Diaria 🔥 */}
+      <div className="duo-stat-trigger-wrap">
+        <button
+          className={`duo-stat-pill streak ${progress.streak > 0 ? 'lit' : ''}`}
+          onClick={() => setOpenPop(openPop === 'streak' ? null : 'streak')}
+        >
+          <DuoFlameSvg size={24} active={progress.streak > 0} />
+          <strong>{progress.streak}</strong>
+        </button>
+        {openPop === 'streak' && (
+          <div className="duo-top-popover">
+            <div className="duo-pop-streak-head">
+              <DuoFlameSvg size={38} active={progress.streak > 0} />
+              <div>
+                <strong>{tf('streakCardTitle', ui, { n: String(progress.streak) })}</strong>
+                <p>{t('streakCardSub', ui)}</p>
+              </div>
+            </div>
+            <div className="duo-week-row">
+              {weekStats.map((d) => (
+                <div key={d.date} className={`duo-week-dot ${d.done ? 'done' : ''} ${d.isToday ? 'today' : ''}`}>
+                  <span>{ui === 'eu' ? d.labelEu : d.labelEs}</span>
+                  <i>{d.done ? '✓' : d.frozen ? '🧊' : ''}</i>
+                </div>
+              ))}
+            </div>
+            <div className="duo-pop-freeze-note">
+              🧊 {ui === 'eu' ? 'Bolada babesleak:' : 'Protectores de racha:'} <strong>{progress.streakFreezes}/2</strong>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Gemas 💎 */}
+      <div className="duo-stat-trigger-wrap">
+        <button
+          className="duo-stat-pill gems"
+          onClick={() => setOpenPop(openPop === 'gems' ? null : 'gems')}
+        >
+          <DuoGemSvg size={23} />
+          <strong>{progress.gems}</strong>
+        </button>
+        {openPop === 'gems' && (
+          <div className="duo-top-popover">
+            <div className="duo-pop-streak-head">
+              <DuoGemSvg size={36} />
+              <div>
+                <strong>{progress.gems} {ui === 'eu' ? 'Harribitxi' : 'Gemas'}</strong>
+                <p>{t('shopSub', ui)}</p>
+              </div>
+            </div>
+            <button
+              className="duo-btn duo-btn-blue duo-btn-full"
+              onClick={() => {
+                setActiveTab('shop');
+                setOpenPop(null);
+              }}
+            >
+              {t('navShop', ui).toUpperCase()}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Vidas ❤️ / ♾️ */}
+      <div className="duo-stat-trigger-wrap">
+        <button
+          className="duo-stat-pill hearts"
+          onClick={() => setOpenPop(openPop === 'hearts' ? null : 'hearts')}
+        >
+          <DuoHeartSvg size={24} unlimited={effectiveUnlimited} />
+          <strong>{effectiveUnlimited ? '∞' : progress.hearts}</strong>
+        </button>
+        {openPop === 'hearts' && (
+          <div className="duo-top-popover">
+            <h4>{t('shopHeartsSection', ui)}</h4>
+            {effectiveUnlimited ? (
+              <p className="duo-pop-unlimited-msg">✨ {t('superActive', ui)}</p>
+            ) : (
+              <div className="duo-hearts-row-pop">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <DuoHeartSvg key={n} size={26} broken={n > progress.hearts} />
+                ))}
+              </div>
+            )}
+            <div className="duo-pop-btn-col">
+              {!effectiveUnlimited && progress.hearts < 5 && (
+                <>
+                  <button
+                    className="duo-btn duo-btn-blue duo-btn-full"
+                    onClick={() => {
+                      setOpenPop(null);
+                      onStart(null, 'practice');
+                    }}
+                  >
+                    {t('practiceHeartBtn', ui)}
+                  </button>
+                  <button
+                    className="duo-btn duo-btn-outline duo-btn-full"
+                    disabled={progress.gems < 100}
+                    onClick={() => {
+                      if (progress.gems >= 100) {
+                        sfx('star', progress.sound);
+                        setProgress({ gems: progress.gems - 100, hearts: 5 });
+                        setOpenPop(null);
+                      }
+                    }}
+                  >
+                    {t('refillGemsBtn', ui)}
+                  </button>
+                </>
+              )}
+              <button
+                className="duo-btn duo-btn-purple duo-btn-full"
+                onClick={() => {
+                  sfx('star', progress.sound);
+                  setProgress({ unlimitedHearts: !progress.unlimitedHearts, hearts: 5 });
+                  setOpenPop(null);
+                }}
+              >
+                {progress.unlimitedHearts ? t('superDeactivate', ui) : t('enableUnlimitedBtn', ui)}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Botones rápidos de Modo Oscuro y Música */}
+      <button
+        className="duo-icon-round"
+        onClick={() => setProgress({ darkMode: !progress.darkMode })}
+        title={t('darkModeLabel', ui)}
+        aria-label={t('darkModeLabel', ui)}
+      >
+        {progress.darkMode ? '☀️' : '🌙'}
+      </button>
+      <button
+        className={`duo-icon-round ${progress.music ? 'active' : ''}`}
+        onClick={toggleMusic}
+        title={t('music', ui)}
+        aria-label={t('music', ui)}
+      >
+        <IconMusic size={17} />
+      </button>
+    </div>
+  );
 
   return (
-    <div className="home">
-      <header className="home-header">
-        <Brand ui={ui} />
-        <div className="home-controls">
-          <span className="learner-chip" title={`${t('readerLevel', ui)} ${levelInfo.level}`}>
-            <IconUser size={14} />
-            <span className="learner-name">{name}</span>
-            <span className="learner-lvl">Nv. {levelInfo.level}</span>
-          </span>
-          <div className="lang-switch" role="group" aria-label={t('appLangLabel', ui)}>
-            <button className={ui === 'es' ? 'on' : ''} onClick={() => setProgress({ uiLang: 'es' })} aria-pressed={ui === 'es'}>
-              ES
-            </button>
-            <button className={ui === 'eu' ? 'on' : ''} onClick={() => setProgress({ uiLang: 'eu' })} aria-pressed={ui === 'eu'}>
-              EU
-            </button>
-          </div>
-          <button
-            className={`icon-btn ${progress.sound ? 'is-active' : ''}`}
-            onClick={() => setProgress({ sound: !progress.sound })}
-            aria-label={t('sound', ui)}
-            title={t('sound', ui)}
-            aria-pressed={progress.sound}
-          >
-            {progress.sound ? <IconVolume size={18} /> : <IconVolumeOff size={18} />}
-          </button>
-          <button
-            className={`icon-btn music-btn ${progress.music ? 'on' : ''}`}
-            onClick={toggleMusic}
-            aria-label={t('music', ui)}
-            title={t('music', ui)}
-            aria-pressed={progress.music}
-          >
-            <IconMusic size={18} />
-          </button>
-          <button className="icon-btn" onClick={onSettings} aria-label={t('settings', ui)} title={t('settings', ui)}>
-            <IconSettings size={18} />
-          </button>
-        </div>
-      </header>
+    <div className="duo-app-shell" onClick={() => setOpenPop(null)}>
+      {/* Barra lateral izquierda estilo Duolingo (256px en escritorio, barra inferior en móvil) */}
+      <aside className="duo-left-sidebar">
+        <button className="duo-logo-btn" onClick={() => setActiveTab('learn')}>
+          <DuoWordmark ui={ui} />
+        </button>
 
-      <section className="hero-card">
-        <div className="hero-left">
-          <div className="hero-mascot-ring">
-            <Mascot mood="wave" size={126} interactive sound={progress.sound} />
-          </div>
-          <div className="hero-greeting">
-            <div className="hero-eyebrow-row">
-              <span className="hero-kicker">{t('hello', ui)}, {name}!</span>
-              <span className="hero-skill-pill">
-                {t('worldOf', ui)} {currentDef.id}/6 · {currentDef[ui].skill}
-              </span>
-            </div>
-            <h1>{t('greetingSub', ui)}</h1>
-            <p className="hero-world">
-              {t('currentLevel', ui)}: <strong>{currentDef[ui].title}</strong>
-            </p>
-            <div className="hero-cta-row">
-              <button className="btn btn-primary btn-lg pulse-cta" onClick={() => onStart(current)}>
-                <IconPlay size={16} />
-                <span>{t('continueAdventure', ui)}</span>
-              </button>
-              <button className="btn btn-quiet" onClick={() => onStart(null)}>
-                <IconShuffle size={15} />
-                <span>{t('practiceTitle', ui)}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <aside className="hero-stats" aria-label={t('curriculumProgress', ui)}>
-          <div className="stats-header">
-            <span className="stats-title">
-              <IconBolt size={14} /> {t('readerLevel', ui)} {levelInfo.level}
-            </span>
-            <span className="stats-xp">{levelInfo.into} / 120 {t('xp', ui)}</span>
-          </div>
-          <ProgressBar value={levelInfo.into} max={120} tone="purple" />
-          <div className="stats-grid">
-            <div className="stat-box">
-              <span className="stat-box-icon stat-teal"><IconMap size={15} /></span>
-              <div>
-                <strong>{completedCount}/6</strong>
-                <span>{t('worldsCompleted', ui)}</span>
-              </div>
-            </div>
-            <div className="stat-box">
-              <span className="stat-box-icon stat-gold"><IconStar size={15} filled /></span>
-              <div>
-                <strong>{totalStars}/{maxStars}</strong>
-                <span>{t('stars', ui)}</span>
-              </div>
-            </div>
-            <div className="stat-box">
-              <span className="stat-box-icon stat-amber"><IconFlame size={15} /></span>
-              <div>
-                <strong>{progress.streak}</strong>
-                <span>{t('days', ui)}</span>
-              </div>
-            </div>
-            <div className="stat-box">
-              <span className="stat-box-icon stat-blue"><IconAward size={15} /></span>
-              <div>
-                <strong>{progress.badges.length}/{badges.length}</strong>
-                <span>{t('badgesTitle', ui)}</span>
-              </div>
-            </div>
-          </div>
-        </aside>
-      </section>
-
-      <section className="plan-section home-section">
-        <SectionHead
-          icon={<IconCompass size={18} />}
-          title={t('planTitle', ui)}
-          sub={t('routeExplanation', ui)}
-        />
-        <div className="route-cards">
-          {(['visual', 'auditivo', 'mixta'] as Route[]).map((r, i) => {
-            const active = progress.route === r;
-            return (
-              <button
-                key={r}
-                style={staggerStyle(i)}
-                className={`route-card route-${r} ${active ? 'selected' : ''}`}
-                onClick={() => setRoute(r)}
-                aria-pressed={active}
-              >
-                <div className="route-card-top">
-                  <span className="route-icon">
-                    <RouteIcon route={r} size={19} />
-                  </span>
-                  {active && (
-                    <span className="route-selected-mark" aria-hidden="true">
-                      <IconCheck size={12} />
-                    </span>
-                  )}
-                </div>
-                <strong>{t(routeKey(r), ui)}</strong>
-                <small>
-                  {r === 'visual' ? t('routeVisualDesc', ui) : r === 'auditivo' ? t('routeAuditivoDesc', ui) : t('routeMixtaDesc', ui)}
-                </small>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="plan-controls-bar">
-          <div className="learn-lang-row">
-            <span>{t('learningLabel', ui)}</span>
-            <Segmented<LearnLang>
-              value={progress.learnLang}
-              options={[
-                { value: 'es', label: t('langEs', ui) },
-                { value: 'eu', label: t('langEu', ui) },
-                { value: 'both', label: t('langBoth', ui) },
-              ]}
-              onChange={(value) => setProgress({ learnLang: value })}
-            />
-          </div>
-
-          <div className={`supports-strip ${ad.active.length > 0 ? 'has-supports' : ''}`}>
-            <span className="supports-strip-label">
-              <IconAccessibility size={16} />
-              <strong>{t('supportsTitle', ui)}</strong>
-            </span>
-            <div className="support-summary">
-              {supportLabels.length > 0 ? (
-                supportLabels.map((label) => <span key={label}>{label}</span>)
-              ) : (
-                <span className="summary-muted">{t('supportsNone', ui)}</span>
-              )}
-            </div>
-            <button className="btn btn-quiet btn-compact" onClick={onSettings}>
-              <IconSettings size={14} />
-              <span>{t('configureSupports', ui)}</span>
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <section className="map-section home-section">
-        <SectionHead
-          icon={<IconMap size={18} />}
-          title={t('mapTitle', ui)}
-          sub={t('mapSubtitle', ui)}
-          meta={
-            <span className="meta-pill">
-              <IconStar size={14} filled /> {totalStars} / {maxStars}
-            </span>
-          }
-        />
-        {progress.unlockAll && <p className="demo-banner">{t('demoNote', ui)}</p>}
-        <div className="map-path">
-          {levels.map((level, i) => {
-            const locked = !isUnlocked(progress, level.id);
-            const stars = progress.stars[level.id] ?? 0;
-            const done = !!progress.completed[level.id];
-            const isCurrent = current === level.id;
-            return (
-              <button
-                key={level.id}
-                style={staggerStyle(i)}
-                className={`level-card theme-${level.theme} ${locked ? 'locked' : ''} ${done ? 'is-done' : ''} ${isCurrent ? 'is-current' : ''}`}
-                onClick={() => (locked ? onToast(t('lockedHint', ui)) : onStart(level.id))}
-              >
-                <span className="level-bubble" aria-hidden="true">
-                  {locked ? <IconLock size={22} /> : level.emoji}
-                </span>
-                <span className="level-body">
-                  <span className="level-meta-row">
-                    <span className="level-num">
-                      {t('worldOf', ui)} {level.id}
-                    </span>
-                    <span className="skill-tag">{level[ui].skill}</span>
-                    {done && (
-                      <span className="status-tag status-done">
-                        <IconCheck size={11} /> {t('completedLabel', ui)}
-                      </span>
-                    )}
-                    {!done && isCurrent && !locked && (
-                      <span className="status-tag status-current">{t('inProgressTag', ui)}</span>
-                    )}
-                  </span>
-                  <strong>{level[ui].title}</strong>
-                  <small>{locked ? t('locked', ui) : level[ui].sub}</small>
-                </span>
-                <span className="level-right">
-                  <StarRow count={stars} size="sm" />
-                  <span className="level-go" aria-hidden="true">
-                    {locked ? <IconLock size={15} /> : done ? <IconRepeat size={15} /> : <IconPlay size={15} />}
-                  </span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="bonus-section home-section">
-        <SectionHead
-          icon={<IconGamepad size={18} />}
-          title={t('bonusTitle', ui)}
-          sub={t('bonusSub', ui)}
-          meta={<span className="meta-pill meta-open">{t('bonusFree', ui)}</span>}
-        />
-        <div className="bonus-grid">
-          {bonusModes.map((mode, i) => (
+        <nav className="duo-nav-list" aria-label="Navegación principal">
+          {navItems.map((item) => (
             <button
-              key={mode.id}
-              style={staggerStyle(i)}
-              className={`bonus-card theme-${mode.theme}`}
-              onClick={() => onStart(mode.id)}
+              key={item.id}
+              className={`duo-nav-item ${activeTab === item.id ? 'active' : ''}`}
+              onClick={() => {
+                sfx('click', progress.sound);
+                setActiveTab(item.id);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
             >
-              <span className="bonus-emoji" aria-hidden="true">{mode.emoji}</span>
-              <span className="bonus-body">
-                <em>{t('bonusFree', ui)}</em>
-                <strong>{mode[ui].title}</strong>
-                <small>{mode[ui].sub}</small>
+              <span className="duo-nav-icon-wrap">
+                <DuoNavIcon tab={item.id} size={28} />
+                {item.badge && <span className="duo-nav-badge">{item.badge}</span>}
               </span>
-              <span className="bonus-go">
-                <span>{t('playBonus', ui)}</span>
-                <IconPlay size={12} />
-              </span>
+              <span className="duo-nav-label">{item.label}</span>
             </button>
           ))}
-        </div>
 
-        <div className="practice-card">
-          <span className="practice-emoji" aria-hidden="true">
-            <IconShuffle size={22} />
-          </span>
-          <div className="practice-copy">
-            <strong>{t('practiceTitle', ui)}</strong>
-            <p>{t('practiceDesc', ui)}</p>
-          </div>
-          <button className="btn btn-secondary" onClick={() => onStart(null)}>
-            <span>{t('playBonus', ui)}</span>
-            <IconArrowRight size={15} />
-          </button>
-        </div>
-      </section>
-
-      <section className="badges-section home-section">
-        <SectionHead
-          icon={<IconAward size={18} />}
-          title={t('badgesTitle', ui)}
-          sub={progress.badges.length ? `${progress.badges.length} / ${badges.length}` : t('badgesEmpty', ui)}
-          meta={
-            <span className="meta-pill">
-              {progress.badges.length} / {badges.length}
+          <button className="duo-nav-item desktop-only-nav" onClick={onSettings}>
+            <span className="duo-nav-icon-wrap">
+              <DuoNavIcon tab="more" size={28} />
             </span>
-          }
-        />
-        <div className="badge-shelf">
-          {badges.map((b) => {
-            const owned = progress.badges.includes(b.id);
-            return (
-              <div key={b.id} className={`badge-item ${owned ? 'owned' : ''}`} title={`${b[ui].name} · ${b[ui].desc}`}>
-                <span className="badge-emblem" aria-hidden="true">
-                  {owned ? b.emoji : <IconLock size={18} />}
-                </span>
-                <small>{owned ? b[ui].name : '···'}</small>
-              </div>
-            );
-          })}
-        </div>
-      </section>
+            <span className="duo-nav-label">{t('navMore', ui)}</span>
+          </button>
+        </nav>
+      </aside>
 
-      <footer className="home-footer">
-        <Brand ui={ui} compact />
-        <span className="home-tagline">{t('tagline', ui)}</span>
-        <span className="home-credits" aria-label="Créditos">{t('credits', ui)}</span>
-      </footer>
+      {/* Barra superior compacta en móvil / tablet */}
+      <header className="duo-mobile-topbar">
+        {statsBar}
+      </header>
+
+      {/* Columna central principal */}
+      <main className="duo-center-main">
+        {activeTab === 'learn' && (
+          <LearnPathView
+            progress={progress}
+            setProgress={setProgress}
+            onStartLesson={(mode, lvlId, nodeKey) => onStart(lvlId, mode, nodeKey)}
+            onOpenStory={(st) => setActiveStory(st)}
+            onOpenGuidebook={(uId) => setGuidebookUnit(uId)}
+            onToast={onToast}
+          />
+        )}
+        {activeTab === 'letters' && (
+          <LettersView
+            progress={progress}
+            setProgress={setProgress}
+            onStartLettersLesson={() => onStart(1, 'letters')}
+            onStartSyllableStage={(stage) => {
+              if (stage === 1) onStart(2, 'level', 'u2-n0');
+              else if (stage === 2) onStart(2, 'level', 'u2-n1');
+              else if (stage === 3) onStart(2, 'level', 'u2-n3');
+              else onStart(2, 'level', 'u2-n5');
+            }}
+          />
+        )}
+        {activeTab === 'stories' && (
+          <StoriesView progress={progress} onOpenStory={(st) => setActiveStory(st)} />
+        )}
+        {activeTab === 'practice' && (
+          <PracticeHubView
+            progress={progress}
+            onStartMode={(mode, lvlId) => onStart(lvlId, mode)}
+          />
+        )}
+        {activeTab === 'leaderboard' && (
+          <LeaderboardView progress={progress} setProgress={setProgress} onToast={onToast} />
+        )}
+        {activeTab === 'quests' && (
+          <QuestsView progress={progress} setProgress={setProgress} onToast={onToast} />
+        )}
+        {activeTab === 'shop' && (
+          <ShopView progress={progress} setProgress={setProgress} onToast={onToast} />
+        )}
+        {activeTab === 'profile' && (
+          <ProfileView progress={progress} setProgress={setProgress} onOpenSettings={onSettings} />
+        )}
+      </main>
+
+      {/* Columna derecha de Widgets estilo Duolingo (368px en escritorio) */}
+      <aside className="duo-right-rail">
+        {statsBar}
+
+        {boostActive && (
+          <div className="duo-rail-boost">
+            <span>⚡</span>
+            <strong>2X XP ACTIVO ({boostMins} min)</strong>
+          </div>
+        )}
+
+        {/* Tarjeta Super / Vidas Ilimitadas */}
+        {!effectiveUnlimited && (
+          <div className="duo-rail-card super-promo">
+            <div className="duo-rail-super-top">
+              <div>
+                <span className="duo-super-pill">{t('superBadge', ui)}</span>
+                <h3>{t('superTitle', ui)}</h3>
+                <p>{t('superDesc', ui)}</p>
+              </div>
+              <Mascot mood="excited" size={74} outfit={progress.equippedOutfit} />
+            </div>
+            <button
+              className="duo-btn duo-btn-blue duo-btn-full"
+              onClick={() => {
+                sfx('star', progress.sound);
+                setProgress({ unlimitedHearts: true, hearts: 5 });
+                onToast(t('superActive', ui));
+              }}
+            >
+              {t('superActivate', ui)}
+            </button>
+          </div>
+        )}
+
+        {/* Widget de Liga Semanal */}
+        <div className="duo-rail-card">
+          <div className="duo-rail-head">
+            <h3>{tf('leagueTitle', ui, { name: league[ui] })}</h3>
+            <button className="duo-link-btn" onClick={() => setActiveTab('leaderboard')}>
+              {t('viewAll', ui)}
+            </button>
+          </div>
+          <div className="duo-rail-league-body">
+            <span className="duo-rail-shield">{league.badge}</span>
+            <div>
+              <strong>
+                #{myLeagueRank} · {progress.xp} XP
+              </strong>
+              <p>
+                {myLeagueRank <= 5
+                  ? `▲ ${t('promotionZone', ui)}`
+                  : t('leagueSubtitle', ui)}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Widget de Misiones del Día */}
+        <div className="duo-rail-card">
+          <div className="duo-rail-head">
+            <h3>{t('dailyQuestsTitle', ui)}</h3>
+            <button className="duo-link-btn" onClick={() => setActiveTab('quests')}>
+              {t('viewAll', ui)}
+            </button>
+          </div>
+          <div className="duo-rail-quests">
+            {quests.map((q) => {
+              const pct = Math.min(100, Math.round((q.current / q.target) * 100));
+              return (
+                <div key={q.id} className="duo-rail-quest-row">
+                  <span className="duo-rq-icon">{q.emoji}</span>
+                  <div className="duo-rq-main">
+                    <div className="duo-rq-top">
+                      <strong>{q.title}</strong>
+                      <small>{q.current}/{q.target}</small>
+                    </div>
+                    <div className="duo-quest-bar">
+                      <div className="duo-quest-fill" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Widget de Ruta Pedagógica, Accesibilidad y Créditos */}
+        <div className="duo-rail-card">
+          <div className="duo-rail-head">
+            <h3>
+              <IconAccessibility size={16} /> {t('supportsTitle', ui)}
+            </h3>
+            <button className="duo-link-btn" onClick={onSettings}>
+              {t('configureSupports', ui).toUpperCase()}
+            </button>
+          </div>
+          <div className="duo-rail-route-pills">
+            {(['visual', 'auditivo', 'mixta'] as Route[]).map((r) => (
+              <button
+                key={r}
+                className={`duo-route-mini ${progress.route === r ? 'active' : ''}`}
+                onClick={() => {
+                  setProgress({ route: r });
+                  onToast(t('routeChanged', ui));
+                }}
+              >
+                <RouteIcon route={r} size={14} />
+                <span>
+                  {r === 'visual' ? t('routeVisual', ui) : r === 'auditivo' ? t('routeAuditivo', ui) : t('routeMixta', ui)}
+                </span>
+              </button>
+            ))}
+          </div>
+          {ad.active.length > 0 && (
+            <div className="support-summary" style={{ marginTop: 10 }}>
+              {supportSummary(ad, ui).map((lbl) => (
+                <span key={lbl}>{lbl}</span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <footer className="duo-rail-footer">
+          <span>{t('tagline', ui)}</span>
+          <strong>{t('credits', ui)}</strong>
+        </footer>
+      </aside>
+
+      {/* Modales de Guía de Unidad y Lector de Cuentos */}
+      {guidebookUnit !== null && (
+        <GuidebookModal
+          unitId={guidebookUnit}
+          ui={ui}
+          sound={progress.sound}
+          outfit={progress.equippedOutfit}
+          onClose={() => setGuidebookUnit(null)}
+        />
+      )}
+
+      {activeStory !== null && (
+        <StoryPlayerModal
+          story={activeStory}
+          progress={progress}
+          onComplete={handleStoryComplete}
+          onClose={() => setActiveStory(null)}
+        />
+      )}
     </div>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Ajustes                                                             */
-/* ------------------------------------------------------------------ */
+function useMemoRank(myXp: number): number {
+  let rank = 1;
+  for (const r of LEAGUE_RIVALS) {
+    if (r.baseXp > myXp) rank += 1;
+  }
+  return rank;
+}
+
+/* ================================================================== */
+/* Modal de Ajustes y Accesibilidad                                    */
+/* ================================================================== */
 
 interface SettingsProps {
   progress: Progress;
@@ -827,7 +1471,7 @@ export function Settings({ progress, setProgress, onClose, onReset, onToast }: S
         <div className="settings-group">
           <h3 className="settings-group-title">{t('settingsGroupAudio', ui)}</h3>
           <Toggle
-            icon={<IconVolume size={16} />}
+            icon={progress.sound ? <IconVolume size={16} /> : <IconVolumeOff size={16} />}
             label={t('sound', ui)}
             checked={progress.sound}
             onChange={(v) => setProgress({ sound: v })}
@@ -842,7 +1486,16 @@ export function Settings({ progress, setProgress, onClose, onReset, onToast }: S
               onToast(t(v ? 'musicOn' : 'musicOff', ui));
             }}
           />
-          <p className="settings-hint settings-hint-tight">{t('musicDesc', ui)} {t('musicNote', ui)}</p>
+          <Toggle
+            label={`🌙 ${t('darkModeLabel', ui)}`}
+            checked={progress.darkMode}
+            onChange={(v) => setProgress({ darkMode: v })}
+          />
+          <Toggle
+            label={`♾️ ${t('superActive', ui)}`}
+            checked={progress.unlimitedHearts}
+            onChange={(v) => setProgress({ unlimitedHearts: v, hearts: 5 })}
+          />
           <Toggle
             label={t('calmModeLabel', ui)}
             checked={progress.calmMode}
@@ -864,10 +1517,10 @@ export function Settings({ progress, setProgress, onClose, onReset, onToast }: S
           <div className="reset-confirm">
             <p>{t('resetConfirm', ui)}</p>
             <div className="modal-actions">
-              <button className="btn btn-quiet" onClick={() => setConfirmReset(false)}>
+              <button className="duo-btn duo-btn-outline" onClick={() => setConfirmReset(false)}>
                 {t('resetNo', ui)}
               </button>
-              <button className="btn btn-danger" onClick={onReset}>
+              <button className="duo-btn duo-btn-red" onClick={onReset}>
                 {t('resetYes', ui)}
               </button>
             </div>
@@ -877,17 +1530,17 @@ export function Settings({ progress, setProgress, onClose, onReset, onToast }: S
             {t('reset', ui)}
           </button>
         )}
-        <button className="btn btn-primary btn-wide" onClick={onClose}>
-          {t('close', ui)}
+        <button className="duo-btn duo-btn-green duo-btn-full" onClick={onClose}>
+          {t('close', ui).toUpperCase()}
         </button>
       </div>
     </Modal>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Resultado                                                           */
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
+/* Pantalla de Celebración Final estilo Duolingo                       */
+/* ================================================================== */
 
 interface ResultProps {
   progress: Progress;
@@ -900,57 +1553,108 @@ interface ResultProps {
 
 export function ResultScreen({ progress, result, newBadges, onNext, onRepeat, onMap }: ResultProps) {
   const ui = progress.uiLang;
-  const hasNext = result.mode === 'level' && (result.levelId ?? 0) < levels.length && result.stars >= 1;
-  const allDone = levels.every((l) => progress.completed[l.id]);
   const calm = computeAdaptations(progress).calm;
   const xpCount = useCountUp(result.xp);
+  const accPct = result.total > 0 ? Math.round((result.correct / result.total) * 100) : 100;
+  const mins = Math.floor((result.durationSec || 45) / 60);
+  const secs = (result.durationSec || 45) % 60;
+  const timeFormatted = `${mins}:${String(secs).padStart(2, '0')}`;
+  const weekStats = getRecentWeekStats(progress);
+
   const previousXp = Math.max(0, progress.xp - result.xp);
   const leveledUp = Math.floor(previousXp / 120) < Math.floor(progress.xp / 120);
+  const hasNextUnit =
+    (result.mode === 'level' || result.mode === 'legendary') &&
+    (result.levelId ?? 0) >= 1 &&
+    (result.levelId ?? 0) < levels.length &&
+    result.stars >= 1;
 
   useEffect(() => {
     if (leveledUp && !calm && !prefersReducedMotion()) sfx('levelup', progress.sound);
   }, [leveledUp, calm, progress.sound]);
 
   return (
-    <div className="result-screen">
-      {!calm && <Confetti burstKey={1} count={46} />}
-      <div className="result-card">
-        <div className="result-mascot-wrap">
-          <Mascot mood="cheer" size={146} interactive sound={progress.sound} />
+    <div className="duo-result-page">
+      {!calm && <Confetti burstKey={1} count={52} />}
+
+      <div className="duo-result-center">
+        <div className="duo-result-mascots">
+          <Mascot mood="cheer" size={148} outfit={progress.equippedOutfit} interactive sound={progress.sound} />
         </div>
-        <h1>{result.mode === 'practice' ? t('levelCompleted', ui) : t('resultTitle', ui)}</h1>
-        <p className="result-sub">{result.perfect ? t('resultPerfect', ui) : t('resultSub', ui)}</p>
+
+        <h1 className="duo-result-headline">
+          {result.mode === 'legendary'
+            ? '👑 ¡Unidad Legendaria!'
+            : result.perfect
+              ? t('resultPerfect', ui)
+              : t('resultTitle', ui)}
+        </h1>
+        <p className="duo-result-sub">{t('resultSub', ui)}</p>
+
+        {(result.mode === 'level' || result.mode === 'legendary') && (
+          <div className="result-stars">
+            <StarRow count={result.stars} size="lg" animate />
+          </div>
+        )}
+
+        {/* Las 3 cajas de colores icónicas de Duolingo (XP Amarillo, Precisión Verde, Tiempo Azul) */}
+        <div className="duo-result-boxes">
+          <div className="duo-rbox yellow" style={staggerStyle(0)}>
+            <span className="duo-rbox-head">
+              {t('statTotalXp', ui)} {result.xpBoosted ? '⚡2X' : ''}
+            </span>
+            <strong>⚡ +{xpCount}</strong>
+          </div>
+          <div className="duo-rbox green" style={staggerStyle(1)}>
+            <span className="duo-rbox-head">{t('statAccuracy', ui)}</span>
+            <strong>🎯 {accPct}%</strong>
+          </div>
+          <div className="duo-rbox blue" style={staggerStyle(2)}>
+            <span className="duo-rbox-head">{t('statSpeed', ui)}</span>
+            <strong>⏱️ {timeFormatted}</strong>
+          </div>
+        </div>
+
+        {/* Píldora de gemas y vidas recuperadas */}
+        <div className="duo-result-rewards-row">
+          <span className="duo-gem-reward-pill">
+            <DuoGemSvg size={20} /> +{result.gemsEarned} {ui === 'eu' ? 'harribitxi' : 'gemas'}
+          </span>
+          {(result.heartsRestored ?? 0) > 0 && (
+            <span className="duo-heart-reward-pill">
+              <DuoHeartSvg size={20} /> +{result.heartsRestored} {ui === 'eu' ? 'bihotz' : 'vida'}
+            </span>
+          )}
+        </div>
+
+        {/* Tarjeta de Racha Diaria estilo Duolingo */}
+        <div className="duo-streak-result-card">
+          <div className="duo-streak-rc-top">
+            <DuoFlameSvg size={38} active />
+            <div>
+              <strong>{tf('streakCardTitle', ui, { n: String(progress.streak) })}</strong>
+              <span>{t('streakCardSub', ui)}</span>
+            </div>
+          </div>
+          <div className="duo-week-row">
+            {weekStats.map((d) => (
+              <div key={d.date} className={`duo-week-dot ${d.done ? 'done' : ''} ${d.isToday ? 'today' : ''}`}>
+                <span>{ui === 'eu' ? d.labelEu : d.labelEs}</span>
+                <i>{d.done ? '✓' : ''}</i>
+              </div>
+            ))}
+          </div>
+        </div>
 
         {leveledUp && (
           <div className="levelup-banner" role="status">
-            <Mascot mood="excited" size={62} interactive sound={progress.sound} />
+            <Mascot mood="excited" size={58} outfit={progress.equippedOutfit} />
             <div>
               <strong><IconBolt size={14} /> {t('levelUpTitle', ui)}</strong>
               <span>{t('levelUpSub', ui)}</span>
             </div>
           </div>
         )}
-
-        {result.mode === 'level' && (
-          <div className="result-stars">
-            <StarRow count={result.stars} size="lg" animate />
-          </div>
-        )}
-
-        <div className="result-stats">
-          <div>
-            <strong>{result.correct}/{result.total}</strong>
-            <span>{t('accuracy', ui)}</span>
-          </div>
-          <div>
-            <strong className="xp-counter">+{xpCount}</strong>
-            <span>{t('xpEarned', ui)}</span>
-          </div>
-          <div>
-            <strong>{result.maxStreak}</strong>
-            <span>{t('streak', ui)}</span>
-          </div>
-        </div>
 
         {newBadges.length > 0 && (
           <div className="result-badges">
@@ -967,33 +1671,31 @@ export function ResultScreen({ progress, result, newBadges, onNext, onRepeat, on
             </div>
           </div>
         )}
+      </div>
 
-        {allDone && <p className="result-final">{t('allDone', ui)} {t('allDoneSub', ui)}</p>}
-
-        <div className="result-actions">
-          {hasNext ? (
-            <button className="btn btn-primary btn-wide" onClick={() => onNext((result.levelId ?? 1) + 1)}>
-              <span>{t('nextWorld', ui)}</span>
+      {/* Barra inferior fija de celebración estilo Duolingo */}
+      <footer className="duo-lesson-bottombar">
+        <div className="duo-lesson-bottom-inner">
+          <button className="duo-btn duo-btn-outline duo-btn-lg" onClick={onRepeat}>
+            <IconRepeat size={17} />
+            <span>{t('repeat', ui).toUpperCase()}</span>
+          </button>
+          <div className="duo-bottom-right-btns">
+            {hasNextUnit && (
+              <button
+                className="duo-btn duo-btn-blue duo-btn-lg"
+                onClick={() => onNext((result.levelId ?? 1) + 1)}
+              >
+                <span>{t('nextWorld', ui).toUpperCase()}</span>
+              </button>
+            )}
+            <button className="duo-btn duo-btn-green duo-btn-lg" onClick={onMap}>
+              <span>{t('continueBtn', ui).toUpperCase()}</span>
               <IconArrowRight size={17} />
-            </button>
-          ) : (
-            <button className="btn btn-primary btn-wide" onClick={onMap}>
-              <IconMap size={17} />
-              <span>{t('backToMap', ui)}</span>
-            </button>
-          )}
-          <div className="result-secondary">
-            <button className="btn btn-quiet" onClick={onRepeat}>
-              <IconRepeat size={15} />
-              <span>{t('repeat', ui)}</span>
-            </button>
-            <button className="btn btn-quiet" onClick={onMap}>
-              <IconMap size={15} />
-              <span>{t('backToMap', ui)}</span>
             </button>
           </div>
         </div>
-      </div>
+      </footer>
     </div>
   );
 }

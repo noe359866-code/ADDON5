@@ -88,6 +88,42 @@ export const words: Word[] = [
   { id: 'grande', es: 'grande', eu: 'handi', emoji: '🐘', sylEs: ['gran', 'de'], sylEu: ['han', 'di'], cat: 'adj' },
   { id: 'pequeno', es: 'pequeño', eu: 'txiki', emoji: '🐭', sylEs: ['pe', 'que', 'ño'], sylEu: ['txi', 'ki'], cat: 'adj' },
   { id: 'bonito', es: 'bonito', eu: 'polit', emoji: '✨', sylEs: ['bo', 'ni', 'to'], sylEu: ['po', 'lit'], cat: 'adj' },
+
+  /* Etapa 1 · Sílabas directas puras (CV: consonante + vocal) */
+  { id: 'pato', es: 'pato', eu: 'ahate', emoji: '🦆', sylEs: ['pa', 'to'], sylEu: ['a', 'ha', 'te'], cat: 'animales' },
+  { id: 'vaca', es: 'vaca', eu: 'behi', emoji: '🐮', sylEs: ['va', 'ca'], sylEu: ['be', 'hi'], cat: 'animales' },
+  { id: 'mono', es: 'mono', eu: 'tximino', emoji: '🐒', sylEs: ['mo', 'no'], sylEu: ['txi', 'mi', 'no'], cat: 'animales' },
+  { id: 'sopa', es: 'sopa', eu: 'zopa', emoji: '🥣', sylEs: ['so', 'pa'], sylEu: ['zo', 'pa'], cat: 'comida' },
+  { id: 'tomate', es: 'tomate', eu: 'tomate', emoji: '🍅', sylEs: ['to', 'ma', 'te'], sylEu: ['to', 'ma', 'te'], cat: 'comida' },
+  { id: 'seta', es: 'seta', eu: 'perretxiko', emoji: '🍄', sylEs: ['se', 'ta'], sylEu: ['pe', 'rre', 'txi', 'ko'], cat: 'naturaleza' },
+  { id: 'pelota', es: 'pelota', eu: 'pilota', emoji: '⚽', sylEs: ['pe', 'lo', 'ta'], sylEu: ['pi', 'lo', 'ta'], cat: 'casa' },
+  { id: 'cama', es: 'cama', eu: 'ohe', emoji: '🛏️', sylEs: ['ca', 'ma'], sylEu: ['o', 'he'], cat: 'casa' },
+
+  /* Etapa 2 · Sílabas inversas (VC: vocal + consonante) */
+  { id: 'isla', es: 'isla', eu: 'irla', emoji: '🏝️', sylEs: ['is', 'la'], sylEu: ['ir', 'la'], cat: 'naturaleza' },
+  { id: 'espejo', es: 'espejo', eu: 'ispilu', emoji: '🪞', sylEs: ['es', 'pe', 'jo'], sylEu: ['is', 'pi', 'lu'], cat: 'casa' },
+  { id: 'arco', es: 'arco', eu: 'arku', emoji: '🏹', sylEs: ['ar', 'co'], sylEu: ['ar', 'ku'], cat: 'casa' },
+  { id: 'espada', es: 'espada', eu: 'ezpata', emoji: '⚔️', sylEs: ['es', 'pa', 'da'], sylEu: ['ez', 'pa', 'ta'], cat: 'casa' },
+  { id: 'antena', es: 'antena', eu: 'antena', emoji: '📡', sylEs: ['an', 'te', 'na'], sylEu: ['an', 'te', 'na'], cat: 'casa' },
+  { id: 'ardilla', es: 'ardilla', eu: 'urtxintxa', emoji: '🐿️', sylEs: ['ar', 'di', 'lla'], sylEu: ['ur', 'txin', 'txa'], cat: 'animales' },
+  { id: 'insecto', es: 'insecto', eu: 'intsektu', emoji: '🐞', sylEs: ['in', 'sec', 'to'], sylEu: ['in', 'tsek', 'tu'], cat: 'animales' },
+  { id: 'ambulancia', es: 'ambulancia', eu: 'anbulantzia', emoji: '🚑', sylEs: ['am', 'bu', 'lan', 'cia'], sylEu: ['an', 'bu', 'lan', 'tzi', 'a'], cat: 'casa' },
+
+  /* Etapa 3 · Sílabas trabadas / sinfones (CCV: bl, cl, fl, gl, pl, br, cr, dr, fr, gr, pr, tr) */
+  { id: 'tren', es: 'tren', eu: 'trena', emoji: '🚂', sylEs: ['tren'], sylEu: ['tre', 'na'], cat: 'casa' },
+  { id: 'plato', es: 'plato', eu: 'plater', emoji: '🍽️', sylEs: ['pla', 'to'], sylEu: ['pla', 'ter'], cat: 'comida' },
+  { id: 'globo', es: 'globo', eu: 'globo', emoji: '🎈', sylEs: ['glo', 'bo'], sylEu: ['glo', 'bo'], cat: 'casa' },
+  { id: 'fruta', es: 'fruta', eu: 'fruta', emoji: '🍓', sylEs: ['fru', 'ta'], sylEu: ['fru', 'ta'], cat: 'comida' },
+  { id: 'flan', es: 'flan', eu: 'flana', emoji: '🍮', sylEs: ['flan'], sylEu: ['fla', 'na'], cat: 'comida' },
+  { id: 'tigre', es: 'tigre', eu: 'tigre', emoji: '🐯', sylEs: ['ti', 'gre'], sylEu: ['ti', 'gre'], cat: 'animales' },
+  { id: 'dragon', es: 'dragón', eu: 'dragoi', emoji: '🐉', sylEs: ['dra', 'gón'], sylEu: ['dra', 'goi'], cat: 'animales' },
+  { id: 'cebra', es: 'cebra', eu: 'zebra', emoji: '🦓', sylEs: ['ce', 'bra'], sylEu: ['ze', 'bra'], cat: 'animales' },
+  { id: 'cocodrilo', es: 'cocodrilo', eu: 'krokodilo', emoji: '🐊', sylEs: ['co', 'co', 'dri', 'lo'], sylEu: ['kro', 'ko', 'di', 'lo'], cat: 'animales' },
+  { id: 'princesa', es: 'princesa', eu: 'printzesa', emoji: '👑', sylEs: ['prin', 'ce', 'sa'], sylEu: ['prin', 'tze', 'sa'], cat: 'adj' },
+  { id: 'trompeta', es: 'trompeta', eu: 'tronpeta', emoji: '🎺', sylEs: ['trom', 'pe', 'ta'], sylEu: ['tron', 'pe', 'ta'], cat: 'casa' },
+  { id: 'tractor', es: 'tractor', eu: 'traktore', emoji: '🚜', sylEs: ['trac', 'tor'], sylEu: ['trak', 'to', 're'], cat: 'casa' },
+  { id: 'bicicleta', es: 'bicicleta', eu: 'bizikleta', emoji: '🚲', sylEs: ['bi', 'ci', 'cle', 'ta'], sylEu: ['bi', 'zi', 'kle', 'ta'], cat: 'casa' },
+  { id: 'blusa', es: 'blusa', eu: 'blusa', emoji: '👚', sylEs: ['blu', 'sa'], sylEu: ['blu', 'sa'], cat: 'casa' },
 ];
 
 export const wordById: Record<string, Word> = Object.fromEntries(words.map((w) => [w.id, w]));
@@ -99,6 +135,112 @@ export function wordText(w: Word, lang: Lang): string {
 export function wordSyllables(w: Word, lang: Lang): string[] {
   return (lang === 'es' ? w.sylEs : w.sylEu).slice();
 }
+
+export type SyllableType = 'directa' | 'inversa' | 'trabada' | 'mixta';
+
+function plainSyllable(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/ñ/g, '\u0001')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\u0001/g, 'ñ');
+}
+
+/**
+ * Clasifica fonológicamente una sílaba en:
+ * - trabada (CCV: bl, cl, fl, gl, kl, pl, tl, br, cr, dr, fr, gr, kr, pr, tr + vocal)
+ * - inversa (VC: empieza por vocal seguida de consonante: al, ar, an, as, es, is, ur, ez...)
+ * - directa (CV / V abierta: termina en vocal y sin grupo consonántico trabado)
+ * - mixta (CVC sin sinfón inicial: sol, mar, pan...)
+ */
+export function classifySyllable(syl: string): SyllableType {
+  const s = plainSyllable(syl);
+  if (/^(bl|cl|fl|gl|kl|pl|tl|br|cr|dr|fr|gr|kr|pr|tr)[aeiou]/.test(s)) return 'trabada';
+  if (/^[aeiou]+[bcdfghjklmnñpqrstvwxyz]/.test(s)) return 'inversa';
+  if (/[aeiou]$/.test(s)) return 'directa';
+  return 'mixta';
+}
+
+/** Extrae el grupo trabado inicial (pl, br, tr, fl...) si la sílaba es trabada. */
+export function trabadaCluster(syl: string): string | null {
+  const m = plainSyllable(syl).match(/^(bl|cl|fl|gl|kl|pl|tl|br|cr|dr|fr|gr|kr|pr|tr)/);
+  return m ? m[1]! : null;
+}
+
+/**
+ * Devuelve la etapa silábica de una palabra en el idioma indicado:
+ * - 3: contiene al menos una sílaba trabada (CCV)
+ * - 2: sin trabadas, contiene sílaba inversa (VC) o cerrada
+ * - 1: todas sus sílabas son directas/abiertas puras (CV / V)
+ */
+export function wordSyllableStage(w: Word, lang: Lang): 1 | 2 | 3 {
+  const syls = wordSyllables(w, lang);
+  const types = syls.map(classifySyllable);
+  if (types.includes('trabada')) return 3;
+  if (types.includes('inversa')) return 2;
+  if (types.every((t) => t === 'directa')) return 1;
+  return 2;
+}
+
+/** Palabras que pertenecen exactamente a la etapa silábica pedida (1: Directas, 2: Inversas, 3: Trabadas). */
+export function wordsForSyllableStage(stage: 1 | 2 | 3, lang: Lang, list: Word[] = words): Word[] {
+  if (stage === 1) {
+    return list.filter((w) => wordSyllables(w, lang).every((s) => classifySyllable(s) === 'directa'));
+  }
+  if (stage === 2) {
+    // Prioriza palabras con sílaba inversa pura (VC) y sin ninguna trabada
+    const strictInverse = list.filter((w) => {
+      const ts = wordSyllables(w, lang).map(classifySyllable);
+      return !ts.includes('trabada') && ts.includes('inversa');
+    });
+    return strictInverse.length >= 6 ? strictInverse : list.filter((w) => wordSyllableStage(w, lang) === 2);
+  }
+  return list.filter((w) => wordSyllables(w, lang).some((s) => classifySyllable(s) === 'trabada'));
+}
+
+export const SYLLABLE_BANKS: Record<Lang, Record<1 | 2 | 3, string[]>> = {
+  es: {
+    1: ['ma', 'me', 'mi', 'mo', 'mu', 'pa', 'pe', 'pi', 'po', 'pu', 'la', 'le', 'li', 'lo', 'lu', 'sa', 'se', 'si', 'so', 'su', 'ta', 'te', 'ti', 'to', 'tu', 'ca', 'co', 'ga', 'go'],
+    2: ['al', 'el', 'il', 'ol', 'ul', 'ar', 'er', 'ir', 'or', 'ur', 'an', 'en', 'in', 'on', 'un', 'as', 'es', 'is', 'os', 'us', 'am', 'im'],
+    3: ['bla', 'blu', 'cla', 'cle', 'fla', 'flo', 'gla', 'glo', 'pla', 'ple', 'bra', 'bro', 'cra', 'cre', 'dra', 'dri', 'fra', 'fru', 'gra', 'gre', 'pra', 'pri', 'tra', 'tre', 'tro'],
+  },
+  eu: {
+    1: ['ma', 'me', 'mi', 'mo', 'mu', 'ba', 'be', 'bi', 'bo', 'bu', 'ka', 'ke', 'ki', 'ko', 'ku', 'la', 'le', 'li', 'lo', 'lu', 'sa', 'se', 'si', 'so', 'su', 'ta', 'te', 'ti', 'to', 'tu', 'za', 'zo', 'zu'],
+    2: ['al', 'el', 'il', 'ol', 'ul', 'ar', 'er', 'ir', 'or', 'ur', 'an', 'en', 'in', 'on', 'un', 'as', 'es', 'is', 'os', 'us', 'az', 'ez', 'iz', 'it', 'et'],
+    3: ['bla', 'blu', 'kla', 'kle', 'fla', 'flo', 'gla', 'glo', 'pla', 'ple', 'bra', 'bro', 'kra', 'kro', 'dra', 'dri', 'fra', 'fru', 'gra', 'gre', 'pra', 'pri', 'tra', 'tre', 'tro'],
+  },
+};
+
+/** Pares espejo Directa ↔ Inversa para entrenar el orden letra-sonido (la ↔ al, es ↔ se...). */
+export const INVERSE_MIRROR_PAIRS: Record<Lang, [string, string][]> = {
+  es: [
+    ['al', 'la'],
+    ['el', 'le'],
+    ['ar', 'ra'],
+    ['er', 're'],
+    ['an', 'na'],
+    ['en', 'ne'],
+    ['in', 'ni'],
+    ['as', 'sa'],
+    ['es', 'se'],
+    ['is', 'si'],
+    ['os', 'so'],
+  ],
+  eu: [
+    ['al', 'la'],
+    ['el', 'le'],
+    ['ar', 'ra'],
+    ['ir', 'ri'],
+    ['ur', 'ru'],
+    ['an', 'na'],
+    ['in', 'ni'],
+    ['es', 'se'],
+    ['is', 'si'],
+    ['ez', 'ze'],
+    ['iz', 'zi'],
+  ],
+};
 
 export interface LevelDef {
   id: number;
@@ -123,8 +265,8 @@ export const levels: LevelDef[] = [
     emoji: '🧩',
     theme: 'sky',
     questions: 6,
-    es: { title: 'El taller de sílabas', sub: 'Une las piezas y escucha cómo suenan', skill: 'Conciencia silábica' },
-    eu: { title: 'Silaben tailerra', sub: 'Elkartu piezak eta entzun nolako soinua duten', skill: 'Silabak' },
+    es: { title: 'El taller de sílabas', sub: 'En progresión: 1·Directas → 2·Inversas → 3·Trabadas', skill: '1·Directas · 2·Inversas · 3·Trabadas' },
+    eu: { title: 'Silaben tailerra', sub: 'Progresioan: 1·Zuzenak → 2·Alderantzizkoak → 3·Trabatutakoak', skill: '1·Zuzenak · 2·Alderantzizkoak · 3·Trabatutakoak' },
   },
   {
     id: 3,
