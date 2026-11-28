@@ -466,6 +466,26 @@ export function DuoNavIcon({ tab, size = 28 }: { tab: string; size?: number }) {
           <rect x="12.5" y="18.5" width="7" height="10" rx="3" fill="#FFF5D3" />
         </svg>
       );
+    case 'reading':
+      return (
+        <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
+          <rect x="12" y="3" width="8" height="15" rx="4" fill="#CE82FF" />
+          <path d="M8 14.5C8 19 11.6 22.5 16 22.5C20.4 22.5 24 19 24 14.5" fill="none" stroke="#A568CC" strokeWidth="2.4" strokeLinecap="round" />
+          <rect x="14.8" y="22" width="2.4" height="5" rx="1.2" fill="#A568CC" />
+          <rect x="10" y="26.5" width="12" height="2.6" rx="1.3" fill="#CE82FF" />
+        </svg>
+      );
+    case 'dictionary':
+      return (
+        <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
+          <rect x="4" y="5" width="17" height="23" rx="3.5" fill="#FF9600" />
+          <rect x="7" y="5" width="17" height="23" rx="3.5" fill="#FFC800" />
+          <rect x="10" y="11" width="10" height="2.6" rx="1.3" fill="#FFFFFF" />
+          <rect x="10" y="16.5" width="7" height="2.6" rx="1.3" fill="#FFFFFF" />
+          <circle cx="23" cy="22" r="6" fill="#1CB0F6" stroke="#FFFFFF" strokeWidth="2" />
+          <path d="M27.4 26.4L31 30" stroke="#1899D6" strokeWidth="2.6" strokeLinecap="round" />
+        </svg>
+      );
     case 'letters':
       return (
         <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">

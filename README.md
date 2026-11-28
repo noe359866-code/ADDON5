@@ -29,12 +29,49 @@ Y en el **🎠 Patio de juegos**, dos modos siempre abiertos (sin desbloqueo):
 | 7 | 🔢 Números y colores / Zenbakiak eta koloreak | Contar objetos, numeral ↔ palabra, sucesiones, colores con muestras de color y objetos reales |
 | 8 | 🕹️ ¡Pato Ventura dice! / Pato Venturak dio! | Instrucciones de uno y dos pasos, movimiento, burbujas, palmas, respiración, «toca algo que te guste» e imitación |
 
+Y dos herramientas siempre disponibles, sin desbloqueo:
+
+| Herramienta | Se practica |
+|---|---|
+| 🎤 Micrófono / Mikrofonoa | Lectura en voz alta con seguimiento palabra a palabra, transcripción en vivo, estrellas y XP (también sin micrófono, tocando las palabras) |
+| 📖 Diccionario / Hiztegia | Buscar cualquier palabra y verla en castellano, euskera e inglés, con sílabas, categoría y audio |
+
 ### Rutas de aprendizaje adaptadas
 - 👁️ **Visual**: dibujos, sílabas de colores, letras ocultas, piezas para construir palabras y frases.
 - 🎧 **Auditiva**: la voz de Pato Ventura lee cada pregunta, ejercicios de escucha, rimas, pares mínimos y dictado.
 - 🌈 **Mixta**: alterna imagen y sonido pregunta a pregunta.
 
 La ruta se elige al empezar y **se puede cambiar en cualquier momento** desde el mapa o Ajustes: el generador de ejercicios pondera las actividades según la ruta activa.
+
+### 🎨 Un color por nivel (sin cursos escolares)
+La app ya no pide el curso («3.º de Primaria»): se elige un **color**. Los más peques tienen el amarillo y cada dos cursos de Primaria tienen el suyo.
+
+| Color | Para quién | Qué se practica |
+|---|---|---|
+| 🐣 Amarillo | Los más peques | Primeros sonidos, palabras cortas y lectura de palabras sueltas |
+| 🌱 Verde | 1.º y 2.º de Primaria | Primeras frases cotidianas |
+| 📖 Azul | 3.º y 4.º de Primaria | Frases y cuentos cortos |
+| 🚀 Morado | 5.º y 6.º de Primaria | Retos de lectura largos |
+
+La información **nunca depende solo del color** (WCAG 1.4.1): cada nivel lleva además su nombre, un emoji y una forma geométrica (● ▲ ■ ★). El curso sigue existiendo por dentro para adaptar el vocabulario, pero no se escribe en ninguna pantalla. Los datos antiguos con «Todas» se migran al color verde sin perder el progreso.
+
+### 🎤 Micrófono de lectura con seguimiento
+En la pestaña **Micrófono** (y desde Ajustes o la tarjeta «Herramientas de lectura») se puede leer un texto en voz alta mientras la app sigue la lectura palabra a palabra:
+
+- La palabra que toca leer se ilumina en amarillo y las palabras ya leídas se ponen **verdes** con un fondo suave.
+- Si el reconocimiento no oye una palabra, se marca en **naranja discontinuo** sin bloquear la lectura: nunca hay castigo, solo una pista para repasarla.
+- Se ve la transcripción en vivo («Te escucho: …»), el contador de palabras y el porcentaje.
+- Al terminar se muestran estrellas, un mensaje amable y un botón para **recoger XP**.
+- Los textos existen en castellano, euskera e inglés y cambian según tu color.
+- **Sin micrófono también funciona**: cada palabra es un botón y se puede tocar al leerla, así que la actividad sigue disponible cuando el navegador no tiene reconocimiento de voz o no hay permiso.
+
+El micrófono usa la Web Speech API del navegador (con `interimResults` para el seguimiento en vivo) y la escucha se corta al salir de la pestaña. Es una función opcional: la app avisa en la propia pantalla de que el audio puede enviarse a un proveedor externo.
+
+### 📖 Diccionario ilustrado con buscador
+- **Barra de búsqueda tipo diccionario** en la portada y en la pestaña Diccionario: encuentra palabras escritas en castellano, euskera o inglés, ignorando mayúsculas, tildes y signos («arbol» encuentra «árbol», «katu» encuentra «gato»).
+- Cada ficha muestra emoji, categoría, traducción en los **tres idiomas**, las **sílabas** separadas por puntos y un botón 🔊 para escuchar cada idioma con la voz de Pato Ventura (ritmo y sílabas según la velocidad elegida).
+- Filtros por categoría (animales, comida, casa, cole, ropa, días, meses…) y sugerencias de palabras del nivel por color.
+- Todo el banco de palabras está integrado en la app: el diccionario funciona sin conexión.
 
 ### Adaptación además de la ruta
 - **Dificultad viva**: 3 aciertos seguidos → más opciones y distractores más parecidos; 2 fallos seguidos → baja la dificultad.
@@ -68,6 +105,16 @@ Detalles de diseño deliberados:
 
 > ⚠️ Esto es una herramienta educativa de apoyo basada en pautas generales de diseño universal (lectura fácil, pictogramas, rutinas visuales, pausas de movimiento). **No es un producto sanitario, ni diagnostica, ni sustituye** a la valoración de profesionales (logopedia, pedagogía terapéutica, etc.).
 
+### 🌈 Diseño pensado para peques
+La interfaz se ha rediseñado con un lenguaje más infantil y legible, sin perder ninguna opción de accesibilidad:
+
+- **Fondo de cielo** con degradados suaves (y modo oscuro equivalente), tarjetas de colores con esquinas muy redondeadas y botones 3D grandes (mínimo 50 px de alto; 58 px en los principales).
+- **Saludo de Pato Ventura** en el mapa («¡Hola, Ane! ¿Jugamos a leer?») con el color de nivel a la vista.
+- **Todo en minúscula y sin mayúsculas forzadas**: los rótulos y botones usan caja normal, mucho más fácil de reconocer para quien empieza a leer. Se han reescrito los textos que iban en mayúsculas (también en euskera).
+- **Iconos y palabras** en la barra inferior del móvil (antes solo iconos), objetivos táctiles más grandes y senderos con burbujas de 86 px.
+- Detalles de juego: sol, nubes y arcoíris animados alrededor del saludo, emoji grande en el cartel de cada unidad y tipografía más grande en prompts y opciones.
+- Los adornos y animaciones **se desactivan** con «Menos estímulos» o `prefers-reduced-motion`, y el modo de daltonismo mantiene sus formas y patrones. El perfil TEA conserva la interfaz sobria y sin sorpresas.
+
 ### Diversión y accesibilidad general
 Mascota animada en SVG, confeti, estrellas, XP, nivel lector, racha diaria, 10 insignias, práctica libre, atajos de teclado (`1`–`4` y `Enter`), modo «letras grandes», interfaz bilingüe es/eu, soporte de `prefers-reduced-motion` y diseño responsive móvil/escritorio.
 
@@ -95,7 +142,7 @@ La voz [Maider](https://huggingface.co/rhasspy/piper-voices/tree/main/eu/eu_ES/m
 ### Familias y docentes: progreso y privacidad
 En Ajustes hay un resumen del progreso y opciones para exportarlo e importarlo como archivo JSON. Importar **sustituye** el progreso actual tras una confirmación; guarda primero una copia si deseas conservarlo. El archivo puede contener el nombre y los ejercicios pendientes: guárdalo en un lugar seguro y compártelo solo con personas de confianza. El almacenamiento del navegador puede perderse al borrar sus datos o cambiar de dispositivo.
 
-El modo infantil simplifica la interfaz, pero **no es un control parental ni impide cambiar ajustes**. La lectura con micrófono es opcional: el reconocimiento de voz depende del navegador y puede enviar audio a un proveedor externo. Consulta su política de privacidad y solicita supervisión adulta antes de usarlo. La disponibilidad de voces y reconocimiento depende del navegador y del dispositivo.
+El modo infantil simplifica la interfaz, pero **no es un control parental ni impide cambiar ajustes**. La lectura con micrófono es opcional: el reconocimiento de voz depende del navegador, puede enviar audio a un proveedor externo y requiere permiso explícito del micrófono. Siempre existe la alternativa de tocar cada palabra mientras se lee, sin micrófono. Consulta la política de privacidad del navegador y solicita supervisión adulta antes de usar la voz. La disponibilidad de voces y reconocimiento depende del navegador y del dispositivo: el seguimiento de lectura funciona mejor en navegadores basados en Chromium.
 
 ---
 
@@ -119,7 +166,7 @@ npm run dev        # http://localhost:5173
 Otros comandos:
 
 ```bash
-npm test               # pruebas de idiomas, voz, progreso, PWA y lógica de sesión
+npm test               # pruebas de idiomas, voz, progreso, PWA, sesión, lectura y diccionario
 npm run build          # tsc --noEmit + build de producción en dist/
 npm run preview        # sirve dist/
 npm run typecheck      # solo comprobación de tipos

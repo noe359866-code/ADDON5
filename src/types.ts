@@ -14,7 +14,17 @@ export type SyllableStage = 1 | 2 | 3; // 1: Directas (CV), 2: Inversas (VC), 3:
  */
 export type ReadingPhase = 'fonologica' | 'logográfica' | 'alfabética' | 'ortográfica';
 
-export type NavTab = 'learn' | 'letters' | 'stories' | 'practice' | 'leaderboard' | 'quests' | 'shop' | 'profile';
+export type NavTab =
+  | 'learn'
+  | 'reading'
+  | 'dictionary'
+  | 'letters'
+  | 'stories'
+  | 'practice'
+  | 'leaderboard'
+  | 'quests'
+  | 'shop'
+  | 'profile';
 
 export type OutfitId = 'classic' | 'explorer' | 'super' | 'royal' | 'cool';
 

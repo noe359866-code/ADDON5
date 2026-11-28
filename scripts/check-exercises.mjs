@@ -131,11 +131,24 @@ for (const cat of requiredCategories) {
 // Las nuevas etiquetas de interfaz deben existir en ES y EU.
 for (const key of [
   'stageLabel',
-  'stageGeneral',
-  'stageInfantil',
-  'stagePrim12',
-  'stagePrim34',
-  'stagePrim56',
+  'stageColorsLabel',
+  'stageLegend',
+  'stageColorAria',
+  'navReading',
+  'navDictionary',
+  'readingTitle',
+  'readingSub',
+  'readingUnsupported',
+  'readingDenied',
+  'readingTapHint',
+  'readingDoneTitle',
+  'readingClaim',
+  'dictTitle',
+  'dictSub',
+  'dictPlaceholder',
+  'dictSearchLabel',
+  'dictEmptyTitle',
+  'dictHomeHint',
   'audioSpeedLabel',
   'audioSpeedSlowHint',
   'audioSpeedNormalHint',
@@ -401,5 +414,5 @@ if (problems.length) {
   process.exit(1);
 }
 console.log(
-  `✅ ${total} ejercicios válidos (8 modos × 3 rutas × ES/EU/EN/ES+EU × Bajo/Medio/Alto × ${schoolStages.length} etapas × ${readingPhases.length} fases de lectura) · H muda vasca verificada · ${gameKinds.size} minijuegos de Pato Ventura · categorías funcionales e etapas verificadas.`,
+  `✅ ${total} ejercicios válidos (8 modos × 3 rutas × ES/EU/EN/ES+EU × Bajo/Medio/Alto × ${schoolStages.length} etapas × ${readingPhases.length} fases de lectura) · H muda vasca verificada · ${gameKinds.size} minijuegos de Pato Ventura · categorías funcionales y niveles por color verificados.`,
 );

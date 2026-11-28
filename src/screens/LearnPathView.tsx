@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { computeAdaptations } from '../adaptations';
 import { Confetti, DuoOwlBuddy, Mascot, StarRow } from '../components';
 import { bonusModes, levels } from '../data';
+import { DictionarySearchBar } from '../DictionaryView';
 import { DUO_STORIES, UNIT_THEMES, nodesForUnit } from '../duoData';
 import type { DuoStory, PathNodeDef } from '../duoData';
 import { DuoChestSvg, DuoCrownSvg, IconBook, IconCheck, IconLock, IconStar } from '../icons';
@@ -9,6 +10,7 @@ import { t, tf } from '../i18n';
 import { PatoPlay } from '../PatoPlay';
 import { InstallApp } from '../InstallApp';
 import { isUnlocked, nextLevel } from '../progress';
+import { stageColor } from '../stages';
 import { sfx } from '../sound';
 import type { Progress, SessionMode } from '../types';
 
@@ -31,6 +33,9 @@ export function LearnPathView({
   onOpenStory,
   onOpenGuidebook,
   onToast,
+  dictQuery,
+  onDictQuery,
+  onOpenDictionary,
 }: {
   progress: Progress;
   setProgress: (patch: Partial<Progress> | ((prev: Progress) => Partial<Progress>)) => void;
@@ -38,8 +43,12 @@ export function LearnPathView({
   onOpenStory: (story: DuoStory) => void;
   onOpenGuidebook: (unitId: number) => void;
   onToast: (msg: string) => void;
+  dictQuery?: string;
+  onDictQuery?: (value: string) => void;
+  onOpenDictionary?: () => void;
 }) {
   const ui = progress.uiLang;
+  const level = stageColor(progress.schoolStage);
   const currentUnitId = nextLevel(progress);
   const [selectedPop, setSelectedPop] = useState<ActiveNodePopover | null>(null);
   const [chestBurst, setChestBurst] = useState(0);
@@ -59,6 +68,36 @@ export function LearnPathView({
   return (
     <div className="duo-learn-column" onClick={() => setSelectedPop(null)}>
       {chestBurst > 0 && !progress.calmMode && <Confetti burstKey={chestBurst} count={36} />}
+      <section className="duo-kid-hello">
+        <div className="duo-kid-hello-mascot">
+          <Mascot mood="wave" size={96} outfit={progress.equippedOutfit} interactive sound={progress.sound} />
+        </div>
+        <div className="duo-kid-hello-copy">
+          <span className="duo-kid-hello-hi">
+            {progress.name ? tf('kidHelloName', ui, { name: progress.name }) : t('kidHello', ui)}
+          </span>
+          <h1>{t('kidHelloTitle', ui)}</h1>
+          <p>{t('kidHelloSub', ui)}</p>
+        </div>
+        <span
+          className="duo-kid-hello-level"
+          style={{ background: level.soft, color: level.ink, borderColor: level.color }}
+        >
+          <span aria-hidden="true">{level.emoji}</span> {level.name[ui]}
+        </span>
+      </section>
+
+      {onDictQuery && (
+        <div className="duo-home-search" onClick={(e) => e.stopPropagation()}>
+          <DictionarySearchBar
+            value={dictQuery ?? ''}
+            onChange={onDictQuery}
+            onSubmit={() => onOpenDictionary?.()}
+            ui={ui}
+          />
+          <p className="duo-home-search-hint">📖 {t('dictHomeHint', ui)}</p>
+        </div>
+      )}
       <PatoPlay ui={ui} sound={progress.sound} calm={computeAdaptations(progress).calm} outfit={progress.equippedOutfit} />
       <InstallApp ui={ui} />
 
@@ -103,6 +142,9 @@ export function LearnPathView({
                     : undefined
               }
             >
+              <span className="duo-unit-banner-emoji" aria-hidden="true">
+                {unit.emoji}
+              </span>
               <div className="duo-unit-banner-text">
                 <span className="duo-unit-kicker">
                   {tf('sectionUnit', ui, { n: String(unit.id) })} · {unit[ui].skill}
@@ -452,7 +494,7 @@ export function LearnPathView({
                 <strong>{bm[ui].title}</strong>
                 <small>{bm[ui].sub}</small>
               </div>
-              <span className="duo-btn duo-btn-green duo-btn-sm">{t('playBonus', ui).toUpperCase()}</span>
+              <span className="duo-btn duo-btn-green duo-btn-sm">{t('playBonus', ui)}</span>
             </button>
           ))}
         </div>

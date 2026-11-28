@@ -148,7 +148,7 @@ export function ResultScreen({ progress, result, newBadges, onNext, onRepeat, on
         <div className="duo-lesson-bottom-inner">
           <button className="duo-btn duo-btn-outline duo-btn-lg" onClick={onRepeat}>
             <IconRepeat size={17} />
-            <span>{t('repeat', ui).toUpperCase()}</span>
+            <span>{t('repeat', ui)}</span>
           </button>
           <div className="duo-bottom-right-btns">
             {hasNextUnit && (
@@ -156,11 +156,11 @@ export function ResultScreen({ progress, result, newBadges, onNext, onRepeat, on
                 className="duo-btn duo-btn-blue duo-btn-lg"
                 onClick={() => onNext((result.levelId ?? 1) + 1)}
               >
-                <span>{t('nextWorld', ui).toUpperCase()}</span>
+                <span>{t('nextWorld', ui)}</span>
               </button>
             )}
             <button className="duo-btn duo-btn-green duo-btn-lg" onClick={onMap}>
-              <span>{t('continueBtn', ui).toUpperCase()}</span>
+              <span>{t('continueBtn', ui)}</span>
               <IconArrowRight size={17} />
             </button>
           </div>

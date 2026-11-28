@@ -228,6 +228,7 @@ interface SpeechRecognitionAlternativeLike {
 
 interface SpeechRecognitionResultLike {
   length: number;
+  isFinal?: boolean;
   [index: number]: SpeechRecognitionAlternativeLike;
 }
 
@@ -377,6 +378,107 @@ export function listenOnceFromMic(
   return () => {
     try {
       rec.stop();
+    } catch {
+      /* ya detenido */
+    }
+  };
+}
+
+/**
+ * Escucha continua con resultados provisionales.
+ *
+ * Es la base del micrófono de lectura: la transcripción se actualiza mientras el
+ * niño o la niña lee, de modo que se pueden ir marcando las palabras al vuelo.
+ * Devuelve una función para parar, o `null` si el navegador no lo permite.
+ */
+export function listenStreamFromMic(
+  lang: Lang,
+  callbacks: {
+    onTranscript: (partial: { final: string; interim: string }) => void;
+    onError: (errorCode: string) => void;
+    onEnd?: () => void;
+  },
+): (() => void) | null {
+  const Ctor = getSpeechRecognitionCtor();
+  if (!Ctor) {
+    callbacks.onError('unsupported');
+    return null;
+  }
+  stopSpeaking();
+
+  let stopped = false;
+  let committed = '';
+  let latestFinal = '';
+  let rec: SpeechRecognitionLike | null = null;
+  let restarts = 0;
+  let restartTimer: number | null = null;
+
+  const startRecognition = () => {
+    if (stopped) return;
+    const session: SpeechRecognitionLike = new Ctor();
+    rec = session;
+    session.lang = lang === 'eu' ? 'eu-ES' : lang === 'en' ? 'en-US' : 'es-ES';
+    session.interimResults = true;
+    session.maxAlternatives = 1;
+    session.continuous = true;
+
+    session.onresult = (ev) => {
+      const finals: string[] = [];
+      let interim = '';
+      for (let i = 0; i < ev.results.length; i++) {
+        const res = ev.results[i];
+        if (!res) continue;
+        const text = res[0]?.transcript ?? '';
+        if (res.isFinal) finals[i] = text.trim();
+        else interim = `${interim} ${text}`.trim();
+      }
+      const finalText = [committed, ...finals.filter(Boolean)].join(' ').trim();
+      latestFinal = finalText;
+      callbacks.onTranscript({ final: finalText, interim });
+    };
+
+    session.onerror = (ev) => {
+      const code = ev.error || 'mic-error';
+      // Silencios y cortes suaves: el niño puede estar pensando la siguiente palabra.
+      if (code === 'no-speech' || code === 'aborted') return;
+      stopped = true;
+      if (restartTimer) window.clearTimeout(restartTimer);
+      callbacks.onError(code === 'not-allowed' || code === 'service-not-allowed' ? 'denied' : code);
+    };
+
+    session.onend = () => {
+      if (stopped) {
+        callbacks.onEnd?.();
+        return;
+      }
+      // Los navegadores cortan la escucha tras unos segundos de silencio: se
+      // vuelve a arrancar para no obligar a pulsar el micro en cada frase.
+      if (restarts < 60) {
+        restarts += 1;
+        committed = latestFinal;
+        restartTimer = window.setTimeout(() => startRecognition(), 120);
+      } else {
+        stopped = true;
+        callbacks.onEnd?.();
+      }
+    };
+
+    try {
+      session.start();
+    } catch {
+      stopped = true;
+      callbacks.onError('start-failed');
+    }
+  };
+
+  committed = '';
+  startRecognition();
+
+  return () => {
+    stopped = true;
+    if (restartTimer) window.clearTimeout(restartTimer);
+    try {
+      rec?.stop();
     } catch {
       /* ya detenido */
     }

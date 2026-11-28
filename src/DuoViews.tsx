@@ -273,7 +273,7 @@ export function LettersView({
               onClick={() => (onStartSyllableStage ? onStartSyllableStage() : onStartLettersLesson())}
             >
               <IconPlay size={16} />
-              <span>{ui === 'eu' ? '1 → 2 → 3 PROGRESIOA +15 XP' : 'PROGRESIÓN 1 → 2 → 3 +15 XP'}</span>
+              <span>{ui === 'eu' ? 'Progresioa 1 → 2 → 3 +15 XP' : 'Progresión 1 → 2 → 3 +15 XP'}</span>
             </button>
             <button className="duo-btn duo-btn-outline" onClick={onStartLettersLesson}>
               <span>{t('lettersPracticeBtn', ui)}</span>
@@ -359,9 +359,9 @@ export function LettersView({
                   onClick={() => onStartSyllableStage(sc.stage)}
                 >
                   {!sc.unlocked
-                    ? `⚡ ${ui === 'eu' ? 'HONA SALTO EGIN' : 'SALTAR A ESTA ETAPA'}`
+                    ? `⚡ ${ui === 'eu' ? 'Salto egin hona' : 'Saltar a esta etapa'}`
                     : sc.done
-                      ? `${ui === 'eu' ? 'ERRIPIKATU' : 'REPASAR'} +10 XP`
+                      ? `${ui === 'eu' ? 'Errepikatu' : 'Repasar'} +10 XP`
                       : `${t('startPill', ui)} +15 XP`}
                 </button>
               </div>
@@ -660,7 +660,7 @@ export function StoryPlayerModal({
                 onComplete(story.id, story.xpReward);
               }}
             >
-              {t('continueBtn', ui).toUpperCase()}
+              {t('continueBtn', ui)}
             </button>
           )}
         </div>
@@ -774,7 +774,7 @@ export function PracticeHubView({
             className="duo-btn duo-btn-white"
             onClick={() => onStartMode('practice', null)}
           >
-            ❤️ {ui === 'eu' ? 'PRAKTIKA AZKARRA (+1 BIHOTZ)' : 'PRÁCTICA RÁPIDA (+1 VIDA)'}
+            ❤️ {ui === 'eu' ? 'Praktika azkarra (+1 bihotz)' : 'Práctica rápida (+1 vida)'}
           </button>
         </div>
         <Mascot mood="cheer" size={116} outfit={progress.equippedOutfit} interactive sound={progress.sound} />
@@ -921,7 +921,7 @@ export function LeaderboardView({
                 );
               }}
             >
-              ▲ {ui === 'eu' ? 'IGO LIGAZ ORAIN' : 'ASCENDER DE LIGA'}
+              ▲ {ui === 'eu' ? 'Igo ligaz orain' : 'Ascender de liga'}
             </button>
           )}
         </div>
@@ -996,7 +996,7 @@ export function QuestsView({
       <div className="duo-monthly-quest-banner">
         <div className="duo-mq-copy">
           <span className="duo-mq-pill">
-            {ui === 'eu' ? 'AZAROKO ERRONKA' : 'DESAFÍO DEL MES'}
+            {ui === 'eu' ? 'Azaroko erronka' : 'Desafío del mes'}
           </span>
           <h1>{ui === 'eu' ? 'Pato Venturaren Irakurketa Jaia' : 'El Festival de Lectura de Pato Ventura'}</h1>
           <p>
@@ -1167,7 +1167,7 @@ export function ShopView({
               })
             }
           >
-            {progress.unlimitedHearts ? '♾️' : progress.hearts >= 5 ? 'LLENAS' : '100 💎'}
+            {progress.unlimitedHearts ? '♾️' : progress.hearts >= 5 ? 'Llenas' : '100 💎'}
           </button>
         </div>
       </section>
@@ -1354,7 +1354,7 @@ export function ProfileView({
           </button>
           <button className="duo-btn duo-btn-blue duo-btn-sm" onClick={onOpenSettings}>
             <IconSettings size={15} />
-            <span>{t('settings', ui).toUpperCase()}</span>
+            <span>{t('settings', ui)}</span>
           </button>
         </div>
       </div>
