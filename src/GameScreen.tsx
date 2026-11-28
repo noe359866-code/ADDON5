@@ -1481,13 +1481,13 @@ export function GameScreen({ progress, setProgress, mode, levelId, nodeKey, onEx
                   disabled={hintShown}
                 >
                   <IconLightbulb size={17} />
-                  <span>{t('hint', ui).toUpperCase()}</span>
+                  <span>{t('hint', ui)}</span>
                 </button>
               </div>
 
               {current.kind === 'action' ? (
                 <button className="duo-btn duo-btn-green duo-btn-lg" onClick={completeAction}>
-                  <span>{t('continueBtn', ui).toUpperCase()}</span>
+                  <span>{t('continueBtn', ui)}</span>
                 </button>
               ) : current.kind === 'pairs' ? (
                 <span className="duo-pairs-counter">
@@ -1499,7 +1499,7 @@ export function GameScreen({ progress, setProgress, mode, levelId, nodeKey, onEx
                   disabled={!canCheck}
                   onClick={checkCurrentAnswer}
                 >
-                  <span>{t('check', ui).toUpperCase()}</span>
+                  <span>{t('check', ui)}</span>
                 </button>
               )}
             </>
@@ -1525,7 +1525,7 @@ export function GameScreen({ progress, setProgress, mode, levelId, nodeKey, onEx
                 onClick={() => advance()}
                 autoFocus
               >
-                <span>{feedback === 'correct' ? t('continueBtn', ui).toUpperCase() : t('gotItBtn', ui)}</span>
+                <span>{feedback === 'correct' ? t('continueBtn', ui) : t('gotItBtn', ui)}</span>
                 <IconArrowRight size={17} />
               </button>
             </>
@@ -1596,7 +1596,7 @@ export function GameScreen({ progress, setProgress, mode, levelId, nodeKey, onEx
             <p>{t('exitSub', ui)}</p>
             <div className="duo-pop-btn-col">
               <button className="duo-btn duo-btn-blue duo-btn-full" onClick={() => setShowExit(false)}>
-                {t('exitNo', ui).toUpperCase()}
+                {t('exitNo', ui)}
               </button>
               <button
                 className="duo-btn duo-btn-red-ghost duo-btn-full"
@@ -1605,7 +1605,7 @@ export function GameScreen({ progress, setProgress, mode, levelId, nodeKey, onEx
                   onExit();
                 }}
               >
-                {t('exitYes', ui).toUpperCase()}
+                {t('exitYes', ui)}
               </button>
             </div>
           </div>

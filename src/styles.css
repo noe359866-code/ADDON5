@@ -2784,3 +2784,994 @@ body.calm .confetti, body.calm .xp-float, body.calm .combo-pill { display: none 
 .install-app > span { font-size: 1.6rem; }
 .install-app > div { flex: 1 1 160px; }
 .install-app p { margin: 3px 0 0; color: var(--duo-wolf); font-size: .82rem; }
+
+/* ==================================================================
+   Niveles por color (sustituyen a los cursos escolares)
+   ================================================================== */
+
+.stage-colors-wrap { display: flex; flex-direction: column; gap: 8px; }
+.stage-colors {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+}
+.stage-colors.is-compact { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+
+.stage-color {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 2px solid var(--duo-swan);
+  border-bottom-width: 4px;
+  background: var(--surface);
+  color: var(--duo-eel);
+  transition: transform 0.1s ease, border-color 0.12s ease, background 0.12s ease;
+}
+.stage-color:hover { border-color: var(--stage); background: var(--stage-soft); }
+.stage-color:active { transform: translateY(2px); border-bottom-width: 2px; }
+.stage-color.selected {
+  border-color: var(--stage);
+  background: var(--stage-soft);
+  box-shadow: 0 0 0 2px var(--stage) inset;
+}
+.stage-color.is-compact { padding: 9px 10px; gap: 8px; border-radius: 13px; }
+
+.stage-color-dot {
+  position: relative;
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--stage);
+  border-bottom: 3px solid var(--stage-lip);
+  color: #fff;
+}
+.stage-color.is-compact .stage-color-dot { width: 34px; height: 34px; }
+.stage-color-emoji { font-size: 1.35rem; line-height: 1; }
+.stage-color.is-compact .stage-color-emoji { font-size: 1rem; }
+.stage-color-shape {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  font-size: 0.7rem;
+  font-weight: 900;
+  line-height: 1;
+  background: var(--surface);
+  color: var(--stage-ink);
+  border: 2px solid var(--stage);
+}
+.stage-color.is-compact .stage-color-shape { width: 16px; height: 16px; font-size: 0.58rem; right: -3px; bottom: -3px; }
+
+.stage-color-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.stage-color-copy strong { font-size: 0.95rem; font-weight: 900; color: var(--stage-ink); }
+.stage-color-copy small { font-size: 0.75rem; font-weight: 700; color: var(--duo-wolf); line-height: 1.25; }
+.stage-color.is-compact .stage-color-copy strong { font-size: 0.85rem; }
+
+.stage-color-check {
+  margin-left: auto;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--stage);
+  color: #fff;
+}
+.stage-colors-legend { margin: 0; font-size: 0.78rem; font-weight: 700; color: var(--duo-wolf); }
+
+/* Punto de color del nivel en la barra superior */
+.duo-stat-pill.flag { position: relative; }
+.duo-stage-dot {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+  display: grid;
+  place-items: center;
+  font-size: 0.65rem;
+  line-height: 1;
+}
+
+/* ==================================================================
+   Buscador de palabras (home + diccionario)
+   ================================================================== */
+
+.duo-home-search { display: flex; flex-direction: column; gap: 6px; }
+.duo-home-search-hint { margin: 0; font-size: 0.78rem; font-weight: 700; color: var(--duo-wolf); }
+
+.duo-dict-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 14px;
+  border-radius: 999px;
+  border: 2px solid var(--duo-swan);
+  background: var(--surface);
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.duo-dict-search:focus-within { border-color: var(--duo-blue); box-shadow: 0 0 0 3px var(--duo-blue-soft); }
+.duo-dict-search.is-big { padding: 8px 10px 8px 18px; border-bottom-width: 4px; }
+.duo-dict-search-icon { font-size: 1.1rem; line-height: 1; flex: 0 0 auto; }
+.duo-dict-search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  padding: 8px 4px;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--duo-eel);
+  outline: none;
+}
+.duo-dict-search.is-big input { font-size: 1.1rem; }
+.duo-dict-search input::placeholder { color: var(--duo-hare); font-weight: 700; }
+.duo-dict-search input::-webkit-search-cancel-button { display: none; }
+.duo-dict-clear {
+  flex: 0 0 auto;
+  border: none;
+  background: var(--duo-polar);
+  color: var(--duo-wolf);
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-weight: 900;
+  display: grid;
+  place-items: center;
+}
+.duo-dict-clear:hover { background: var(--duo-swan); }
+
+/* ==================================================================
+   Diccionario ilustrado
+   ================================================================== */
+
+.duo-dict-level-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 2px solid currentColor;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+.duo-dict-hero { align-items: flex-start; }
+.duo-dict-toolbar { display: flex; flex-direction: column; gap: 12px; }
+.duo-dict-filters {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+.duo-dict-filter {
+  flex: 0 0 auto;
+  border: 2px solid var(--duo-swan);
+  border-bottom-width: 3px;
+  background: var(--surface);
+  color: var(--duo-wolf);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+.duo-dict-filter:hover { border-color: var(--duo-blue-border); }
+.duo-dict-filter.active {
+  background: var(--duo-blue-soft);
+  border-color: var(--duo-blue);
+  color: var(--duo-blue-lip);
+}
+.duo-dict-status { font-size: 0.82rem; font-weight: 800; color: var(--duo-wolf); }
+.duo-dict-subtitle { display: flex; align-items: center; gap: 8px; font-size: 0.95rem; font-weight: 900; margin-bottom: 10px; }
+.duo-dict-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.duo-dict-chip {
+  border: 2px solid var(--duo-swan);
+  border-bottom-width: 3px;
+  background: var(--surface);
+  color: var(--duo-eel);
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-weight: 800;
+  font-size: 0.86rem;
+}
+.duo-dict-chip:hover { border-color: var(--duo-yellow-lip); background: var(--duo-yellow-soft); }
+.duo-dict-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+  border: 2px dashed var(--duo-swan);
+  border-radius: 18px;
+  padding: 18px;
+  color: var(--duo-wolf);
+  font-weight: 700;
+}
+.duo-dict-empty > span { font-size: 1.6rem; }
+.duo-dict-empty p { margin: 0; }
+
+.duo-dict-results { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.duo-dict-card {
+  border: 2px solid var(--duo-swan);
+  border-bottom-width: 4px;
+  border-radius: 18px;
+  background: var(--surface);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.duo-dict-card-head { display: flex; align-items: center; gap: 12px; }
+.duo-dict-emoji {
+  width: 52px;
+  height: 52px;
+  flex: 0 0 auto;
+  border-radius: 16px;
+  background: var(--duo-polar);
+  display: grid;
+  place-items: center;
+  font-size: 1.8rem;
+}
+.duo-dict-card-title { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.duo-dict-card-title strong { font-size: 1.2rem; font-weight: 900; }
+.duo-dict-cat { font-size: 0.75rem; font-weight: 800; color: var(--duo-wolf); }
+.duo-dict-found {
+  margin-left: auto;
+  font-size: 0.72rem;
+  font-weight: 900;
+  color: var(--duo-green-lip);
+  background: var(--duo-green-soft);
+  border-radius: 999px;
+  padding: 4px 10px;
+  white-space: nowrap;
+}
+.duo-dict-translations { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.duo-dict-translations li {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1.1fr) minmax(0, 1fr) 40px;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 11px;
+  background: var(--duo-polar);
+}
+.duo-dict-translations li.is-active { background: var(--duo-blue-soft); }
+.duo-dict-lang {
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  color: var(--duo-wolf);
+  background: var(--surface);
+  border-radius: 7px;
+  padding: 3px 0;
+  text-align: center;
+}
+.duo-dict-word { font-weight: 900; font-size: 1rem; overflow-wrap: anywhere; }
+.duo-dict-syls { font-size: 0.78rem; font-weight: 700; color: var(--duo-wolf); letter-spacing: 0.04em; overflow-wrap: anywhere; }
+.duo-dict-speak {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid var(--duo-swan);
+  border-bottom-width: 3px;
+  background: var(--surface);
+  font-size: 0.95rem;
+  display: grid;
+  place-items: center;
+}
+.duo-dict-speak:hover { background: var(--duo-yellow-soft); border-color: var(--duo-yellow-lip); }
+.duo-dict-speak:active { transform: translateY(1px); }
+
+/* ==================================================================
+   Micrófono de lectura con seguimiento
+   ================================================================== */
+
+.duo-read-hero { align-items: flex-start; }
+.duo-read-picker { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.duo-read-picker-label { font-size: 0.8rem; font-weight: 900; color: var(--duo-wolf); text-transform: uppercase; letter-spacing: 0.05em; }
+.duo-read-passages { display: flex; flex-wrap: wrap; gap: 8px; flex: 1 1 240px; }
+.duo-read-passage-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 2px solid var(--duo-swan);
+  border-bottom-width: 3px;
+  background: var(--surface);
+  color: var(--duo-eel);
+  border-radius: 999px;
+  padding: 6px 13px;
+  font-weight: 800;
+  font-size: 0.82rem;
+}
+.duo-read-passage-btn.active { background: var(--duo-purple-soft); border-color: var(--duo-purple); color: var(--duo-purple-lip); }
+
+.duo-read-card {
+  border: 2px solid var(--duo-swan);
+  border-bottom-width: 4px;
+  border-radius: 22px;
+  background: var(--surface);
+  padding: 18px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.duo-read-card-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.duo-read-card-head h2 { font-size: 1.05rem; font-weight: 900; margin: 0; }
+.duo-read-emoji { font-size: 1.6rem; line-height: 1; }
+.duo-read-mic-state {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  color: var(--duo-wolf);
+  background: var(--duo-polar);
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+.duo-read-mic-state.on { color: var(--duo-red-lip); background: var(--duo-red-soft); }
+
+.duo-read-text {
+  margin: 0;
+  font-size: clamp(1.35rem, 2.4vw, 1.85rem);
+  line-height: 2.1;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  overflow-wrap: anywhere;
+}
+.duo-read-word {
+  display: inline-block;
+  vertical-align: baseline;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 2px solid transparent;
+  border-radius: 9px;
+  padding: 1px 4px;
+  margin: 0 1px;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+button.duo-read-word { cursor: pointer; }
+button.duo-read-word:hover { background: var(--duo-polar); }
+.duo-read-word.is-read { background: var(--duo-green-soft); color: var(--duo-green-lip); border-color: var(--duo-green); }
+.duo-read-word.is-current {
+  background: var(--duo-yellow-soft);
+  color: var(--duo-yellow-lip);
+  border-color: var(--duo-yellow);
+  animation: read-current 1.4s ease-in-out infinite;
+}
+.duo-read-word.is-skipped {
+  background: var(--duo-orange-soft);
+  color: var(--duo-orange-lip);
+  border-color: var(--duo-orange);
+  border-style: dashed;
+}
+@keyframes read-current {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 200, 0, 0.45); }
+  50% { box-shadow: 0 0 0 6px rgba(255, 200, 0, 0); }
+}
+
+.duo-read-track { height: 10px; border-radius: 999px; background: var(--duo-swan); overflow: hidden; }
+.duo-read-track-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--duo-green) 0%, var(--duo-mask-green) 100%);
+  transition: width 0.25s ease;
+}
+.duo-read-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--duo-wolf);
+}
+
+.duo-read-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.duo-read-mic-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 22px;
+  border-radius: 999px;
+  border: 2px solid var(--duo-green);
+  border-bottom: 5px solid var(--duo-green-lip);
+  background: var(--duo-green);
+  color: #fff;
+  font-weight: 900;
+  font-size: 0.95rem;
+  letter-spacing: 0.03em;
+  position: relative;
+}
+.duo-read-mic-btn:hover:not(:disabled) { filter: brightness(1.05); }
+.duo-read-mic-btn:active:not(:disabled) { transform: translateY(2px); border-bottom-width: 3px; }
+.duo-read-mic-btn:disabled { background: var(--duo-swan); border-color: var(--duo-swan); color: var(--duo-hare); }
+.duo-read-mic-btn.is-on {
+  background: var(--duo-red);
+  border-color: var(--duo-red);
+  border-bottom-color: var(--duo-red-lip);
+  animation: read-current 1.6s ease-in-out infinite;
+}
+
+.duo-read-status { display: flex; flex-direction: column; gap: 6px; font-size: 0.88rem; font-weight: 700; color: var(--duo-wolf); }
+.duo-read-listening { display: inline-flex; align-items: center; gap: 8px; font-weight: 900; color: var(--duo-red-lip); }
+.duo-read-pulse {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--duo-red);
+  animation: read-pulse 1.1s ease-in-out infinite;
+}
+@keyframes read-pulse { 0%, 100% { transform: scale(0.8); opacity: 0.55; } 50% { transform: scale(1.25); opacity: 1; } }
+.duo-read-heard { overflow-wrap: anywhere; }
+.duo-read-hint { color: var(--duo-hare); }
+.duo-read-error { color: var(--duo-orange-lip); font-weight: 800; }
+.duo-read-note { margin: 0; font-size: 0.78rem; font-weight: 700; color: var(--duo-wolf); }
+
+.duo-read-result {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px;
+  border: 2px solid var(--duo-green);
+  border-radius: 22px;
+  background: var(--duo-green-soft);
+  padding: 18px 20px;
+}
+.duo-read-result-copy { flex: 1 1 240px; }
+.duo-read-result-copy strong { display: block; font-size: 1.1rem; font-weight: 900; color: var(--duo-green-lip); }
+.duo-read-result-copy p { margin: 4px 0 0; font-size: 0.88rem; font-weight: 700; color: var(--duo-eel); }
+.duo-read-feedback { font-weight: 800 !important; }
+.duo-read-result-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.duo-read-privacy { margin: 0; font-size: 0.74rem; font-weight: 700; color: var(--duo-hare); }
+
+/* Herramientas de lectura en la columna derecha */
+.duo-rail-tools { display: flex; flex-direction: column; gap: 8px; }
+.duo-rail-tool {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 13px;
+  border: 2px solid var(--duo-swan);
+  border-bottom-width: 3px;
+  background: var(--surface);
+  color: var(--duo-eel);
+}
+.duo-rail-tool:hover { background: var(--duo-polar); }
+.duo-rail-tool > span { font-size: 1.3rem; }
+.duo-rail-tool strong { font-size: 0.86rem; font-weight: 900; }
+.duo-rail-tool small { display: block; font-size: 0.72rem; font-weight: 700; color: var(--duo-wolf); line-height: 1.25; }
+
+/* Ajustes oscuros y de accesibilidad */
+body.dark .stage-color,
+body.dark .stage-color.selected { background: var(--surface); }
+body.dark .stage-color:hover { background: var(--duo-polar); }
+body.dark .stage-color.selected { background: var(--duo-polar); border-color: var(--stage); }
+body.dark .stage-color-copy strong { color: var(--stage); }
+body.dark .stage-color-shape { background: var(--duo-polar); }
+body.dark .duo-read-result-copy strong { color: var(--duo-mask-green); }
+body.dark .duo-read-result { background: var(--duo-green-soft); }
+body.dark .duo-dict-emoji { background: var(--duo-polar); }
+body.dark .duo-dict-lang { background: var(--duo-polar); }
+body.dark .duo-dict-card { background: var(--surface); }
+body.dark .duo-read-word.is-read { color: var(--duo-mask-green); }
+body.dark .duo-read-word.is-current { color: var(--duo-yellow); }
+body.dark .duo-read-word.is-skipped { color: var(--duo-orange); }
+body.dark .duo-dict-translations li { background: var(--duo-polar); }
+body.dark .duo-dict-translations li.is-active { background: var(--duo-blue-soft); }
+body.colorblind .stage-color { border-style: solid; }
+body.colorblind .duo-read-word.is-skipped { border-style: dashed; text-decoration: underline dotted; }
+
+@media (max-width: 720px) {
+  .stage-colors { grid-template-columns: 1fr; }
+  .stage-colors.is-compact { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stage-color-copy small { display: none; }
+  .stage-color { padding: 10px 12px; }
+  .duo-dict-translations li { grid-template-columns: 30px minmax(0, 1fr) 36px; }
+  .duo-dict-syls { grid-column: 1 / -1; padding-left: 2px; }
+  .duo-read-controls > .duo-btn,
+  .duo-read-mic-btn { flex: 1 1 100%; justify-content: center; }
+  .duo-read-result-actions { width: 100%; }
+  .duo-read-result-actions > .duo-btn { flex: 1 1 100%; }
+  .duo-dict-toolbar .duo-dict-search .duo-btn { display: none; }
+}
+
+/* ==================================================================
+   🌈 TEMA INFANTIL
+   Colores alegres, formas redondeadas, textos grandes y en minúscula
+   (más fáciles de reconocer para quien empieza a leer), mascota más
+   presente y detalles de juego. Respeta «Menos estímulos» y
+   prefers-reduced-motion: las animaciones se apagan solas.
+   ================================================================== */
+
+:root {
+  --kid-shadow: 0 18px 34px -24px rgba(28, 176, 246, 0.55);
+  --kid-radius: 26px;
+  --kid-green-grass: #b9e98a;
+}
+
+/* Fondo de cielo con sol y nubes suaves */
+body:not(.dark) {
+  background-color: #f7fdff;
+  background-image:
+    radial-gradient(880px 340px at 8% -80px, #d5f2ff 0%, rgba(213, 242, 255, 0) 72%),
+    radial-gradient(760px 340px at 92% -60px, #fff0bd 0%, rgba(255, 240, 189, 0) 74%),
+    linear-gradient(180deg, #f2fbff 0%, #ffffff 46%, #fffdf3 100%);
+  background-attachment: fixed;
+}
+body.dark { background: #101c22; }
+
+/* Texto base más grande y legible */
+body { font-size: 17px; }
+body.big-text { font-size: 20px; }
+h1 { font-size: clamp(1.6rem, 3vw, 1.95rem); }
+.duo-letters-hero h1,
+.duo-shop-banner h1 { font-size: 1.7rem; line-height: 1.15; }
+.duo-letters-hero p,
+.duo-shop-banner p { font-size: 0.98rem; }
+
+/* Palabras completas y en minúscula: mejor para lectores principiantes */
+.duo-btn,
+.duo-nav-item,
+.duo-guidebook-btn,
+.duo-unit-kicker,
+.duo-floating-start,
+.duo-practice-cta,
+.duo-super-pill {
+  text-transform: none;
+  letter-spacing: 0.01em;
+}
+
+/* Botones grandes y blanditos */
+.duo-btn {
+  min-height: 50px;
+  padding: 12px 22px;
+  border-radius: 18px;
+  font-size: 1rem;
+  font-weight: 900;
+  border-bottom-width: 5px;
+}
+.duo-btn:active:not(:disabled) { border-bottom-width: 3px; }
+.duo-btn-sm { min-height: 42px; font-size: 0.88rem; border-radius: 15px; }
+.duo-btn-lg {
+  min-height: 58px;
+  border-radius: 21px;
+  font-size: 1.08rem;
+  padding: 15px 30px;
+}
+
+/* ── Saludo con Pato Ventura ───────────────────────────────────────── */
+.duo-kid-hello {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 18px 22px;
+  border-radius: var(--kid-radius);
+  border: 3px solid #ffe27a;
+  border-bottom: 7px solid #f0c400;
+  background: linear-gradient(150deg, #fff6cf 0%, #fffdf0 58%, #ffffff 100%);
+  box-shadow: 0 20px 34px -30px rgba(240, 196, 0, 0.9);
+}
+.duo-kid-hello::before,
+.duo-kid-hello::after {
+  position: absolute;
+  pointer-events: none;
+  line-height: 1;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.08));
+}
+.duo-kid-hello::before {
+  content: '☁️';
+  top: -18px;
+  left: 14px;
+  font-size: 1.7rem;
+  animation: kid-float 7s ease-in-out infinite;
+}
+.duo-kid-hello::after {
+  content: '🌈';
+  right: -10px;
+  bottom: -14px;
+  font-size: 2.1rem;
+  transform: rotate(-10deg);
+  animation: kid-float-slow 6s ease-in-out infinite;
+}
+@keyframes kid-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-6px) rotate(3deg); }
+}
+.duo-kid-hello::after { animation-name: kid-float-slow; }
+@keyframes kid-float-slow {
+  0%, 100% { transform: translateY(0) rotate(-10deg); }
+  50% { transform: translateY(-5px) rotate(-4deg); }
+}
+.duo-kid-hello-mascot { flex: 0 0 auto; margin: -6px -4px -10px 0; }
+.duo-kid-hello-copy { flex: 1 1 220px; min-width: 0; }
+.duo-kid-hello-hi {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.95rem;
+  font-weight: 900;
+  color: #a47700;
+  background: #ffffff;
+  border: 2px solid #ffe27a;
+  border-radius: 999px;
+  padding: 4px 12px;
+  margin-bottom: 6px;
+}
+.duo-kid-hello-copy h1 {
+  margin: 0 0 4px;
+  font-size: clamp(1.45rem, 3.4vw, 1.8rem);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--duo-eel);
+}
+.duo-kid-hello-copy p { margin: 0; font-size: 0.95rem; font-weight: 800; color: var(--duo-wolf); }
+.duo-kid-hello-level {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 2px solid currentColor;
+  font-size: 0.82rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+/* Buscador de casa más amable */
+.duo-home-search .duo-dict-search { border-radius: 22px; border-width: 3px; background: var(--surface); }
+.duo-home-search-hint { font-size: 0.82rem; }
+
+/* ── Camino de unidades ────────────────────────────────────────────── */
+.duo-learn-column { gap: 24px; }
+.duo-unit-banner {
+  border-radius: var(--kid-radius);
+  border-bottom-width: 7px;
+  padding: 20px 22px;
+  gap: 14px;
+  box-shadow: 0 20px 36px -30px rgba(0, 0, 0, 0.7);
+}
+.duo-unit-banner-emoji {
+  flex: 0 0 auto;
+  animation: kid-float 8s ease-in-out infinite;
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.28);
+  border-bottom: 3px solid rgba(0, 0, 0, 0.14);
+  font-size: 2rem;
+  line-height: 1;
+}
+.duo-unit-banner-text { flex: 1 1 180px; }
+.duo-unit-banner h2 { font-size: 1.48rem; line-height: 1.12; }
+.duo-unit-banner p { font-size: 0.94rem; }
+.duo-unit-kicker { font-size: 0.78rem; opacity: 0.95; }
+.duo-guidebook-btn { border-radius: 16px; padding: 10px 16px; font-size: 0.86rem; }
+
+.duo-serpentine-track { gap: 22px; padding: 30px 0 16px; }
+.duo-pebble-btn {
+  width: 86px;
+  height: 78px;
+  border-bottom-width: 9px;
+}
+.duo-pebble-btn:active { border-bottom-width: 5px; }
+.duo-pebble-shine { top: 9px; left: 18px; width: 30px; height: 12px; }
+.duo-node-emoji { font-size: 2rem; }
+.duo-node-stage-num { font-size: 1.95rem; }
+.duo-node-subtag { font-size: 0.8rem; padding: 4px 12px; border-width: 2px; }
+.duo-floating-start {
+  padding: 9px 16px;
+  border-radius: 999px;
+  border-width: 3px;
+  font-size: 0.9rem;
+  box-shadow: 0 8px 18px -8px rgba(0, 0, 0, 0.35);
+}
+.duo-path-character.side-left { left: 8px; }
+.duo-path-character.side-right { right: 8px; }
+
+/* ── Tarjetas y paneles ────────────────────────────────────────────── */
+.duo-letters-hero,
+.duo-shop-banner,
+.duo-monthly-quest-banner,
+.duo-super-practice-banner {
+  border-radius: var(--kid-radius);
+  border-bottom-width: 5px;
+  box-shadow: var(--kid-shadow);
+}
+.duo-letters-hero,
+.duo-shop-banner,
+.duo-monthly-quest-banner {
+  background: linear-gradient(180deg, #ffffff 0%, var(--duo-polar) 100%);
+}
+.duo-rail-card {
+  border-radius: var(--kid-radius);
+  border-bottom-width: 4px;
+  box-shadow: 0 14px 26px -26px rgba(0, 0, 0, 0.65);
+}
+.duo-rail-head h3 { font-size: 1rem; }
+.duo-rail-tool { border-radius: 18px; border-bottom-width: 4px; padding: 12px 14px; }
+.duo-rail-tool > span { font-size: 1.5rem; }
+.duo-rail-tool strong { font-size: 0.92rem; }
+.duo-rail-tool small { font-size: 0.78rem; }
+
+/* ── Barra superior ────────────────────────────────────────────────── */
+.duo-stat-pill {
+  min-height: 46px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 2px solid var(--duo-swan);
+  background: var(--surface);
+  font-size: 1.05rem;
+}
+.duo-stat-pill:hover,
+.duo-stat-pill.active { background: var(--duo-yellow-soft); border-color: var(--duo-yellow-lip); }
+.duo-stat-pill.flag { padding: 5px 9px; }
+.duo-icon-round {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  font-size: 1.15rem;
+}
+.duo-top-popover { border-radius: 22px; border-bottom-width: 4px; padding: 18px; }
+.duo-top-popover h4 { font-size: 0.86rem; }
+
+/* ── Navegación ────────────────────────────────────────────────────── */
+.duo-nav-item {
+  gap: 14px;
+  padding: 11px 14px;
+  border-radius: 18px;
+  font-size: 0.95rem;
+  font-weight: 900;
+}
+.duo-nav-icon-wrap svg { width: 32px; height: 32px; }
+.duo-nav-item.active {
+  background: var(--duo-blue-soft);
+  border-color: var(--duo-blue);
+  border-bottom-width: 4px;
+  color: var(--duo-blue-lip);
+}
+.duo-nav-item:hover:not(.active) { background: var(--duo-polar); }
+.duo-nav-badge { border-radius: 999px; font-size: 0.72rem; }
+.duo-brand-owl { width: 46px; height: 46px; border-radius: 15px; }
+.duo-wordmark { font-size: 1.8rem; }
+
+/* ── Opciones de los ejercicios ────────────────────────────────────── */
+.option {
+  min-height: 110px;
+  border-radius: 22px;
+  font-size: 1.02rem;
+  padding: 18px 16px;
+}
+.option:hover:not(:disabled) { border-color: var(--duo-blue-border); }
+.duo-choice-card,
+.choice-card,
+.support-card { border-radius: 20px; }
+
+/* ── Tarjetas de práctica ──────────────────────────────────────────── */
+.duo-practice-row { border-radius: 22px; padding: 18px; border-bottom-width: 5px; }
+.duo-practice-icon { border-radius: 18px; font-size: 1.85rem; }
+.duo-practice-copy strong { font-size: 1.08rem; }
+.duo-practice-copy p { font-size: 0.9rem; }
+.duo-practice-cta { border-radius: 999px; font-size: 0.82rem; }
+
+/* ── Onboarding ────────────────────────────────────────────────────── */
+.duo-onboarding { padding: 26px 20px 64px; }
+.duo-onb-header { border-bottom: none; padding-bottom: 10px; }
+.duo-onb-mascot-row { border-bottom: 2px dashed var(--duo-swan); }
+.duo-onb-card .onb-foot,
+.duo-onb-card .onb-note { font-size: 0.86rem; }
+.duo-onb-card {
+  border-radius: 30px;
+  padding: 28px 30px;
+  border-bottom-width: 5px;
+  box-shadow: 0 30px 60px -45px rgba(0, 0, 0, 0.55);
+}
+.duo-onb-card h1 { font-size: 1.62rem; line-height: 1.15; }
+.duo-onb-card .onb-sub { font-size: 0.96rem; }
+.duo-speech-cloud {
+  border-radius: 22px;
+  border-color: #ffe27a;
+  background: linear-gradient(160deg, #fff6cf 0%, #fffdf0 100%);
+}
+.duo-speech-cloud strong { font-size: 1.05rem; }
+.duo-course-card { border-radius: 22px; padding: 22px 16px; }
+.duo-course-card strong { font-size: 1.02rem; }
+.duo-course-card small { font-size: 0.84rem; }
+.choice-card { padding: 18px 14px; }
+.choice-card strong { font-size: 0.98rem; }
+.support-card { padding: 14px 16px; }
+
+/* ── Selector de color ─────────────────────────────────────────────── */
+.stage-color { border-radius: 20px; padding: 14px; border-bottom-width: 5px; }
+.stage-color-copy strong { font-size: 1.02rem; }
+.stage-color-copy small { font-size: 0.8rem; }
+.stage-color-dot { width: 50px; height: 50px; }
+.stage-color-emoji { font-size: 1.5rem; }
+
+/* ── Diccionario y micrófono ───────────────────────────────────────── */
+.duo-dict-search { border-radius: 24px; border-width: 3px; }
+.duo-dict-search.is-big { padding: 10px 12px 10px 20px; }
+.duo-dict-search input { font-size: 1.05rem; }
+.duo-dict-filter,
+.duo-dict-chip,
+.duo-read-passage-btn {
+  border-radius: 999px;
+  font-size: 0.9rem;
+  padding: 9px 16px;
+  border-bottom-width: 4px;
+}
+.duo-dict-card,
+.duo-read-card { border-radius: var(--kid-radius); border-bottom-width: 5px; }
+.duo-dict-card { padding: 16px 18px; }
+.duo-dict-card-title strong { font-size: 1.3rem; }
+.duo-dict-emoji { width: 58px; height: 58px; border-radius: 18px; font-size: 2rem; }
+.duo-dict-word { font-size: 1.06rem; }
+.duo-dict-speak { width: 40px; height: 40px; font-size: 1.05rem; }
+.duo-read-card { padding: 22px 24px 24px; }
+.duo-read-text { font-size: clamp(1.5rem, 2.8vw, 2.05rem); line-height: 2.15; }
+.duo-read-word { border-radius: 12px; padding: 2px 6px; }
+.duo-read-mic-btn { min-height: 56px; font-size: 1.02rem; }
+.duo-read-result { border-radius: var(--kid-radius); }
+.duo-read-result-copy strong { font-size: 1.2rem; }
+.duo-pill-toggle { border-radius: 16px; }
+.duo-pill-toggle button { border-radius: 12px; font-size: 0.86rem; }
+
+/* ── Pato y detalles de juego ──────────────────────────────────────── */
+.pato-play { border-radius: var(--kid-radius); background: linear-gradient(160deg, #fff9e0 0%, #ffffff 60%); }
+.pato-play-summary > span:first-child { width: 54px; height: 54px; border-radius: 18px; font-size: 2rem; }
+.pato-play-summary strong { font-size: 1.06rem; }
+.pato-play-summary small { font-size: 0.84rem; }
+
+/* ── Resultados ────────────────────────────────────────────────────── */
+.duo-result-page { background: transparent; }
+.result-stars .star-row { transform: scale(1.15); }
+.duo-result-headline { font-size: clamp(1.85rem, 4.4vw, 2.4rem); }
+.duo-result-sub { font-size: 1rem; }
+.duo-rbox { border-radius: 20px; border-bottom-width: 5px; }
+
+/* ── Modales ───────────────────────────────────────────────────────── */
+.modal-card { border-radius: 28px; border-bottom-width: 5px; }
+
+/* ── Móvil: barra inferior con icono + palabra ─────────────────────── */
+@media (max-width: 720px) {
+  .duo-left-sidebar {
+    padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -8px 24px -18px rgba(0, 0, 0, 0.5);
+  }
+  .duo-nav-item {
+    flex: 0 0 auto;
+    min-width: 62px;
+    min-height: 56px;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px 6px;
+    border-radius: 16px;
+  }
+  .duo-nav-label {
+    display: block;
+    font-size: 0.62rem;
+    font-weight: 900;
+    letter-spacing: 0;
+    line-height: 1.1;
+    text-transform: none;
+  }
+  .duo-child-mode .duo-nav-label { display: block; }
+  .duo-nav-icon-wrap svg { width: 27px; height: 27px; }
+  .duo-center-main { max-width: none; padding: 18px 14px 118px; }
+  .duo-kid-hello { padding: 16px 18px; gap: 12px; }
+  .duo-kid-hello-mascot { transform: scale(0.92); margin-right: -10px; }
+  .duo-kid-hello-level { margin-left: 0; }
+  .duo-unit-banner { flex-wrap: wrap; }
+  .duo-unit-banner-emoji { width: 50px; height: 50px; font-size: 1.7rem; }
+  .duo-unit-banner h2 { font-size: 1.28rem; }
+  .duo-letters-hero h1,
+  .duo-shop-banner h1 { font-size: 1.45rem; }
+  .duo-read-card { padding: 18px 16px 20px; }
+  .duo-read-text { line-height: 2.05; }
+  .duo-dict-card { padding: 14px; }
+  .duo-onb-card { padding: 22px 18px; }
+  .duo-onb-card h1 { font-size: 1.4rem; }
+  .duo-pebble-btn { width: 78px; height: 70px; border-bottom-width: 8px; }
+}
+
+@media (max-width: 420px) {
+  .duo-kid-hello-mascot { display: none; }
+  .duo-kid-hello::after { font-size: 1.7rem; right: -8px; bottom: -14px; }
+  .duo-nav-item { min-width: 56px; }
+}
+
+/* Modo calm: sin adornos animados ni sombras grandes */
+body.calm .duo-kid-hello::before,
+body.calm .duo-kid-hello::after { display: none; }
+body.calm .duo-kid-hello,
+body.calm .duo-unit-banner,
+body.calm .duo-letters-hero { box-shadow: none; }
+
+/* Modo oscuro */
+body.dark .duo-kid-hello {
+  background: linear-gradient(150deg, #35300f 0%, #202a2f 70%);
+  border-color: #6d5a12;
+  border-bottom-color: #4d4009;
+  box-shadow: none;
+}
+body.dark .duo-kid-hello-hi { background: #202a2f; border-color: #6d5a12; color: #ffd644; }
+body.dark .duo-kid-hello-copy h1 { color: var(--duo-eel); }
+body.dark .duo-speech-cloud {
+  background: linear-gradient(160deg, #35300f 0%, #202a2f 100%);
+  border-color: #6d5a12;
+}
+body.dark .duo-letters-hero,
+body.dark .duo-shop-banner,
+body.dark .duo-monthly-quest-banner { background: var(--surface); }
+body.dark .duo-stat-pill:hover,
+body.dark .duo-stat-pill.active { background: var(--duo-polar); border-color: var(--duo-yellow-lip); }
+body.dark .pato-play { background: linear-gradient(160deg, #2a2618 0%, var(--surface) 70%); }
+
+/* ── Pantalla de lección: más grande y amable ──────────────────────── */
+.duo-close-x {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--duo-polar);
+  color: var(--duo-wolf);
+}
+.duo-close-x:hover { background: var(--duo-swan); }
+.duo-lesson-topbar { padding: 18px 18px 8px; }
+.duo-lesson-bar { height: 18px; }
+.duo-speaker-btn { width: 50px; height: 50px; border-radius: 16px; }
+.duo-turtle-btn { width: 46px; height: 46px; border-radius: 15px; }
+.duo-big-speaker { border-radius: 32px; }
+.duo-big-turtle { border-radius: 30px; }
+.duo-audio-bubble { border-radius: 22px; border-width: 3px; }
+.option-emoji { font-size: 2.7rem; }
+.option-label { font-size: 1.12rem; font-weight: 900; }
+.option-sub { font-size: 0.86rem; }
+.blank-box { min-width: 50px; height: 52px; border-radius: 16px; }
+.chunk { border-radius: 18px; font-size: 1.6rem; }
+.story-card { border-radius: 22px; border-left-width: 8px; }
+.duo-lesson-bottombar { border-top-width: 3px; }
+.duo-lesson-bottombar .duo-btn { min-height: 54px; }
+.duo-fb-circle { width: 52px; height: 52px; }
+
+/* Etiquetas en caja normal (más fáciles de leer que todo en mayúsculas) */
+.duo-top-popover h4,
+.duo-link-btn,
+.duo-popover-cta,
+.duo-sec-divider span,
+.duo-eyebrow-tag,
+.duo-review-tag,
+.duo-rbox-head,
+.speech-kicker,
+.duo-dictation-label,
+.duo-story-speaker-row strong,
+.duo-stat-card span,
+.duo-syl-stage-pill,
+.step-progress-label,
+.settings-group-title,
+.field-label,
+.duo-read-picker-label,
+.duo-super-pill {
+  text-transform: none;
+  letter-spacing: 0.02em;
+}

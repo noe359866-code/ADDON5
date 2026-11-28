@@ -3,7 +3,7 @@ import { DuoOwlBuddy, Mascot, StepProgress, staggerStyle } from '../components';
 import { DuoFlagSvg, IconArrowLeft, IconArrowRight, IconCheck, IconLightbulb, IconPlay, IconUser } from '../icons';
 import { t, tf } from '../i18n';
 import type { DifficultyLevel, LearnLang, Progress, ReadingPhase, Route, SchoolStage, UiLang } from '../types';
-import { DuoWordmark, RouteIcon } from './shared';
+import { DuoWordmark, RouteIcon, StageColorPicker } from './shared';
 
 /* ================================================================== */
 /* Onboarding estilo Duolingo                                          */
@@ -14,7 +14,7 @@ export function Onboarding({ onDone }: { onDone: (patch: Partial<Progress>) => v
   const [name, setName] = useState('');
   const [learnLang, setLearnLang] = useState<LearnLang>('both');
   const [difficultyLevel, setDifficultyLevel] = useState<DifficultyLevel>('medio');
-  const [schoolStage, setSchoolStage] = useState<SchoolStage>('general');
+  const [schoolStage, setSchoolStage] = useState<SchoolStage>('prim12');
   const [route, setRoute] = useState<Route>('mixta');
   const [dailyGoal, setDailyGoal] = useState<number>(20);
   const [ui, setUi] = useState<UiLang>('es');
@@ -30,13 +30,6 @@ export function Onboarding({ onDone }: { onDone: (patch: Partial<Progress>) => v
     { value: 'bajo', emoji: '🌱', title: t('diffLow', ui), desc: t('diffLowDesc', ui) },
     { value: 'medio', emoji: '⭐', title: t('diffMed', ui), desc: t('diffMedDesc', ui) },
     { value: 'alto', emoji: '🚀', title: t('diffHigh', ui), desc: t('diffHighDesc', ui) },
-  ];
-  const stageCards: { value: SchoolStage; emoji: string; title: string; desc: string }[] = [
-    { value: 'general', emoji: '🧩', title: t('stageGeneral', ui), desc: t('stageGeneralDesc', ui) },
-    { value: 'infantil', emoji: '🧸', title: t('stageInfantil', ui), desc: t('stageInfantilDesc', ui) },
-    { value: 'prim12', emoji: '📖', title: t('stagePrim12', ui), desc: t('stagePrim12Desc', ui) },
-    { value: 'prim34', emoji: '📅', title: t('stagePrim34', ui), desc: t('stagePrim34Desc', ui) },
-    { value: 'prim56', emoji: '🏆', title: t('stagePrim56', ui), desc: t('stagePrim56Desc', ui) },
   ];
   const routeCards: { value: Route; title: string; desc: string }[] = [
     { value: 'visual', title: t('routeVisual', ui), desc: t('routeVisualDesc', ui) },
@@ -133,7 +126,7 @@ export function Onboarding({ onDone }: { onDone: (patch: Partial<Progress>) => v
 
             <div className="onb-actions">
               <button className="duo-btn duo-btn-green duo-btn-lg" onClick={() => setStep(1)}>
-                <span>{t('continueBtn', ui).toUpperCase()}</span>
+                <span>{t('continueBtn', ui)}</span>
                 <IconArrowRight size={17} />
               </button>
             </div>
@@ -168,27 +161,8 @@ export function Onboarding({ onDone }: { onDone: (patch: Partial<Progress>) => v
             </div>
 
             <div className="duo-onb-goal" style={{ marginBottom: 16 }}>
-              <span className="field-label">🏫 {t('stageLabel', ui)}</span>
-              <div className="choice-grid">
-                {stageCards.map((sc, i) => (
-                  <button
-                    key={sc.value}
-                    style={staggerStyle(i)}
-                    className={`choice-card ${schoolStage === sc.value ? 'selected' : ''}`}
-                    onClick={() => setSchoolStage(sc.value)}
-                    aria-pressed={schoolStage === sc.value}
-                  >
-                    <span className="choice-icon" aria-hidden="true">{sc.emoji}</span>
-                    <strong>{sc.title}</strong>
-                    <small>{sc.desc}</small>
-                    {schoolStage === sc.value && (
-                      <span className="choice-check" aria-hidden="true">
-                        <IconCheck size={13} />
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
+              <span className="field-label">🎨 {t('stageLabel', ui)}</span>
+              <StageColorPicker value={schoolStage} ui={ui} onChange={setSchoolStage} />
             </div>
 
             <span className="field-label" style={{ display: 'flex', marginBottom: 8 }}>🧭 {t('routeLabel', ui)}</span>
@@ -239,10 +213,10 @@ export function Onboarding({ onDone }: { onDone: (patch: Partial<Progress>) => v
             <div className="onb-actions split">
               <button className="duo-btn duo-btn-outline" onClick={() => setStep(0)}>
                 <IconArrowLeft size={16} />
-                <span>{t('back', ui).toUpperCase()}</span>
+                <span>{t('back', ui)}</span>
               </button>
               <button className="duo-btn duo-btn-green duo-btn-lg" onClick={() => setStep(2)}>
-                <span>{t('continueBtn', ui).toUpperCase()}</span>
+                <span>{t('continueBtn', ui)}</span>
                 <IconArrowRight size={16} />
               </button>
             </div>
@@ -280,14 +254,14 @@ export function Onboarding({ onDone }: { onDone: (patch: Partial<Progress>) => v
             <div className="onb-actions split">
               <button className="duo-btn duo-btn-outline" onClick={() => setStep(1)}>
                 <IconArrowLeft size={16} />
-                <span>{t('back', ui).toUpperCase()}</span>
+                <span>{t('back', ui)}</span>
               </button>
               <button
                 className="duo-btn duo-btn-green duo-btn-lg"
                 onClick={() => completeOnboarding()}
               >
                 <IconPlay size={16} />
-                <span>{t('letsGo', ui).toUpperCase()}</span>
+                <span>{t('letsGo', ui)}</span>
               </button>
             </div>
           </>

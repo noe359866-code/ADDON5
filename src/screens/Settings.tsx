@@ -7,8 +7,8 @@ import { IconAccessibility, IconBolt, IconBook, IconCheck, IconCompass, IconEye,
 import { t } from '../i18n';
 import { downloadProgress, parseImportedProgress, readerLevel } from '../progress';
 import { getMaiderState, setMaiderEnabled, subscribeMaider } from '../maider';
-import type { DifficultyLevel, LearnLang, Progress, Route, SchoolStage, UiLang } from '../types';
-import { syncMusic, Segmented } from './shared';
+import type { DifficultyLevel, LearnLang, Progress, Route, UiLang } from '../types';
+import { syncMusic, Segmented, StageColorPicker } from './shared';
 
 /* ================================================================== */
 /* Modal de Ajustes y Accesibilidad                                    */
@@ -138,15 +138,9 @@ export function Settings({ progress, setProgress, onClose, onReset, onToast }: S
 
           <div className="settings-field">
             <span className="field-label"><IconSchool size={15} /> {t('stageLabel', ui)}</span>
-            <Segmented<SchoolStage>
+            <StageColorPicker
               value={progress.schoolStage}
-              options={[
-                { value: 'general', label: t('stageGeneral', ui) },
-                { value: 'infantil', label: t('stageInfantil', ui) },
-                { value: 'prim12', label: t('stagePrim12', ui) },
-                { value: 'prim34', label: t('stagePrim34', ui) },
-                { value: 'prim56', label: t('stagePrim56', ui) },
-              ]}
+              ui={ui}
               onChange={(schoolStage) => {
                 setProgress({ schoolStage });
                 onToast(t('stageChanged', ui));
@@ -383,7 +377,7 @@ export function Settings({ progress, setProgress, onClose, onReset, onToast }: S
           </button>
         )}
         <button className="duo-btn duo-btn-green duo-btn-full" onClick={onClose}>
-          {t('close', ui).toUpperCase()}
+          {t('close', ui)}
         </button>
       </div>
     </Modal>

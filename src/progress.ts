@@ -17,7 +17,7 @@ export const defaultProgress: Progress = {
   uiLang: 'es',
   learnLang: 'both',
   difficultyLevel: 'medio',
-  schoolStage: 'general',
+  schoolStage: 'prim12',
   readingPhase: 'alfabética',
   speechRate: 0.85,
   route: 'mixta',
@@ -83,14 +83,15 @@ export function sanitizeProgress(rawParsed: unknown): Progress {
         parsed.difficultyLevel === 'bajo' || parsed.difficultyLevel === 'medio' || parsed.difficultyLevel === 'alto'
           ? parsed.difficultyLevel
           : 'medio',
+      // Los niveles antiguos «general» pasan a tener color (verde): la interfaz
+      // ya solo habla de colores, pero se aceptan datos de versiones anteriores.
       schoolStage:
-        parsed.schoolStage === 'general' ||
         parsed.schoolStage === 'infantil' ||
         parsed.schoolStage === 'prim12' ||
         parsed.schoolStage === 'prim34' ||
         parsed.schoolStage === 'prim56'
           ? parsed.schoolStage
-          : 'general',
+          : 'prim12',
       readingPhase:
         parsed.readingPhase === 'fonologica' ||
         parsed.readingPhase === 'logográfica' ||
@@ -125,6 +126,30 @@ export function sanitizeProgress(rawParsed: unknown): Progress {
       frozenDates: Array.isArray(parsed.frozenDates) ? parsed.frozenDates : [],
       badges: Array.isArray(parsed.badges) ? parsed.badges : [],
     };
+}
+
+/**
+ * Premia una lectura en voz alta terminada. Mantiene la racha diaria, el XP del
+ * día y el histórico igual que una lección corta, sin tocar estrellas ni vidas.
+ */
+export function awardReadingXp(p: Progress, xp: number, gems = 5): Partial<Progress> {
+  const today = todayString();
+  const yesterday = todayString(-1);
+  const gained = Math.max(0, Math.round(xp));
+  let streak = p.streak;
+  if (p.lastPlayed !== today) {
+    streak = p.lastPlayed === yesterday ? p.streak + 1 : Math.max(1, p.streak);
+  }
+  return {
+    xp: p.xp + gained,
+    gems: p.gems + Math.max(0, gems),
+    dailyXp: p.dailyXp + gained,
+    dailyLessons: p.dailyLessons + 1,
+    xpHistory: { ...p.xpHistory, [today]: (p.xpHistory[today] ?? 0) + gained },
+    streak,
+    bestStreak: Math.max(p.bestStreak, streak),
+    lastPlayed: today,
+  };
 }
 
 export function loadProgress(): Progress {

@@ -1,15 +1,18 @@
 import { useEffect, useState } from 'react';
 import { computeAdaptations, supportSummary } from '../adaptations';
 import { Mascot } from '../components';
+import { DictionaryView } from '../DictionaryView';
 import { LEAGUE_RIVALS, LEAGUES, getDailyQuests } from '../duoData';
 import type { DuoStory } from '../duoData';
 import { GuidebookModal, LeaderboardView, LettersView, PracticeHubView, ProfileView, QuestsView, ShopView, StoriesView, StoryPlayerModal } from '../DuoViews';
 import { DuoFlagSvg, DuoFlameSvg, DuoGemSvg, DuoHeartSvg, DuoNavIcon, IconAccessibility, IconCheck, IconMusic } from '../icons';
 import { t, tf } from '../i18n';
 import { getRecentWeekStats, isXpBoostActive, todayString, xpBoostMinutesLeft } from '../progress';
+import { ReadingCoachView } from '../ReadingCoachView';
 import { sfx } from '../sound';
-import type { DifficultyLevel, LearnLang, NavTab, Progress, Route, SchoolStage, SessionMode } from '../types';
-import { syncMusic, Segmented, DuoWordmark, RouteIcon } from './shared';
+import { stageColor } from '../stages';
+import type { DifficultyLevel, LearnLang, NavTab, Progress, Route, SessionMode } from '../types';
+import { syncMusic, Segmented, DuoWordmark, RouteIcon, StageColorPicker } from './shared';
 import { LearnPathView } from './LearnPathView';
 
 /* ================================================================== */
@@ -32,6 +35,7 @@ export function Home({ progress, setProgress, onStart, onToast, onSettings }: Ho
   const [openPop, setOpenPop] = useState<PopoverKind>(null);
   const [guidebookUnit, setGuidebookUnit] = useState<number | null>(null);
   const [activeStory, setActiveStory] = useState<DuoStory | null>(null);
+  const [dictQuery, setDictQuery] = useState('');
   const [childMode, setChildMode] = useState<boolean>(() => {
     try {
       return localStorage.getItem('hitzbidaia.childMode.v1') === 'true';
@@ -49,6 +53,7 @@ export function Home({ progress, setProgress, onStart, onToast, onSettings }: Ho
   }, [childMode]);
 
   const ad = computeAdaptations(progress);
+  const level = stageColor(progress.schoolStage);
   const effectiveUnlimited = progress.unlimitedHearts || ad.gentle;
   const quests = getDailyQuests(progress, ui);
   const weekStats = getRecentWeekStats(progress);
@@ -59,6 +64,8 @@ export function Home({ progress, setProgress, onStart, onToast, onSettings }: Ho
 
   const navItems: { id: NavTab; label: string; badge?: number }[] = [
     { id: 'learn', label: t('navLearn', ui) },
+    { id: 'reading', label: t('navReading', ui) },
+    { id: 'dictionary', label: t('navDictionary', ui) },
     { id: 'letters', label: t('navLetters', ui) },
     { id: 'stories', label: t('navStories', ui) },
     { id: 'practice', label: t('navPractice', ui), badge: progress.mistakes.length || undefined },
@@ -104,7 +111,7 @@ export function Home({ progress, setProgress, onStart, onToast, onSettings }: Ho
 
   const statsBar = (
     <div className="duo-top-stats" onClick={(e) => e.stopPropagation()}>
-      {/* Bandera de Curso / Idioma */}
+      {/* Bandera de idioma + color del nivel de lectura */}
       <div className="duo-stat-trigger-wrap">
         <button
           className={`duo-stat-pill flag ${openPop === 'course' ? 'active' : ''}`}
@@ -112,6 +119,14 @@ export function Home({ progress, setProgress, onStart, onToast, onSettings }: Ho
           aria-label={t('learningLabel', ui)}
         >
           <DuoFlagSvg code={progress.learnLang} size={28} />
+          <span
+            className="duo-stage-dot"
+            style={{ background: level.color, borderColor: level.lip }}
+            title={`${level.name[ui]} · ${level.desc[ui]}`}
+            aria-hidden="true"
+          >
+            {level.emoji}
+          </span>
         </button>
         {openPop === 'course' && (
           <div className="duo-top-popover">
@@ -157,15 +172,11 @@ export function Home({ progress, setProgress, onStart, onToast, onSettings }: Ho
             />
             <div className="duo-pop-sep" />
             <h4>{t('stageLabel', ui)}</h4>
-            <Segmented<SchoolStage>
+            <StageColorPicker
+              compact
+              legend={false}
               value={progress.schoolStage}
-              options={[
-                { value: 'general', label: t('stageGeneral', ui) },
-                { value: 'infantil', label: t('stageInfantil', ui) },
-                { value: 'prim12', label: t('stagePrim12', ui) },
-                { value: 'prim34', label: t('stagePrim34', ui) },
-                { value: 'prim56', label: t('stagePrim56', ui) },
-              ]}
+              ui={ui}
               onChange={(schoolStage) => {
                 setProgress({ schoolStage });
                 onToast(t('stageChanged', ui));
@@ -255,7 +266,7 @@ export function Home({ progress, setProgress, onStart, onToast, onSettings }: Ho
                 setOpenPop(null);
               }}
             >
-              {t('navShop', ui).toUpperCase()}
+              {t('navShop', ui)}
             </button>
           </div>
         )}
@@ -409,7 +420,16 @@ export function Home({ progress, setProgress, onStart, onToast, onSettings }: Ho
             onOpenStory={(st) => setActiveStory(st)}
             onOpenGuidebook={(uId) => setGuidebookUnit(uId)}
             onToast={onToast}
+            dictQuery={dictQuery}
+            onDictQuery={setDictQuery}
+            onOpenDictionary={() => setActiveTab('dictionary')}
           />
+        )}
+        {activeTab === 'reading' && (
+          <ReadingCoachView progress={progress} setProgress={setProgress} onToast={onToast} />
+        )}
+        {activeTab === 'dictionary' && (
+          <DictionaryView progress={progress} query={dictQuery} setQuery={setDictQuery} />
         )}
         {activeTab === 'letters' && (
           <LettersView
@@ -541,7 +561,7 @@ export function Home({ progress, setProgress, onStart, onToast, onSettings }: Ho
               <IconAccessibility size={16} /> {t('diffLevelLabel', ui)}
             </h3>
             <button className="duo-link-btn" onClick={onSettings}>
-              {t('configureSupports', ui).toUpperCase()}
+              {t('configureSupports', ui)}
             </button>
           </div>
           <div className="duo-rail-route-pills" style={{ marginBottom: 8 }}>
@@ -584,6 +604,24 @@ export function Home({ progress, setProgress, onStart, onToast, onSettings }: Ho
               ))}
             </div>
           )}
+        </div>
+
+        <div className="duo-rail-card">
+          <div className="duo-rail-head">
+            <h3>🧰 {t('toolsTitle', ui)}</h3>
+          </div>
+          <div className="duo-rail-tools">
+            <button className="duo-rail-tool" onClick={() => setActiveTab('reading')}>
+              <span aria-hidden="true">🎤</span>
+              <strong>{t('navReading', ui)}</strong>
+              <small>{t('readingSub', ui)}</small>
+            </button>
+            <button className="duo-rail-tool" onClick={() => setActiveTab('dictionary')}>
+              <span aria-hidden="true">📖</span>
+              <strong>{t('navDictionary', ui)}</strong>
+              <small>{t('dictSub', ui)}</small>
+            </button>
+          </div>
         </div>
 
         <footer className="duo-rail-footer">
